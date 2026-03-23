@@ -6,25 +6,23 @@ import {
   FlatList,
   TextInput,
   ActivityIndicator,
-  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
+import { FlashList } from "@shopify/flash-list";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
 
-// Mock individual chats for Phase 1 (direct messaging is Phase 2)
-const MOCK_INDIVIDUAL = [
-  { id: "i1", name: "Erick", preview: "Hey, just wanted to make sure if u finished…", unread: false },
-  { id: "i2", name: "Sophia", preview: "Haha, yeah i got it.", unread: true },
-  { id: "i3", name: "Mike", preview: "Done.", unread: false },
-  { id: "i4", name: "John", preview: "Thank you so much!", unread: false },
-  { id: "i5", name: "Philip", preview: "Lemme ask John about it..", unread: false },
-  { id: "i6", name: "Conor", preview: "Hello..", unread: true },
-];
+type ConnectionConvo = {
+  id: string;          // connection id
+  otherUserId: string;
+  otherUserName: string;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+};
 
 function AvatarCircle({ initials }: { initials: string }) {
   return (
@@ -48,6 +46,8 @@ export default function MessagesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [groupProjects, setGroupProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connections, setConnections] = useState<ConnectionConvo[]>([]);
+  const [loadingConnections, setLoadingConnections] = useState(true);
 
   const fetchJoinedProjects = useCallback(async () => {
     if (!user) return;
@@ -65,18 +65,51 @@ export default function MessagesScreen() {
     setLoading(false);
   }, [user]);
 
+  const fetchConnections = useCallback(async () => {
+    if (!user) return;
+    setLoadingConnections(true);
+    const { data } = await supabase
+      .from("connections")
+      .select(`
+        id, requester_id, recipient_id,
+        requester:profiles!requester_id(id, full_name),
+        recipient:profiles!recipient_id(id, full_name),
+        direct_messages(content, created_at)
+      `)
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      .eq("status", "accepted")
+      .order("created_at", { referencedTable: "direct_messages", ascending: false })
+      .limit(1, { referencedTable: "direct_messages" });
+
+    const convos: ConnectionConvo[] = (data ?? []).map((c: any) => {
+      const isRequester = c.requester_id === user.id;
+      const other = isRequester ? c.recipient : c.requester;
+      const lastMsg = c.direct_messages?.[0] ?? null;
+      return {
+        id: c.id,
+        otherUserId: other?.id ?? "",
+        otherUserName: other?.full_name ?? "Unknown",
+        lastMessage: lastMsg?.content ?? null,
+        lastMessageAt: lastMsg?.created_at ?? null,
+      };
+    });
+    setConnections(convos);
+    setLoadingConnections(false);
+  }, [user]);
+
   useFocusEffect(
     useCallback(() => {
       fetchJoinedProjects();
-    }, [fetchJoinedProjects])
+      fetchConnections();
+    }, [fetchJoinedProjects, fetchConnections])
   );
 
-  const filteredIndividual = searchQuery.trim()
-    ? MOCK_INDIVIDUAL.filter((c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.preview.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredConnections = searchQuery.trim()
+    ? connections.filter((c) =>
+        c.otherUserName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.lastMessage ?? "").toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : MOCK_INDIVIDUAL;
+    : connections;
 
   const filteredGroup = searchQuery.trim()
     ? groupProjects.filter((p) =>
@@ -125,28 +158,41 @@ export default function MessagesScreen() {
 
       {/* Content */}
       {activeTab === "individual" ? (
-        <FlatList
-          data={filteredIndividual}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: vs(100) }}
-          renderItem={({ item }) => (
-            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}>
-              <AvatarCircle initials={getInitials(item.name)} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: fs(14), marginBottom: vs(2) }}>
-                  {item.name}
-                </Text>
-                <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: fs(13) }} numberOfLines={1}>
-                  {item.preview}
-                </Text>
-              </View>
-              {item.unread && (
-                <View style={{ width: s(10), height: s(10), borderRadius: s(5), backgroundColor: "#8b5cf6", marginLeft: s(8) }} />
-              )}
-            </View>
-          )}
-        />
+        loadingConnections ? (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator size="large" color="#7c3aed" />
+          </View>
+        ) : filteredConnections.length === 0 ? (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: s(32) }}>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: fs(15), textAlign: "center" }}>
+              No connections yet.{"\n"}Connect with talent in the Discover tab!
+            </Text>
+          </View>
+        ) : (
+          <FlashList
+            data={filteredConnections}
+            keyExtractor={(item) => item.id}
+            estimatedItemSize={72}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: vs(100) }}
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => router.push({ pathname: "/(app)/chat/dm/[id]", params: { id: item.id } })}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}
+              >
+                <AvatarCircle initials={getInitials(item.otherUserName)} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: fs(14), marginBottom: vs(2) }}>
+                    {item.otherUserName}
+                  </Text>
+                  <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: fs(13) }} numberOfLines={1}>
+                    {item.lastMessage ?? "Start a conversation"}
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+          />
+        )
       ) : loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator size="large" color="#7c3aed" />
