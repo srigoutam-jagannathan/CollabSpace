@@ -58,10 +58,11 @@ export const C = {
 } as const;
 
 // ── Typography ─────────────────────────────────────────────────────────────────
+// Lato weights: 400 Regular, 700 Bold, 900 Black (no 500/600 — medium collapses to regular intentionally)
 export const FONT = {
-  regular:   "Nunito_400Regular",
-  medium:    "Nunito_500Medium",
-  semiBold:  "Nunito_600SemiBold",
-  bold:      "Nunito_700Bold",
-  extraBold: "Nunito_800ExtraBold",
+  regular:   "Lato_400Regular",
+  medium:    "Lato_400Regular",
+  semiBold:  "Lato_700Bold",
+  bold:      "Lato_700Bold",
+  extraBold: "Lato_900Black",
 } as const;
