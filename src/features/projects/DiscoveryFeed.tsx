@@ -144,7 +144,15 @@ function ProjectCard({
 
 // ─── Talent Card ───────────────────────────────────────────────────────────────
 
-function TalentCard({ talent }: { talent: TalentProfile }) {
+function TalentCard({
+  talent,
+  connectionStatus,
+  onConnect,
+}: {
+  talent: TalentProfile;
+  connectionStatus?: "pending" | "accepted" | "rejected";
+  onConnect?: () => void;
+}) {
   const router = useRouter();
   const initials = talent.full_name
     ? talent.full_name.trim().split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
@@ -206,6 +214,25 @@ function TalentCard({ talent }: { talent: TalentProfile }) {
             ))}
           </View>
         )}
+
+        {/* Connect button */}
+        <View style={{ marginTop: vs(12) }}>
+          {connectionStatus === "accepted" ? (
+            <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(52,211,153,0.15)", borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6), borderWidth: 1, borderColor: "rgba(52,211,153,0.3)" }}>
+              <Text style={{ color: C.success, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Connected</Text>
+            </View>
+          ) : connectionStatus === "pending" ? (
+            <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6), borderWidth: 1, borderColor: C.border }}>
+              <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Pending</Text>
+            </View>
+          ) : (
+            <Btn onPress={onConnect} pressScale={0.93} style={{ alignSelf: "flex-start" }}>
+              <View style={{ backgroundColor: C.purple, borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6) }}>
+                <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Connect</Text>
+              </View>
+            </Btn>
+          )}
+        </View>
       </View>
     </Btn>
   );
@@ -246,6 +273,7 @@ export default function DiscoveryFeed() {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingTalents, setLoadingTalents] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatuses, setConnectionStatuses] = useState<Map<string, "pending" | "accepted" | "rejected">>(new Map());
 
   const fetchProjects = useCallback(async () => {
     setLoadingProjects(true);
@@ -271,11 +299,29 @@ export default function DiscoveryFeed() {
     setLoadingTalents(false);
   }, [user]);
 
+  const fetchConnectionStatuses = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("connections")
+      .select("requester_id, recipient_id, status")
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
+
+    const map = new Map<string, "pending" | "accepted" | "rejected">();
+    (data ?? []).forEach((c: any) => {
+      const otherId = c.requester_id === user.id ? c.recipient_id : c.requester_id;
+      map.set(otherId, c.status);
+    });
+    setConnectionStatuses(map);
+  }, [user]);
+
   useFocusEffect(useCallback(() => { fetchProjects(); }, [fetchProjects]));
 
   function handleTabChange(tab: "projects" | "talents") {
     setActiveTab(tab);
-    if (tab === "talents" && talents.length === 0) fetchTalents();
+    if (tab === "talents" && talents.length === 0) {
+      fetchTalents();
+      fetchConnectionStatuses();
+    }
   }
 
   const isLoading = activeTab === "projects" ? loadingProjects : loadingTalents;
@@ -340,7 +386,24 @@ export default function DiscoveryFeed() {
       ) : (
         <FlashList
           data={talents}
-          renderItem={({ item }) => <TalentCard talent={item as TalentProfile} />}
+          renderItem={({ item }) => (
+            <TalentCard
+              talent={item as TalentProfile}
+              connectionStatus={connectionStatuses.get((item as TalentProfile).id)}
+              onConnect={async () => {
+                if (!user) return;
+                const ids = [user.id, (item as TalentProfile).id].sort();
+                const { error } = await supabase.from("connections").insert({
+                  requester_id: ids[0],
+                  recipient_id: ids[1],
+                  initiated_by: user.id,
+                });
+                if (!error) {
+                  setConnectionStatuses((prev) => new Map(prev).set((item as TalentProfile).id, "pending"));
+                }
+              }}
+            />
+          )}
           keyExtractor={(item) => (item as TalentProfile).id}
           contentContainerStyle={{ paddingTop: vs(4), paddingBottom: vs(24) }}
           showsVerticalScrollIndicator={false}
