@@ -40,7 +40,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
       const [{ data: conn }, { data: msgs }] = await Promise.all([
         supabase
           .from("connections")
-          .select("requester_id, recipient_id, initiated_by, requester:profiles!requester_id(full_name), recipient:profiles!recipient_id(full_name)")
+          .select("requester_id, recipient_id, requester:profiles!requester_id(full_name), recipient:profiles!recipient_id(full_name)")
           .eq("id", connectionId)
           .single(),
         supabase
