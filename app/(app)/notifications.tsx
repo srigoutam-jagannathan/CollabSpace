@@ -230,12 +230,21 @@ export default function NotificationsScreen() {
 
   async function handleConnectionResponse(connId: string, accept: boolean) {
     setRespondingId(connId);
-    await supabase
-      .from("connections")
-      .update({ status: accept ? "accepted" : "rejected" })
-      .eq("id", connId);
-    setConnectionRequests((prev) => prev.filter((c) => c.id !== connId));
-    setRespondingId(null);
+    try {
+      const { error } = await supabase
+        .from("connections")
+        .update({ status: accept ? "accepted" : "rejected" })
+        .eq("id", connId);
+
+      if (error) {
+        Alert.alert("Error", error.message);
+        return;
+      }
+
+      setConnectionRequests((prev) => prev.filter((c) => c.id !== connId));
+    } finally {
+      setRespondingId(null);
+    }
   }
 
   function toggleExpand(eventId: string) {
@@ -329,7 +338,7 @@ export default function NotificationsScreen() {
                       )}
                       <Btn onPress={() => handleConnectionResponse(conn.id, false)} pressScale={0.92} disabled={isResponding}>
                         <View style={{ borderWidth: 1, borderColor: C.danger, borderRadius: s(12), paddingHorizontal: s(12), paddingVertical: vs(6) }}>
-                          <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Reject</Text>
+                          <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(12) }}>{isResponding ? "..." : "Reject"}</Text>
                         </View>
                       </Btn>
                     </View>
