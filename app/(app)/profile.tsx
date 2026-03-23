@@ -1,0 +1,313 @@
+import { useState, useCallback } from "react";
+import { View, Text, ScrollView, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { LogOut } from "lucide-react-native";
+import { router, useFocusEffect } from "expo-router";
+import { useAuth } from "@/features/auth/AuthContext";
+import { Btn } from "@/components/Btn";
+import { supabase } from "@/lib/supabaseClient";
+import { C, GRADIENT, FONT } from "@/utils/theme";
+import { s, vs, fs } from "@/utils/scale";
+
+type ProfileData = {
+  full_name: string | null;
+  department: string | null;
+  bio: string | null;
+  pvs_score: number | null;
+  skills: string[] | null;
+  portfolio_links: { title: string; url: string }[] | null;
+  badges: string[] | null;
+};
+
+type OwnedProject = {
+  id: string;
+  title: string;
+  description: string;
+  project_type: string | null;
+  status: string;
+  created_at: string;
+};
+
+const DEV_PROFILE: ProfileData = {
+  full_name: "Jacob (Dev)",
+  department: "M.Des User Experience Design",
+  bio: "Aspiring Ux/Ui Designer",
+  pvs_score: 72,
+  skills: ["Ui Design", "Figma", "Graphic Design", "Video Editing"],
+  portfolio_links: [{ title: "Design Portfolio", url: "" }, { title: "Video Portfolio", url: "" }],
+  badges: ["Reliable Collaborator", "Great Communicator"],
+};
+
+function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
+  return (
+    <View style={{ flexDirection: "row", gap: s(2) }}>
+      {Array.from({ length: max }).map((_, i) => (
+        <Text key={i} style={{ fontSize: fs(14), color: i < rating ? C.yellow : "rgba(255,255,255,0.18)" }}>★</Text>
+      ))}
+    </View>
+  );
+}
+
+function Section({ title, children, action }: {
+  title: string;
+  children: React.ReactNode;
+  action?: { label: string; onPress: () => void };
+}) {
+  return (
+    <View style={{ paddingHorizontal: s(20), marginBottom: vs(28) }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: vs(12) }}>
+        <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(16) }}>{title}</Text>
+        {action && (
+          <Btn onPress={action.onPress} pressScale={0.9}>
+            <Text style={{ color: C.pink, fontSize: fs(14), fontWeight: "600" }}>{action.label}</Text>
+          </Btn>
+        )}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+export default function ProfileScreen() {
+  const { user, signOut } = useAuth();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [myProjects, setMyProjects] = useState<OwnedProject[]>([]);
+
+  const loadProfile = useCallback(() => {
+    if (!user) {
+      setProfile(DEV_PROFILE);
+      setLoading(false);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("full_name, department, bio, pvs_score, skills, portfolio_links, badges")
+      .eq("id", user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          setProfile({ full_name: user.user_metadata?.full_name ?? null, department: null, bio: null, pvs_score: 0, skills: [], portfolio_links: [], badges: [] });
+        } else {
+          setProfile(data as ProfileData);
+        }
+        setLoading(false);
+      });
+    supabase
+      .from("projects")
+      .select("id, title, description, project_type, status, created_at")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data: ownedProjects }) => {
+        setMyProjects((ownedProjects as OwnedProject[]) ?? []);
+      });
+  }, [user?.id]);
+
+  useFocusEffect(loadProfile);
+
+  const displayName = profile?.full_name ?? user?.user_metadata?.full_name ?? "Student";
+  const initials = displayName.trim().split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+  const score = profile?.pvs_score ?? 0;
+  const skills = profile?.skills ?? [];
+  const portfolioLinks = profile?.portfolio_links?.length ? profile.portfolio_links : [{ title: "Design Portfolio", url: "" }, { title: "Video Portfolio", url: "" }];
+  const badges = profile?.badges?.length ? profile.badges : ["Reliable Collaborator", "Great Communicator"];
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={C.pink} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: vs(32) }} showsVerticalScrollIndicator={false}>
+
+        {/* ── Avatar + Identity ──────────────────────────────────────────── */}
+        <View style={{ alignItems: "center", paddingTop: vs(32), paddingBottom: vs(28) }}>
+          {/* Avatar with gradient ring */}
+          <View style={{ marginBottom: vs(14) }}>
+            <LinearGradient
+              colors={GRADIENT.cta}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ width: s(96), height: s(96), borderRadius: s(48), padding: 3 }}
+            >
+              <View style={{
+                flex: 1, borderRadius: s(45),
+                backgroundColor: C.bgMid,
+                alignItems: "center", justifyContent: "center",
+              }}>
+                <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(28) }}>{initials}</Text>
+              </View>
+            </LinearGradient>
+          </View>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), marginBottom: vs(4) }}>
+            <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(20) }}>{displayName}</Text>
+            <Text style={{ color: C.pink, fontSize: fs(16) }}>✓</Text>
+          </View>
+
+          {profile?.department ? (
+            <Text style={{ color: C.textMuted, fontSize: fs(13), marginBottom: vs(4) }}>{profile.department}</Text>
+          ) : null}
+
+          <Text style={{ color: C.textFaint, fontSize: fs(13), fontStyle: "italic" }}>
+            "{profile?.bio ?? "Aspiring collaborator"}"
+          </Text>
+        </View>
+
+        {/* ── Commitment Score ───────────────────────────────────────────── */}
+        <Section title="Commitment Score">
+          <View style={{ height: vs(8), backgroundColor: "rgba(255,255,255,0.08)", borderRadius: s(4), overflow: "hidden" }}>
+            <LinearGradient
+              colors={GRADIENT.cta}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ height: vs(8), width: `${Math.min(score, 100)}%`, borderRadius: s(4) }}
+            />
+          </View>
+          <Text style={{ color: C.textFaint, fontSize: fs(11), marginTop: vs(4) }}>{score} / 100</Text>
+        </Section>
+
+        {/* ── Skills ────────────────────────────────────────────────────── */}
+        <Section
+          title="Skills"
+          action={{ label: skills.length > 0 ? "+ Edit" : "+ Add", onPress: () => router.push("/(onboarding)/skills") }}
+        >
+          {skills.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: "row", gap: s(8) }}>
+                {skills.map((skill) => (
+                  <View key={skill} style={{ backgroundColor: C.yellow, borderRadius: s(20), paddingHorizontal: s(14), paddingVertical: vs(7) }}>
+                    <Text style={{ color: "#1a0a2e", fontWeight: "600", fontSize: fs(13) }}>{skill}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          ) : (
+            <Text style={{ color: C.textFaint, fontSize: fs(13) }}>No skills added yet. Tap + Add to get started.</Text>
+          )}
+        </Section>
+
+        {/* ── My Projects ────────────────────────────────────────────────── */}
+        <Section title="My Projects" action={{ label: "+ New", onPress: () => router.push("/(app)/projects/create") }}>
+          {myProjects.length === 0 ? (
+            <Text style={{ color: C.textFaint, fontSize: fs(13) }}>No projects yet. Tap + New to create one.</Text>
+          ) : (
+            <View style={{ gap: vs(10) }}>
+              {myProjects.map((proj) => (
+                <Btn
+                  key={proj.id}
+                  onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: proj.id } })}
+                  pressScale={0.97}
+                >
+                  <View style={{
+                    backgroundColor: C.surface, borderRadius: s(14), borderWidth: 1,
+                    borderColor: C.border, padding: s(14),
+                  }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: vs(4) }}>
+                      <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14), flex: 1, marginRight: s(8) }} numberOfLines={1}>
+                        {proj.title}
+                      </Text>
+                      <View style={{ backgroundColor: proj.status === "recruiting" ? "rgba(52,211,153,0.15)" : "rgba(255,255,255,0.08)", borderRadius: s(8), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+                        <Text style={{ color: proj.status === "recruiting" ? C.success : C.textMuted, fontFamily: FONT.medium, fontSize: fs(10), textTransform: "capitalize" }}>
+                          {proj.status}
+                        </Text>
+                      </View>
+                    </View>
+                    {proj.project_type ? (
+                      <Text style={{ color: C.purpleL, fontFamily: FONT.medium, fontSize: fs(11), marginBottom: vs(4) }}>{proj.project_type}</Text>
+                    ) : null}
+                    <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12), lineHeight: vs(18) }} numberOfLines={2}>
+                      {proj.description}
+                    </Text>
+                  </View>
+                </Btn>
+              ))}
+            </View>
+          )}
+        </Section>
+
+        {/* ── Portfolio ──────────────────────────────────────────────────── */}
+        <Section title="Portfolio" action={{ label: "See all", onPress: () => {} }}>
+          <View style={{ gap: vs(10) }}>
+            {portfolioLinks.map((item) => (
+              <View key={item.title} style={{
+                backgroundColor: C.yellow, borderRadius: s(14),
+                flexDirection: "row", alignItems: "center",
+                justifyContent: "space-between", padding: s(16),
+              }}>
+                <Text style={{ color: "#1a0a2e", fontWeight: "700", fontSize: fs(14) }}>{item.title}</Text>
+                <Btn pressScale={0.93} style={{ borderRadius: s(16), overflow: "hidden" }}>
+                  <LinearGradient
+                    colors={GRADIENT.cta}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{ paddingHorizontal: s(16), paddingVertical: vs(6) }}
+                  >
+                    <Text style={{ color: C.white, fontWeight: "600", fontSize: fs(12) }}>Open</Text>
+                  </LinearGradient>
+                </Btn>
+              </View>
+            ))}
+          </View>
+        </Section>
+
+        {/* ── Badges ────────────────────────────────────────────────────── */}
+        <Section title="Badges">
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(8) }}>
+            {badges.map((badge) => (
+              <View key={badge} style={{
+                backgroundColor: C.surface, borderRadius: s(20),
+                borderWidth: 1, borderColor: C.borderBright,
+                paddingHorizontal: s(14), paddingVertical: vs(8),
+              }}>
+                <Text style={{ color: C.purpleL, fontSize: fs(13), fontWeight: "600" }}>{badge}</Text>
+              </View>
+            ))}
+          </View>
+        </Section>
+
+        {/* ── Latest Feedback ────────────────────────────────────────────── */}
+        <Section title="Latest Feedback">
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: s(12) }}>
+            <LinearGradient
+              colors={[C.pink, C.purple]}
+              style={{ width: s(36), height: s(36), borderRadius: s(18), alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(13) }}>EM</Text>
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), marginBottom: vs(4) }}>
+                <Text style={{ color: C.white, fontWeight: "600", fontSize: fs(14) }}>Emily</Text>
+                <StarRating rating={4} />
+              </View>
+              <Text style={{ color: C.textMuted, fontSize: fs(13) }}>Great communication and creativity.</Text>
+            </View>
+          </View>
+        </Section>
+
+        {/* ── Sign Out ───────────────────────────────────────────────────── */}
+        <View style={{ paddingHorizontal: s(20), marginTop: vs(8) }}>
+          <Btn
+            onPress={signOut}
+            pressScale={0.97}
+            style={{
+              flexDirection: "row", alignItems: "center", gap: s(10),
+              padding: s(16), borderRadius: s(14),
+              backgroundColor: C.surface, borderWidth: 1, borderColor: "rgba(248,113,113,0.3)",
+            }}
+          >
+            <LogOut size={s(18)} color={C.danger} />
+            <Text style={{ color: C.danger, fontWeight: "600", fontSize: fs(14) }}>Sign Out</Text>
+          </Btn>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

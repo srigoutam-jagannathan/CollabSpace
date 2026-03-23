@@ -1,0 +1,67 @@
+/**
+ * CollabSpace — "Midnight Bloom" design system
+ *
+ * Palette: purple · pink · yellow · white · black
+ * Background: near-void black → deep violet → rich purple-magenta bloom
+ */
+
+// ── Background gradient ────────────────────────────────────────────────────────
+export const GRADIENT = {
+  /** Full-screen background — handled by GradientBg SVG component */
+  bg: ["#0F0230", "#0F0230"] as const,
+  /** Subtle surface card gradient */
+  card: ["rgba(60,12,110,0.40)", "rgba(20,4,58,0.60)"] as const,
+  /**
+   * CTA button — purple → mid-violet → soft dusty-pink.
+   * Three stops for a smooth, diffuse transition; no harsh neon end.
+   */
+  cta: ["#5E1EC8", "#8C28B4", "#B0309A"] as const,
+  /** Softer / secondary CTA */
+  ctaSoft: ["#4A18A8", "#7020A0", "#942890"] as const,
+} as const;
+
+// ── Static colours ─────────────────────────────────────────────────────────────
+export const C = {
+  // Backgrounds
+  bgDeep:   "#0A0120",
+  bgMid:    "#160340",
+  bgBottom: "#0F0230",
+
+  // Surfaces — semi-transparent so the radial bg bleeds through
+  surface:       "rgba(30, 8, 72, 0.68)",
+  surfaceBright: "rgba(50, 12, 100, 0.55)",
+
+  // Borders
+  border:       "rgba(120, 60, 220, 0.22)",
+  borderBright: "rgba(180, 50, 160, 0.35)",
+
+  // Accent purple — slightly muted, less neon
+  purple:  "#6824CC",
+  purpleL: "#9434D8",
+
+  // Accent pink — dusty/warm, not harsh magenta
+  pink:    "#C036A0",
+  pinkD:   "#A02888",
+
+  // Pink card colour (replaces yellow)
+  yellow:  "#FFD1E3",
+  yellowD: "#FFB3CC",
+
+  // Text
+  white:      "#FFFFFF",
+  textMuted:  "rgba(255,255,255,0.50)",
+  textFaint:  "rgba(255,255,255,0.26)",
+
+  // Semantic
+  danger:  "#F87171",
+  success: "#34D399",
+} as const;
+
+// ── Typography ─────────────────────────────────────────────────────────────────
+export const FONT = {
+  regular:   "Nunito_400Regular",
+  medium:    "Nunito_500Medium",
+  semiBold:  "Nunito_600SemiBold",
+  bold:      "Nunito_700Bold",
+  extraBold: "Nunito_800ExtraBold",
+} as const;

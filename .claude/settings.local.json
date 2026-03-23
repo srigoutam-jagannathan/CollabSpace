@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo:*)",
+      "Bash(/Users/g/.nvm/versions/node/v24.14.0/bin/npx expo:*)",
+      "mcp__figma__get_metadata"
+    ]
+  }
+}
