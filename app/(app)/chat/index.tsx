@@ -13,6 +13,7 @@ import { Search } from "lucide-react-native";
 import { FlashList } from "@shopify/flash-list";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
+import { C, FONT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
 
@@ -27,7 +28,7 @@ type ConnectionConvo = {
 function AvatarCircle({ initials }: { initials: string }) {
   return (
     <View style={{ width: s(48), height: s(48), borderRadius: s(24), backgroundColor: "#2d1b69", alignItems: "center", justifyContent: "center", marginRight: s(14) }}>
-      <Text style={{ color: "rgba(255,255,255,0.7)", fontWeight: "600", fontSize: fs(15) }}>{initials}</Text>
+      <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(15) }}>{initials}</Text>
     </View>
   );
 }
@@ -122,7 +123,7 @@ export default function MessagesScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
       {/* Header */}
       <View style={{ paddingHorizontal: s(20), paddingTop: vs(8), paddingBottom: vs(16) }}>
-        <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: fs(26) }}>Messages</Text>
+        <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(26) }}>Messages</Text>
       </View>
 
       {/* Search */}
@@ -143,7 +144,7 @@ export default function MessagesScreen() {
           onPress={() => setActiveTab("individual")}
           style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", backgroundColor: activeTab === "individual" ? "#ffffff" : "transparent" }}
         >
-          <Text style={{ color: activeTab === "individual" ? "#120a2e" : "rgba(255,255,255,0.5)", fontWeight: "600", fontSize: 13 }}>
+          <Text style={{ color: activeTab === "individual" ? "#120a2e" : C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(13) }}>
             Individual Chats
           </Text>
         </Pressable>
@@ -151,7 +152,7 @@ export default function MessagesScreen() {
           onPress={() => setActiveTab("group")}
           style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", backgroundColor: activeTab === "group" ? "#ffffff" : "transparent" }}
         >
-          <Text style={{ color: activeTab === "group" ? "#120a2e" : "rgba(255,255,255,0.5)", fontWeight: "600", fontSize: 13 }}>
+          <Text style={{ color: activeTab === "group" ? "#120a2e" : C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(13) }}>
             Group Chats
           </Text>
         </Pressable>
@@ -173,7 +174,6 @@ export default function MessagesScreen() {
           <FlashList
             data={filteredConnections}
             keyExtractor={(item) => item.id}
-            estimatedItemSize={72}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: vs(100) }}
             renderItem={({ item }) => (
@@ -183,10 +183,10 @@ export default function MessagesScreen() {
               >
                 <AvatarCircle initials={getInitials(item.otherUserName)} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: fs(14), marginBottom: vs(2) }}>
+                  <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(14), marginBottom: vs(2) }}>
                     {item.otherUserName}
                   </Text>
-                  <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: fs(13) }} numberOfLines={1}>
+                  <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
                     {item.lastMessage ?? "Start a conversation"}
                   </Text>
                 </View>
@@ -217,10 +217,10 @@ export default function MessagesScreen() {
             >
               <AvatarCircle initials={getInitials(item.title)} />
               <View style={{ flex: 1 }}>
-                <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: fs(14), marginBottom: vs(2) }} numberOfLines={1}>
+                <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(14), marginBottom: vs(2) }} numberOfLines={1}>
                   {item.title}
                 </Text>
-                <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: fs(13) }} numberOfLines={1}>
+                <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
                   Tap to open group chat
                 </Text>
               </View>

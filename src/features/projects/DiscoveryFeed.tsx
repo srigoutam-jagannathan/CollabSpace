@@ -318,7 +318,10 @@ export default function DiscoveryFeed() {
     setConnectionStatuses(map);
   }, [user]);
 
-  useFocusEffect(useCallback(() => { fetchProjects(); }, [fetchProjects]));
+  useFocusEffect(useCallback(() => {
+    fetchProjects();
+    if (activeTab === "talents") fetchConnectionStatuses();
+  }, [fetchProjects, fetchConnectionStatuses, activeTab]));
 
   function handleTabChange(tab: "projects" | "talents") {
     setActiveTab(tab);
@@ -379,7 +382,6 @@ export default function DiscoveryFeed() {
           contentContainerStyle={{ paddingTop: vs(12), paddingBottom: vs(32) }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: vs(12) }} />}
-          estimatedItemSize={200}
           ListEmptyComponent={
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: vs(60) }}>
               <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(15) }}>No projects yet.</Text>
@@ -411,7 +413,6 @@ export default function DiscoveryFeed() {
           keyExtractor={(item) => (item as TalentProfile).id}
           contentContainerStyle={{ paddingTop: vs(4), paddingBottom: vs(24) }}
           showsVerticalScrollIndicator={false}
-          estimatedItemSize={180}
           ListEmptyComponent={
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: vs(60) }}>
               <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(15) }}>No other students yet.</Text>
