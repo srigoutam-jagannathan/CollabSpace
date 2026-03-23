@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -24,6 +25,13 @@ type DM = {
   created_at: string;
 };
 
+type ConnectionRow = {
+  requester_id: string;
+  recipient_id: string;
+  requester: { full_name: string | null } | null;
+  recipient: { full_name: string | null } | null;
+};
+
 export function DirectChat({ connectionId }: { connectionId: string }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -33,11 +41,13 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isNearBottomRef = useRef(true);
 
   useEffect(() => {
     if (!user || !connectionId) return;
     async function init() {
-      const [{ data: conn }, { data: msgs }] = await Promise.all([
+      const [{ data: conn, error: connErr }, { data: msgs, error: msgsErr }] = await Promise.all([
         supabase
           .from("connections")
           .select("requester_id, recipient_id, requester:profiles!requester_id(full_name), recipient:profiles!recipient_id(full_name)")
@@ -50,9 +60,21 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
           .order("created_at", { ascending: true }),
       ]);
 
-      if (conn) {
-        const isRequester = conn.requester_id === user!.id;
-        const other = isRequester ? (conn as any).recipient : (conn as any).requester;
+      if (connErr) {
+        Alert.alert("Error", "Could not load conversation.");
+        setLoading(false);
+        return;
+      }
+      if (msgsErr) {
+        Alert.alert("Error", "Could not load messages.");
+        setLoading(false);
+        return;
+      }
+
+      if (conn && user) {
+        const c = conn as unknown as ConnectionRow;
+        const isRequester = c.requester_id === user.id;
+        const other = isRequester ? c.recipient : c.requester;
         setOtherName(other?.full_name ?? "Chat");
       }
       setMessages((msgs as DM[]) ?? []);
@@ -69,23 +91,36 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
         { event: "INSERT", schema: "public", table: "direct_messages", filter: `connection_id=eq.${connectionId}` },
         (payload) => {
           setMessages((prev) => [...prev, payload.new as DM]);
-          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+          if (isNearBottomRef.current) {
+            if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+            scrollTimerRef.current = setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+          }
         }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+      supabase.removeChannel(channel);
+    };
   }, [connectionId]);
 
   const sendMessage = useCallback(async () => {
     const content = inputText.trim();
     if (!content || !user || sending) return;
+    const userId = user.id;
     setSending(true);
     setInputText("");
-    await supabase.from("direct_messages").insert({
+    const { error } = await supabase.from("direct_messages").insert({
       connection_id: connectionId,
-      sender_id: user.id,
+      sender_id: userId,
       content,
     });
+    if (error) {
+      setInputText(content);
+      Alert.alert("Error", "Failed to send message. Please try again.");
+    }
     setSending(false);
   }, [inputText, user, connectionId, sending]);
 
@@ -93,7 +128,18 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
     return new Date(dateString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
-  const avatarInitials = otherName.trim().split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  const avatarInitials = useMemo(
+    () =>
+      otherName
+        .trim()
+        .split(" ")
+        .filter(Boolean)
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase(),
+    [otherName]
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
@@ -131,7 +177,16 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: s(16), paddingVertical: vs(16), flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            onContentSizeChange={() => {
+              if (isNearBottomRef.current) {
+                flatListRef.current?.scrollToEnd({ animated: false });
+              }
+            }}
+            onScroll={(e) => {
+              const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+              isNearBottomRef.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - vs(80);
+            }}
+            scrollEventThrottle={100}
             ListEmptyComponent={
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: vs(80) }}>
                 <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(14), textAlign: "center" }}>
