@@ -75,7 +75,7 @@ function ProjectCard({
   return (
     <Btn
       onPress={handleCardPress}
-      style={{ marginHorizontal: s(14), marginBottom: vs(20) }}
+      style={{ marginHorizontal: s(14) }}
       pressScale={0.97}
     >
       <View style={{
@@ -217,6 +217,7 @@ function TabPill({ label, active, onPress }: { label: string; active: boolean; o
   return (
     <Btn onPress={onPress} pressScale={0.93} style={{ flex: 1 }}>
       <View style={{
+        flex: 1,
         paddingVertical: vs(9),
         borderRadius: s(14),
         alignItems: "center",
@@ -327,6 +328,8 @@ export default function DiscoveryFeed() {
           keyExtractor={(item) => (item as DiscoveryProject).id}
           contentContainerStyle={{ paddingTop: vs(12), paddingBottom: vs(32) }}
           showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={{ height: vs(12) }} />}
+          estimatedItemSize={200}
           ListEmptyComponent={
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: vs(60) }}>
               <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(15) }}>No projects yet.</Text>
