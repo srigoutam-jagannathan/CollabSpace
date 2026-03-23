@@ -66,7 +66,7 @@ export default function MessagesScreen() {
   }, [user]);
 
   const fetchConnections = useCallback(async () => {
-    if (!user) return;
+    if (!user) { setLoadingConnections(false); return; }
     setLoadingConnections(true);
     const { data } = await supabase
       .from("connections")
@@ -78,6 +78,7 @@ export default function MessagesScreen() {
       `)
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .eq("status", "accepted")
+      .order("updated_at", { ascending: false })
       .order("created_at", { referencedTable: "direct_messages", ascending: false })
       .limit(1, { referencedTable: "direct_messages" });
 
