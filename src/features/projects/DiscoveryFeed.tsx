@@ -225,6 +225,10 @@ function TalentCard({
             <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6), borderWidth: 1, borderColor: C.border }}>
               <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Pending</Text>
             </View>
+          ) : connectionStatus === "rejected" ? (
+            <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(248,113,113,0.1)", borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6), borderWidth: 1, borderColor: "rgba(248,113,113,0.2)" }}>
+              <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Not Available</Text>
+            </View>
           ) : (
             <Btn onPress={onConnect} pressScale={0.93} style={{ alignSelf: "flex-start" }}>
               <View style={{ backgroundColor: C.purple, borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6) }}>
@@ -407,6 +411,7 @@ export default function DiscoveryFeed() {
           keyExtractor={(item) => (item as TalentProfile).id}
           contentContainerStyle={{ paddingTop: vs(4), paddingBottom: vs(24) }}
           showsVerticalScrollIndicator={false}
+          estimatedItemSize={180}
           ListEmptyComponent={
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: vs(60) }}>
               <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(15) }}>No other students yet.</Text>
