@@ -39,6 +39,13 @@ type MyApproval = {
   createdAt: string;
 };
 
+type ConnectionRequest = {
+  id: string;
+  requesterId: string;
+  requesterName: string | null;   // null if profile missing
+  createdAt: string;
+};
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatRelativeTime(dateString: string): string {
@@ -77,6 +84,8 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>([]);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -161,6 +170,29 @@ export default function NotificationsScreen() {
       }));
 
     setMyApprovals(approvals);
+
+    // ── Section 3: incoming connection requests ─────────────────────────────
+    const { data: connReqs } = await supabase
+      .from("connections")
+      .select("id, requester_id, recipient_id, initiated_by, created_at, requester:profiles!requester_id(full_name), recipient:profiles!recipient_id(full_name)")
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      .neq("initiated_by", user.id)   // only incoming — not ones I sent
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    const parsedConnReqs: ConnectionRequest[] = (connReqs ?? []).map((c: any) => {
+      // The initiator's profile (the person who sent the request)
+      const isInitiatorRequester = c.initiated_by === c.requester_id;
+      const initiatorProfile = isInitiatorRequester ? c.requester : c.recipient;
+      return {
+        id: c.id,
+        requesterId: c.initiated_by,
+        requesterName: initiatorProfile?.full_name ?? null,
+        createdAt: c.created_at,
+      };
+    });
+    setConnectionRequests(parsedConnReqs);
+
     setLoading(false);
   }, [user]);
 
@@ -196,6 +228,16 @@ export default function NotificationsScreen() {
     setApprovingId(null);
   }
 
+  async function handleConnectionResponse(connId: string, accept: boolean) {
+    setRespondingId(connId);
+    await supabase
+      .from("connections")
+      .update({ status: accept ? "accepted" : "rejected" })
+      .eq("id", connId);
+    setConnectionRequests((prev) => prev.filter((c) => c.id !== connId));
+    setRespondingId(null);
+  }
+
   function toggleExpand(eventId: string) {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -205,7 +247,7 @@ export default function NotificationsScreen() {
     });
   }
 
-  const hasContent = requests.length > 0 || myApprovals.length > 0;
+  const hasContent = requests.length > 0 || myApprovals.length > 0 || connectionRequests.length > 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
@@ -232,6 +274,70 @@ export default function NotificationsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: vs(40) }} showsVerticalScrollIndicator={false}>
+
+          {/* ── Connection Requests ───────────────────────────────────────── */}
+          {connectionRequests.length > 0 && (
+            <View style={{ marginBottom: vs(8) }}>
+              <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(12), paddingHorizontal: s(20), marginBottom: vs(8), textTransform: "uppercase", letterSpacing: 0.6 }}>
+                Connection Requests
+              </Text>
+              {connectionRequests.map((conn) => {
+                const displayName = conn.requesterName ?? "Unknown User";
+                const initials = getInitials(displayName);
+                const isResponding = respondingId === conn.id;
+                const isUnknown = conn.requesterName === null;
+                return (
+                  <View
+                    key={conn.id}
+                    style={{
+                      backgroundColor: C.surface,
+                      borderRadius: s(16),
+                      marginHorizontal: s(20),
+                      marginBottom: vs(10),
+                      padding: s(16),
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: s(12),
+                    }}
+                  >
+                    <View style={{ width: s(44), height: s(44), borderRadius: s(22), backgroundColor: C.purple, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(15) }}>{initials}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14) }}>
+                        {displayName}
+                      </Text>
+                      <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13), marginTop: vs(2) }}>
+                        wants to connect with you
+                      </Text>
+                      <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(11), marginTop: vs(4) }}>
+                        {formatRelativeTime(conn.createdAt)}
+                      </Text>
+                    </View>
+                    <View style={{ gap: vs(8) }}>
+                      {/* Hide Approve for unknown/deleted profiles */}
+                      {!isUnknown && (
+                        <Btn onPress={() => handleConnectionResponse(conn.id, true)} pressScale={0.92} disabled={isResponding}>
+                          <View style={{ backgroundColor: C.success, borderRadius: s(12), paddingHorizontal: s(12), paddingVertical: vs(6) }}>
+                            <Text style={{ color: "#0a1a10", fontFamily: FONT.bold, fontSize: fs(12) }}>
+                              {isResponding ? "..." : "Approve"}
+                            </Text>
+                          </View>
+                        </Btn>
+                      )}
+                      <Btn onPress={() => handleConnectionResponse(conn.id, false)} pressScale={0.92} disabled={isResponding}>
+                        <View style={{ borderWidth: 1, borderColor: C.danger, borderRadius: s(12), paddingHorizontal: s(12), paddingVertical: vs(6) }}>
+                          <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Reject</Text>
+                        </View>
+                      </Btn>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
 
           {/* ── My Approvals ──────────────────────────────────────────────── */}
           {myApprovals.length > 0 && (
