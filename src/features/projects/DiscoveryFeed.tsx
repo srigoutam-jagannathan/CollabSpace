@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { View, Text, ActivityIndicator, Pressable } from "react-native";
+import { View, Text, ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -246,24 +246,47 @@ function TalentCard({
 
 function TabPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Btn onPress={onPress} pressScale={0.93} style={{ flex: 1 }}>
-      <View style={{
-        paddingVertical: vs(9),
-        borderRadius: s(14),
-        alignItems: "center",
-        backgroundColor: active ? C.purple : "transparent",
-      }}>
-        <Text style={{
-          color: active ? C.white : C.textMuted,
-          fontFamily: active ? FONT.bold : FONT.medium,
-          fontSize: fs(14),
-        }}>
-          {label}
-        </Text>
-      </View>
-    </Btn>
+    <Pressable
+      onPress={onPress}
+      style={[
+        tabPillStyles.pill,
+        active ? tabPillStyles.pillActive : tabPillStyles.pillInactive,
+      ]}
+    >
+      <Text style={[
+        tabPillStyles.label,
+        { color: active ? C.white : C.textMuted, fontFamily: active ? FONT.bold : FONT.regular },
+      ]}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
+
+const tabPillStyles = StyleSheet.create({
+  pill: {
+    flex: 1,
+    paddingVertical: vs(10),
+    borderRadius: s(14),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pillActive: {
+    backgroundColor: C.purple,
+    shadowColor: C.purple,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  pillInactive: {
+    backgroundColor: "transparent",
+  },
+  label: {
+    fontSize: fs(14),
+    letterSpacing: 0.1,
+  },
+});
 
 // ─── Discovery Feed ────────────────────────────────────────────────────────────
 

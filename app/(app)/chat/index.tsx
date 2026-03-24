@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -105,6 +105,20 @@ export default function MessagesScreen() {
       fetchConnections();
     }, [fetchJoinedProjects, fetchConnections])
   );
+
+  // Realtime: refresh connection list when a new DM arrives
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("chat-list-dm")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "direct_messages" },
+        () => { fetchConnections(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, fetchConnections]);
 
   const filteredConnections = searchQuery.trim()
     ? connections.filter((c) =>

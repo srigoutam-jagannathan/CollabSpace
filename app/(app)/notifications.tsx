@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { User, CheckCircle, MessageCircle } from "lucide-react-native";
+import { User, CheckCircle, MessageCircle, UserPlus, X, Check } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Btn } from "@/components/Btn";
@@ -286,10 +286,16 @@ export default function NotificationsScreen() {
 
           {/* ── Connection Requests ───────────────────────────────────────── */}
           {connectionRequests.length > 0 && (
-            <View style={{ marginBottom: vs(8) }}>
-              <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(12), paddingHorizontal: s(20), marginBottom: vs(8), textTransform: "uppercase", letterSpacing: 0.6 }}>
-                Connection Requests
-              </Text>
+            <View style={{ marginBottom: vs(12) }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(7), paddingHorizontal: s(20), marginBottom: vs(10) }}>
+                <UserPlus size={s(13)} color={C.purpleL} strokeWidth={2} />
+                <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(12), textTransform: "uppercase", letterSpacing: 0.7 }}>
+                  Connection Requests
+                </Text>
+                <View style={{ marginLeft: s(4), backgroundColor: C.purple, borderRadius: s(10), paddingHorizontal: s(7), paddingVertical: vs(1) }}>
+                  <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(11) }}>{connectionRequests.length}</Text>
+                </View>
+              </View>
               {connectionRequests.map((conn) => {
                 const displayName = conn.requesterName ?? "Unknown User";
                 const initials = getInitials(displayName);
@@ -299,48 +305,95 @@ export default function NotificationsScreen() {
                   <View
                     key={conn.id}
                     style={{
-                      backgroundColor: C.surface,
-                      borderRadius: s(16),
                       marginHorizontal: s(20),
                       marginBottom: vs(10),
-                      padding: s(16),
+                      borderRadius: s(18),
+                      overflow: "hidden",
                       borderWidth: 1,
-                      borderColor: C.border,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: s(12),
+                      borderColor: "rgba(168,85,247,0.22)",
                     }}
                   >
-                    <View style={{ width: s(44), height: s(44), borderRadius: s(22), backgroundColor: C.purple, alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(15) }}>{initials}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14) }}>
-                        {displayName}
-                      </Text>
-                      <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13), marginTop: vs(2) }}>
-                        wants to connect with you
-                      </Text>
-                      <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(11), marginTop: vs(4) }}>
-                        {formatRelativeTime(conn.createdAt)}
-                      </Text>
-                    </View>
-                    <View style={{ gap: vs(8) }}>
-                      {/* Hide Approve for unknown/deleted profiles */}
-                      {!isUnknown && (
-                        <Btn onPress={() => handleConnectionResponse(conn.id, true)} pressScale={0.92} disabled={isResponding}>
-                          <View style={{ backgroundColor: C.success, borderRadius: s(12), paddingHorizontal: s(12), paddingVertical: vs(6) }}>
-                            <Text style={{ color: "#0a1a10", fontFamily: FONT.bold, fontSize: fs(12) }}>
-                              {isResponding ? "..." : "Approve"}
+                    {/* Accent top stripe */}
+                    <View style={{ height: vs(3), backgroundColor: C.purple, opacity: 0.7 }} />
+
+                    <View style={{
+                      backgroundColor: "rgba(45,12,100,0.72)",
+                      padding: s(16),
+                      paddingTop: s(14),
+                    }}>
+                      {/* Top row: avatar + info + time */}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: s(13) }}>
+                        {/* Avatar with ring */}
+                        <View style={{
+                          width: s(50), height: s(50), borderRadius: s(25),
+                          backgroundColor: "rgba(104,36,204,0.35)",
+                          borderWidth: 2, borderColor: "rgba(168,85,247,0.5)",
+                          alignItems: "center", justifyContent: "center",
+                        }}>
+                          <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(16) }}>{initials}</Text>
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(15), letterSpacing: -0.2 }}>
+                            {displayName}
+                          </Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: s(4), marginTop: vs(3) }}>
+                            <View style={{ width: s(6), height: s(6), borderRadius: s(3), backgroundColor: C.purpleL, opacity: 0.8 }} />
+                            <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>
+                              wants to connect
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(11) }}>
+                          {formatRelativeTime(conn.createdAt)}
+                        </Text>
+                      </View>
+
+                      {/* Action buttons row */}
+                      <View style={{ flexDirection: "row", gap: s(10), marginTop: vs(14) }}>
+                        {!isUnknown && (
+                          <Btn
+                            onPress={() => handleConnectionResponse(conn.id, true)}
+                            pressScale={0.93}
+                            disabled={isResponding}
+                            style={{ flex: 1 }}
+                          >
+                            <View style={{
+                              flexDirection: "row", alignItems: "center", justifyContent: "center",
+                              gap: s(6), backgroundColor: C.success, borderRadius: s(12),
+                              paddingVertical: vs(10),
+                            }}>
+                              {isResponding ? (
+                                <ActivityIndicator size="small" color="#0a1a10" style={{ width: s(16) }} />
+                              ) : (
+                                <>
+                                  <Check size={s(14)} color="#0a1a10" strokeWidth={2.5} />
+                                  <Text style={{ color: "#0a1a10", fontFamily: FONT.bold, fontSize: fs(13) }}>Accept</Text>
+                                </>
+                              )}
+                            </View>
+                          </Btn>
+                        )}
+                        <Btn
+                          onPress={() => handleConnectionResponse(conn.id, false)}
+                          pressScale={0.93}
+                          disabled={isResponding}
+                          style={isUnknown ? { flex: 1 } : undefined}
+                        >
+                          <View style={{
+                            flexDirection: "row", alignItems: "center", justifyContent: "center",
+                            gap: s(6), borderWidth: 1, borderColor: "rgba(248,113,113,0.4)",
+                            borderRadius: s(12), paddingVertical: vs(10), paddingHorizontal: s(18),
+                            backgroundColor: "rgba(248,113,113,0.08)",
+                          }}>
+                            <X size={s(13)} color={C.danger} strokeWidth={2.5} />
+                            <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(13) }}>
+                              {isResponding && isUnknown ? "..." : "Decline"}
                             </Text>
                           </View>
                         </Btn>
-                      )}
-                      <Btn onPress={() => handleConnectionResponse(conn.id, false)} pressScale={0.92} disabled={isResponding}>
-                        <View style={{ borderWidth: 1, borderColor: C.danger, borderRadius: s(12), paddingHorizontal: s(12), paddingVertical: vs(6) }}>
-                          <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(12) }}>{isResponding ? "..." : "Reject"}</Text>
-                        </View>
-                      </Btn>
+                      </View>
                     </View>
                   </View>
                 );

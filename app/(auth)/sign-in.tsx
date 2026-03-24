@@ -5,10 +5,11 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ChevronLeft } from "lucide-react-native";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Btn } from "@/components/Btn";
 import { GradientBtn } from "@/components/GradientBtn";
-import { C } from "@/utils/theme";
+import { C, FONT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
 
 export default function SignInScreen() {
@@ -40,34 +41,35 @@ export default function SignInScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {/* Back button — top-left, always visible above scroll */}
+      <Btn
+        onPress={() => router.navigate("/(auth)/onboarding" as any)}
+        style={{ position: "absolute", top: vs(56), left: s(16), zIndex: 10, flexDirection: "row", alignItems: "center", gap: s(2) }}
+        hitSlop={16}
+        pressScale={0.9}
+      >
+        <ChevronLeft size={s(18)} color={C.textMuted} strokeWidth={2} />
+        <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(14) }}>Back</Text>
+      </Btn>
+
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingHorizontal: s(28), paddingVertical: vs(40) }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Back */}
-        <Btn
-          onPress={() => router.navigate("/(auth)/onboarding" as any)}
-          style={{ position: "absolute", top: vs(16), right: s(20) }}
-          hitSlop={16}
-          pressScale={0.9}
-        >
-          <Text style={{ color: C.textMuted, fontSize: fs(14) }}>‹ Back</Text>
-        </Btn>
-
-        {/* Header */}
-        <View style={{ marginBottom: vs(36) }}>
-          <Text style={{ color: C.white, fontWeight: "800", fontSize: fs(30), marginBottom: vs(8) }}>
-            Welcome Back,
+        {/* Header — centred */}
+        <View style={{ alignItems: "center", marginBottom: vs(40), marginTop: vs(20) }}>
+          <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(30), letterSpacing: -0.5, marginBottom: vs(10), textAlign: "center" }}>
+            Welcome Back
           </Text>
-          <Text style={{ color: C.textMuted, fontSize: fs(14), lineHeight: vs(20) }}>
-            Please enter your details below to log into your account.
+          <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(14), lineHeight: vs(21), textAlign: "center", maxWidth: s(280) }}>
+            Enter your university credentials to continue
           </Text>
         </View>
 
         {/* University Email */}
         <View style={{ marginBottom: vs(18) }}>
-          <Text style={{ color: C.white, fontWeight: "600", fontSize: fs(14), marginBottom: vs(8) }}>
+          <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(13), marginBottom: vs(8), letterSpacing: 0.2 }}>
             University Email
           </Text>
           <TextInput
@@ -82,8 +84,8 @@ export default function SignInScreen() {
         </View>
 
         {/* Password */}
-        <View style={{ marginBottom: vs(14) }}>
-          <Text style={{ color: C.white, fontWeight: "600", fontSize: fs(14), marginBottom: vs(8) }}>
+        <View style={{ marginBottom: vs(18) }}>
+          <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(13), marginBottom: vs(8), letterSpacing: 0.2 }}>
             Password
           </Text>
           <TextInput
@@ -95,25 +97,25 @@ export default function SignInScreen() {
           />
         </View>
 
-        {/* Remember Me */}
+        {/* Remember Me — inline row */}
         <Btn
           onPress={() => setRememberMe((v) => !v)}
-          style={{ flexDirection: "row", alignItems: "center", gap: s(10), marginBottom: vs(28) }}
-          pressScale={1}
+          style={{ flexDirection: "row", alignItems: "center", gap: s(10), marginBottom: vs(28), alignSelf: "flex-start" }}
+          pressScale={0.97}
         >
           <View style={{
-            width: s(18), height: s(18), borderRadius: s(4), borderWidth: 1.5,
-            borderColor: rememberMe ? C.pink : "rgba(255,255,255,0.3)",
+            width: s(20), height: s(20), borderRadius: s(5), borderWidth: 1.5,
+            borderColor: rememberMe ? C.pink : "rgba(255,255,255,0.28)",
             backgroundColor: rememberMe ? C.pink : "transparent",
             alignItems: "center", justifyContent: "center",
           }}>
-            {rememberMe && <Text style={{ color: C.white, fontSize: fs(11), fontWeight: "700" }}>✓</Text>}
+            {rememberMe && <Text style={{ color: C.white, fontSize: fs(12), fontFamily: FONT.bold, lineHeight: fs(14) }}>✓</Text>}
           </View>
-          <Text style={{ color: C.textMuted, fontSize: fs(13) }}>Remember Me.</Text>
+          <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>Remember me</Text>
         </Btn>
 
         {error && (
-          <Text style={{ color: C.danger, fontSize: fs(13), marginBottom: vs(16), textAlign: "center" }}>
+          <Text style={{ color: C.danger, fontFamily: FONT.regular, fontSize: fs(13), marginBottom: vs(16), textAlign: "center" }}>
             {error}
           </Text>
         )}
@@ -128,9 +130,9 @@ export default function SignInScreen() {
 
         {/* Sign up link */}
         <Btn onPress={() => router.push("/(auth)/sign-up")} style={{ alignItems: "center" }} pressScale={0.97}>
-          <Text style={{ color: C.textMuted, fontSize: fs(13) }}>
+          <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>
             Don't have an account?{"  "}
-            <Text style={{ color: C.purpleL, fontWeight: "700" }}>Create Account.</Text>
+            <Text style={{ color: C.purpleL, fontFamily: FONT.bold }}>Create Account.</Text>
           </Text>
         </Btn>
 
