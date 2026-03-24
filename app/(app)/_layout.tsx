@@ -122,8 +122,8 @@ function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress }: Coll
                   {tab.name === "chat" && hasChatUnread && (
                     <View style={{
                       position: "absolute", top: -2, right: -3,
-                      width: s(8), height: s(8), borderRadius: s(4),
-                      backgroundColor: C.pink, borderWidth: 1.5, borderColor: C.surface,
+                      width: s(9), height: s(9), borderRadius: s(5),
+                      backgroundColor: C.pink, borderWidth: 1.5, borderColor: "rgba(18,0,45,1)",
                     }} />
                   )}
                 </View>
@@ -155,26 +155,56 @@ export default function AppLayout() {
     });
   }, [status, user?.id]);
 
-  // Reliable badge: query the DB for messages from others since last chat open.
-  // This works regardless of realtime publication config.
+  // Check BOTH direct_messages (individual) and chat_messages (group)
+  // since the last time the user opened the chat tab.
   const checkUnreadMessages = useCallback(async () => {
     if (!user?.id) return;
-    const { count } = await supabase
-      .from("direct_messages")
+    const since = chatLastOpenRef.current;
+
+    // Run DM check + member lookup in parallel
+    const [{ count: dmCount }, { data: memberData }] = await Promise.all([
+      supabase
+        .from("direct_messages")
+        .select("id", { count: "exact", head: true })
+        .neq("sender_id", user.id)
+        .gt("created_at", since),
+      supabase
+        .from("project_members")
+        .select("project_id")
+        .eq("user_id", user.id),
+    ]);
+
+    if ((dmCount ?? 0) > 0) { setHasChatUnread(true); return; }
+
+    const projectIds = (memberData ?? []).map((m: any) => m.project_id);
+    if (projectIds.length === 0) { setHasChatUnread(false); return; }
+
+    const { count: groupCount } = await supabase
+      .from("chat_messages")
       .select("id", { count: "exact", head: true })
       .neq("sender_id", user.id)
-      .gt("created_at", chatLastOpenRef.current);
-    setHasChatUnread((count ?? 0) > 0);
+      .in("project_id", projectIds)
+      .gt("created_at", since);
+
+    setHasChatUnread((groupCount ?? 0) > 0);
   }, [user?.id]);
 
   useEffect(() => {
-    // Check on mount
     checkUnreadMessages();
-    // Re-check whenever app comes back to foreground
-    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+    // Foreground check (app goes background → active)
+    const appSub = AppState.addEventListener("change", (state: AppStateStatus) => {
       if (state === "active") checkUnreadMessages();
     });
-    return () => sub.remove();
+    // In-app realtime: fires while user is on a different tab
+    const channel = supabase
+      .channel("chat-badge-rt")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, checkUnreadMessages)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, checkUnreadMessages)
+      .subscribe();
+    return () => {
+      appSub.remove();
+      supabase.removeChannel(channel);
+    };
   }, [checkUnreadMessages]);
 
   if (status === "loading" || !skillsChecked) {
