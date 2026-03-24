@@ -325,14 +325,16 @@ export default function DiscoveryFeed() {
   const fetchProjects = useCallback(async () => {
     setLoadingProjects(true);
     setError(null);
-    const { data, error: fetchError } = await supabase
+    const query = supabase
       .from("projects")
       .select(`id, title, description, tags, looking_for, project_type, collaboration_style, team_size, commitment_hours, created_at, owner_id, owner:profiles!owner_id(id, full_name, avatar_url, university, pvs_score, department)`)
       .order("created_at", { ascending: false });
+    if (user?.id) query.neq("owner_id", user.id);
+    const { data, error: fetchError } = await query;
     if (fetchError) setError("Failed to load projects.");
     else setProjects((data as unknown as DiscoveryProject[]) ?? []);
     setLoadingProjects(false);
-  }, []);
+  }, [user?.id]);
 
   const fetchTalents = useCallback(async () => {
     if (!user) return;
