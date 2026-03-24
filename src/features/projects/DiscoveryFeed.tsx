@@ -248,7 +248,6 @@ function TabPill({ label, active, onPress }: { label: string; active: boolean; o
   return (
     <Btn onPress={onPress} pressScale={0.93} style={{ flex: 1 }}>
       <View style={{
-        flex: 1,
         paddingVertical: vs(9),
         borderRadius: s(14),
         alignItems: "center",
@@ -278,6 +277,7 @@ export default function DiscoveryFeed() {
   const [loadingTalents, setLoadingTalents] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatuses, setConnectionStatuses] = useState<Map<string, "pending" | "accepted" | "rejected">>(new Map());
+  const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
 
   const fetchProjects = useCallback(async () => {
     setLoadingProjects(true);
@@ -318,10 +318,39 @@ export default function DiscoveryFeed() {
     setConnectionStatuses(map);
   }, [user]);
 
+  const checkUnreadNotif = useCallback(async () => {
+    if (!user) return;
+    // Pending incoming connection requests
+    const { count: connCount } = await supabase
+      .from("connections")
+      .select("id", { count: "exact", head: true })
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      .neq("initiated_by", user.id)
+      .eq("status", "pending");
+
+    // Unapproved join requests on owned projects
+    const { data: ownedProjects } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("owner_id", user.id);
+    let joinCount = 0;
+    if (ownedProjects && ownedProjects.length > 0) {
+      const ownedIds = ownedProjects.map((p: any) => p.id);
+      const { count } = await supabase
+        .from("project_members")
+        .select("user_id", { count: "exact", head: true })
+        .in("project_id", ownedIds)
+        .eq("mou_accepted", false);
+      joinCount = count ?? 0;
+    }
+    setHasUnreadNotif((connCount ?? 0) > 0 || joinCount > 0);
+  }, [user]);
+
   useFocusEffect(useCallback(() => {
     fetchProjects();
+    checkUnreadNotif();
     if (activeTab === "talents") fetchConnectionStatuses();
-  }, [fetchProjects, fetchConnectionStatuses, activeTab]));
+  }, [fetchProjects, fetchConnectionStatuses, checkUnreadNotif, activeTab]));
 
   function handleTabChange(tab: "projects" | "talents") {
     setActiveTab(tab);
@@ -342,7 +371,9 @@ export default function DiscoveryFeed() {
         <Btn onPress={() => router.push("/(app)/notifications")} hitSlop={12} pressScale={0.88}>
           <View style={{ position: "relative" }}>
             <Bell size={s(22)} color="rgba(255,255,255,0.7)" />
-            <View style={{ position: "absolute", top: -2, right: -2, width: s(9), height: s(9), borderRadius: s(5), backgroundColor: C.pink, borderWidth: 1.5, borderColor: "rgba(18,0,45,1)" }} />
+            {hasUnreadNotif && (
+              <View style={{ position: "absolute", top: -2, right: -2, width: s(9), height: s(9), borderRadius: s(5), backgroundColor: C.pink, borderWidth: 1.5, borderColor: "rgba(18,0,45,1)" }} />
+            )}
           </View>
         </Btn>
       </View>

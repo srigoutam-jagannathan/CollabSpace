@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { User, CheckCircle, MessageCircle } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -196,7 +196,7 @@ export default function NotificationsScreen() {
     setLoading(false);
   }, [user]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useFocusEffect(useCallback(() => { fetchAll(); }, [fetchAll]));
 
   async function handleApprove(req: JoinRequest) {
     setApprovingId(req.eventId);

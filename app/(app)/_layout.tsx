@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Home, Search, Plus, MessageCircle, User } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/features/auth/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 import { C, GRADIENT } from "@/utils/theme";
 import { s, vs } from "@/utils/scale";
 
@@ -42,7 +43,12 @@ const TABS: TabItem[] = [
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
 
-function CollabTabBar({ state, navigation }: BottomTabBarProps) {
+interface CollabTabBarProps extends BottomTabBarProps {
+  hasChatUnread: boolean;
+  onChatTabPress: () => void;
+}
+
+function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress }: CollabTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -101,6 +107,7 @@ function CollabTabBar({ state, navigation }: BottomTabBarProps) {
             <View key={tab.name} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
               <Btn
                 onPress={() => {
+                  if (tab.name === "chat") onChatTabPress();
                   if (route) {
                     const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
                     if (!event.defaultPrevented) navigation.navigate(route.name);
@@ -110,7 +117,16 @@ function CollabTabBar({ state, navigation }: BottomTabBarProps) {
                 hitSlop={8}
                 pressScale={0.88}
               >
-                {tab.icon(focused)}
+                <View style={{ position: "relative" }}>
+                  {tab.icon(focused)}
+                  {tab.name === "chat" && hasChatUnread && (
+                    <View style={{
+                      position: "absolute", top: -2, right: -3,
+                      width: s(8), height: s(8), borderRadius: s(4),
+                      backgroundColor: C.pink, borderWidth: 1.5, borderColor: C.surface,
+                    }} />
+                  )}
+                </View>
               </Btn>
             </View>
           );
@@ -126,6 +142,7 @@ export default function AppLayout() {
   const { status, user } = useAuth();
   const [skillsChecked, setSkillsChecked] = useState(false);
   const [skillsSet, setSkillsSet] = useState(true);
+  const [hasChatUnread, setHasChatUnread] = useState(false);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -135,6 +152,23 @@ export default function AppLayout() {
       setSkillsChecked(true);
     });
   }, [status, user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("chat-badge")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "direct_messages" },
+        (payload) => {
+          if ((payload.new as any).sender_id !== user.id) {
+            setHasChatUnread(true);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   if (status === "loading" || !skillsChecked) {
     return <View style={{ flex: 1 }} />;
@@ -150,7 +184,7 @@ export default function AppLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => <CollabTabBar {...props} />}
+      tabBar={(props) => <CollabTabBar {...props} hasChatUnread={hasChatUnread} onChatTabPress={() => setHasChatUnread(false)} />}
       sceneContainerStyle={{ backgroundColor: "transparent" }}
       screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" } }}
     >
