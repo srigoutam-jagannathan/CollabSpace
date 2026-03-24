@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Search } from "lucide-react-native";
 import { FlashList } from "@shopify/flash-list";
 import { supabase } from "@/lib/supabaseClient";
@@ -23,12 +24,22 @@ type ConnectionConvo = {
   otherUserName: string;
   lastMessage: string | null;
   lastMessageAt: string | null;
+  lastMessageSenderId: string | null;
 };
 
-function AvatarCircle({ initials }: { initials: string }) {
+function AvatarCircle({ initials, hasUnread }: { initials: string; hasUnread?: boolean }) {
   return (
-    <View style={{ width: s(48), height: s(48), borderRadius: s(24), backgroundColor: "#2d1b69", alignItems: "center", justifyContent: "center", marginRight: s(14) }}>
-      <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(15) }}>{initials}</Text>
+    <View style={{ position: "relative", marginRight: s(14) }}>
+      <View style={{ width: s(48), height: s(48), borderRadius: s(24), backgroundColor: "#2d1b69", alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(15) }}>{initials}</Text>
+      </View>
+      {hasUnread && (
+        <View style={{
+          position: "absolute", top: 1, right: 1,
+          width: s(11), height: s(11), borderRadius: s(6),
+          backgroundColor: C.pink, borderWidth: 2, borderColor: "#120030",
+        }} />
+      )}
     </View>
   );
 }
@@ -49,6 +60,7 @@ export default function MessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState<ConnectionConvo[]>([]);
   const [loadingConnections, setLoadingConnections] = useState(true);
+  const [chatLastOpen, setChatLastOpen] = useState("2020-01-01T00:00:00.000Z");
 
   const fetchJoinedProjects = useCallback(async () => {
     if (!user) return;
@@ -75,7 +87,7 @@ export default function MessagesScreen() {
         id, requester_id, recipient_id,
         requester:profiles!requester_id(id, full_name),
         recipient:profiles!recipient_id(id, full_name),
-        direct_messages(content, created_at)
+        direct_messages(content, created_at, sender_id)
       `)
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .eq("status", "accepted")
@@ -93,6 +105,7 @@ export default function MessagesScreen() {
         otherUserName: other?.full_name ?? "Unknown",
         lastMessage: lastMsg?.content ?? null,
         lastMessageAt: lastMsg?.created_at ?? null,
+        lastMessageSenderId: lastMsg?.sender_id ?? null,
       };
     });
     setConnections(convos);
@@ -103,6 +116,10 @@ export default function MessagesScreen() {
     useCallback(() => {
       fetchJoinedProjects();
       fetchConnections();
+      // Sync the threshold so unread dots reflect the last time this tab was opened
+      AsyncStorage.getItem("chat_last_open").then((val) => {
+        if (val) setChatLastOpen(val);
+      });
     }, [fetchJoinedProjects, fetchConnections])
   );
 
@@ -202,14 +219,31 @@ export default function MessagesScreen() {
                 onPress={() => router.push({ pathname: "/(app)/chat/dm/[id]", params: { id: item.id } })}
                 style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}
               >
-                <AvatarCircle initials={getInitials(item.otherUserName)} />
+                <AvatarCircle
+                  initials={getInitials(item.otherUserName)}
+                  hasUnread={
+                    item.lastMessageSenderId !== null &&
+                    item.lastMessageSenderId !== user?.id &&
+                    (item.lastMessageAt ?? "") > chatLastOpen
+                  }
+                />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(14), marginBottom: vs(2) }}>
-                    {item.otherUserName}
-                  </Text>
-                  <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
-                    {item.lastMessage ?? "Start a conversation"}
-                  </Text>
+                  {(() => {
+                    const unread =
+                      item.lastMessageSenderId !== null &&
+                      item.lastMessageSenderId !== user?.id &&
+                      (item.lastMessageAt ?? "") > chatLastOpen;
+                    return (
+                      <>
+                        <Text style={{ color: C.white, fontFamily: unread ? FONT.bold : FONT.semiBold, fontSize: fs(14), marginBottom: vs(2) }}>
+                          {item.otherUserName}
+                        </Text>
+                        <Text style={{ color: unread ? "rgba(255,255,255,0.75)" : C.textFaint, fontFamily: unread ? FONT.semiBold : FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
+                          {item.lastMessage ?? "Start a conversation"}
+                        </Text>
+                      </>
+                    );
+                  })()}
                 </View>
               </Pressable>
             )}

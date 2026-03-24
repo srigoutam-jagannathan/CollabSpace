@@ -143,8 +143,10 @@ export default function AppLayout() {
   const [skillsChecked, setSkillsChecked] = useState(false);
   const [skillsSet, setSkillsSet] = useState(true);
   const [hasChatUnread, setHasChatUnread] = useState(false);
-  // Tracks the ISO timestamp of when user last opened the chat tab
-  const chatLastOpenRef = useRef(new Date().toISOString());
+  // Persisted ISO timestamp of when the user last opened the chat tab.
+  // Defaults to a far-past date so all existing unread messages are caught.
+  const chatLastOpenRef = useRef("2020-01-01T00:00:00.000Z");
+  const CHAT_LAST_OPEN_KEY = "chat_last_open";
 
   useEffect(() => {
     if (status === "loading") return;
@@ -190,7 +192,11 @@ export default function AppLayout() {
   }, [user?.id]);
 
   useEffect(() => {
-    checkUnreadMessages();
+    // Restore persisted threshold, then run first check
+    AsyncStorage.getItem(CHAT_LAST_OPEN_KEY).then((val) => {
+      if (val) chatLastOpenRef.current = val;
+      checkUnreadMessages();
+    });
     // Foreground check (app goes background → active)
     const appSub = AppState.addEventListener("change", (state: AppStateStatus) => {
       if (state === "active") checkUnreadMessages();
@@ -226,8 +232,9 @@ export default function AppLayout() {
           {...props}
           hasChatUnread={hasChatUnread}
           onChatTabPress={() => {
-            // Stamp the time so future checks start from here
-            chatLastOpenRef.current = new Date().toISOString();
+            const now = new Date().toISOString();
+            chatLastOpenRef.current = now;
+            AsyncStorage.setItem(CHAT_LAST_OPEN_KEY, now);
             setHasChatUnread(false);
           }}
         />
