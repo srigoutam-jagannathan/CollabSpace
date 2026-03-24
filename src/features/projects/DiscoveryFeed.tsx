@@ -206,55 +206,56 @@ function TalentCard({
           </Text>
         ) : null}
 
-        {skills.length > 0 && (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(6) }}>
+        {/* Skills + connect button — skills fill left, button anchors bottom-right */}
+        <View style={{ flexDirection: "row", alignItems: "flex-end", marginTop: vs(8) }}>
+          {/* Skills */}
+          <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: s(5) }}>
             {skills.map((skill) => (
-              <View key={skill} style={{ backgroundColor: C.yellow, borderRadius: s(14), paddingHorizontal: s(12), paddingVertical: vs(4) }}>
-                <Text style={{ color: "#1a0a2e", fontFamily: FONT.semiBold, fontSize: fs(11) }}>{skill}</Text>
+              <View key={skill} style={{ backgroundColor: C.yellow, borderRadius: s(12), paddingHorizontal: s(10), paddingVertical: vs(3) }}>
+                <Text style={{ color: "#1a0a2e", fontFamily: FONT.semiBold, fontSize: fs(10.5) }}>{skill}</Text>
               </View>
             ))}
           </View>
-        )}
 
-        {/* Connect button */}
-        <View style={{ marginTop: vs(12) }}>
-          {connectionStatus === "accepted" ? (
-            <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(52,211,153,0.15)", borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6), borderWidth: 1, borderColor: "rgba(52,211,153,0.3)" }}>
-              <Text style={{ color: C.success, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Connected</Text>
-            </View>
-          ) : connectionStatus === "pending" ? (
-            <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6), borderWidth: 1, borderColor: C.border }}>
-              <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Pending</Text>
-            </View>
-          ) : connectionStatus === "rejected" ? (
-            <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(248,113,113,0.1)", borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6), borderWidth: 1, borderColor: "rgba(248,113,113,0.2)" }}>
-              <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Not Available</Text>
-            </View>
-          ) : (
-            <Btn
-              onPress={onConnect}
-              pressScale={0.93}
-              style={{
-                alignSelf: "flex-start",
-                borderRadius: s(14),
-                overflow: "hidden",
-                shadowColor: "#D030A0",
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.45,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
-            >
-              <LinearGradient
-                colors={["#F060C8", "#C835A0", "#9C1878"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ paddingHorizontal: s(16), paddingVertical: vs(7), borderRadius: s(14) }}
+          {/* Status / connect — bottom-right */}
+          <View style={{ marginLeft: s(10) }}>
+            {connectionStatus === "accepted" ? (
+              <View style={{ backgroundColor: "rgba(52,211,153,0.15)", borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(4), borderWidth: 1, borderColor: "rgba(52,211,153,0.28)" }}>
+                <Text style={{ color: C.success, fontFamily: FONT.semiBold, fontSize: fs(10.5) }}>Connected</Text>
+              </View>
+            ) : connectionStatus === "pending" ? (
+              <View style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(4), borderWidth: 1, borderColor: C.border }}>
+                <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(10.5) }}>Pending</Text>
+              </View>
+            ) : connectionStatus === "rejected" ? (
+              <View style={{ backgroundColor: "rgba(248,113,113,0.08)", borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(4), borderWidth: 1, borderColor: "rgba(248,113,113,0.18)" }}>
+                <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(10.5) }}>Not Available</Text>
+              </View>
+            ) : (
+              <Btn
+                onPress={onConnect}
+                pressScale={0.9}
+                style={{
+                  borderRadius: s(10),
+                  overflow: "hidden",
+                  shadowColor: "#D030A0",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 6,
+                  elevation: 3,
+                }}
               >
-                <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(12), letterSpacing: 0.3 }}>Connect</Text>
-              </LinearGradient>
-            </Btn>
-          )}
+                <LinearGradient
+                  colors={["#F060C8", "#C835A0", "#9C1878"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ paddingHorizontal: s(12), paddingVertical: vs(5) }}
+                >
+                  <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(11), letterSpacing: 0.2 }}>Connect</Text>
+                </LinearGradient>
+              </Btn>
+            )}
+          </View>
         </View>
       </View>
     </Btn>
