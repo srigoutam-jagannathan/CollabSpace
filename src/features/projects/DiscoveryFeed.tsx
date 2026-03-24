@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { View, Text, ActivityIndicator, Pressable, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -162,7 +163,7 @@ function TalentCard({
   return (
     <Btn
       onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: talent.id } })}
-      style={{ marginHorizontal: s(16), marginBottom: vs(16) }}
+      style={{ marginHorizontal: s(14) }}
       pressScale={0.97}
     >
       <View style={{
@@ -230,10 +231,28 @@ function TalentCard({
               <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Not Available</Text>
             </View>
           ) : (
-            <Btn onPress={onConnect} pressScale={0.93} style={{ alignSelf: "flex-start" }}>
-              <View style={{ backgroundColor: C.purple, borderRadius: s(14), paddingHorizontal: s(14), paddingVertical: vs(6) }}>
-                <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Connect</Text>
-              </View>
+            <Btn
+              onPress={onConnect}
+              pressScale={0.93}
+              style={{
+                alignSelf: "flex-start",
+                borderRadius: s(14),
+                overflow: "hidden",
+                shadowColor: "#D030A0",
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.45,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+            >
+              <LinearGradient
+                colors={["#F060C8", "#C835A0", "#9C1878"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ paddingHorizontal: s(16), paddingVertical: vs(7), borderRadius: s(14) }}
+              >
+                <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(12), letterSpacing: 0.3 }}>Connect</Text>
+              </LinearGradient>
             </Btn>
           )}
         </View>
@@ -465,7 +484,9 @@ export default function DiscoveryFeed() {
             />
           )}
           keyExtractor={(item) => (item as TalentProfile).id}
-          contentContainerStyle={{ paddingTop: vs(4), paddingBottom: vs(24) }}
+          estimatedItemSize={200}
+          contentContainerStyle={{ paddingTop: vs(12), paddingBottom: vs(32) }}
+          ItemSeparatorComponent={() => <View style={{ height: vs(12) }} />}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: vs(60) }}>

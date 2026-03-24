@@ -106,15 +106,22 @@ export default function MessagesScreen() {
     }, [fetchJoinedProjects, fetchConnections])
   );
 
-  // Realtime: refresh connection list when a new DM arrives
+  // Realtime: refresh list when a new DM arrives OR a connection is accepted
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("chat-list-dm")
+      .channel("chat-list-updates")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "direct_messages" },
         () => { fetchConnections(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "connections" },
+        (payload) => {
+          if ((payload.new as any).status === "accepted") fetchConnections();
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };

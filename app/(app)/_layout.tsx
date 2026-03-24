@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Redirect, Tabs, router } from "expo-router";
-import { View, Text, type BottomTabBarProps } from "react-native";
+import { View, Text, AppState, type AppStateStatus, type BottomTabBarProps } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Btn } from "@/components/Btn";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -143,6 +143,8 @@ export default function AppLayout() {
   const [skillsChecked, setSkillsChecked] = useState(false);
   const [skillsSet, setSkillsSet] = useState(true);
   const [hasChatUnread, setHasChatUnread] = useState(false);
+  // Tracks the ISO timestamp of when user last opened the chat tab
+  const chatLastOpenRef = useRef(new Date().toISOString());
 
   useEffect(() => {
     if (status === "loading") return;
@@ -153,22 +155,27 @@ export default function AppLayout() {
     });
   }, [status, user?.id]);
 
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel("chat-badge")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "direct_messages" },
-        (payload) => {
-          if ((payload.new as any).sender_id !== user.id) {
-            setHasChatUnread(true);
-          }
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+  // Reliable badge: query the DB for messages from others since last chat open.
+  // This works regardless of realtime publication config.
+  const checkUnreadMessages = useCallback(async () => {
+    if (!user?.id) return;
+    const { count } = await supabase
+      .from("direct_messages")
+      .select("id", { count: "exact", head: true })
+      .neq("sender_id", user.id)
+      .gt("created_at", chatLastOpenRef.current);
+    setHasChatUnread((count ?? 0) > 0);
   }, [user?.id]);
+
+  useEffect(() => {
+    // Check on mount
+    checkUnreadMessages();
+    // Re-check whenever app comes back to foreground
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") checkUnreadMessages();
+    });
+    return () => sub.remove();
+  }, [checkUnreadMessages]);
 
   if (status === "loading" || !skillsChecked) {
     return <View style={{ flex: 1 }} />;
@@ -184,7 +191,17 @@ export default function AppLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => <CollabTabBar {...props} hasChatUnread={hasChatUnread} onChatTabPress={() => setHasChatUnread(false)} />}
+      tabBar={(props) => (
+        <CollabTabBar
+          {...props}
+          hasChatUnread={hasChatUnread}
+          onChatTabPress={() => {
+            // Stamp the time so future checks start from here
+            chatLastOpenRef.current = new Date().toISOString();
+            setHasChatUnread(false);
+          }}
+        />
+      )}
       sceneContainerStyle={{ backgroundColor: "transparent" }}
       screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" } }}
     >
