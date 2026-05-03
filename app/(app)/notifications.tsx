@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import {
   View,
   Text,
+  Image,
   ScrollView,
   ActivityIndicator,
   Alert,
@@ -23,6 +24,7 @@ type JoinRequest = {
   projectTitle: string;
   actorId: string;
   actorName: string;
+  actorAvatarUrl: string | null;
   actorDepartment: string | null;
   actorUniversity: string | null;
   actorSkills: string[];
@@ -43,6 +45,7 @@ type ConnectionRequest = {
   id: string;
   requesterId: string;
   requesterName: string | null;   // null if profile missing
+  requesterAvatarUrl: string | null;
   createdAt: string;
 };
 
@@ -107,7 +110,7 @@ export default function NotificationsScreen() {
       const [{ data: events }, { data: members }] = await Promise.all([
         supabase
           .from("collaboration_events")
-          .select(`id, created_at, project_id, user_id, actor:profiles!user_id(id, full_name, department, university, skills)`)
+          .select(`id, created_at, project_id, user_id, actor:profiles!user_id(id, full_name, avatar_url, department, university, skills)`)
           .in("project_id", ownedIds)
           .eq("event_type", "join")
           .order("created_at", { ascending: false }),
@@ -136,6 +139,7 @@ export default function NotificationsScreen() {
           projectTitle: ownedMap.get(e.project_id) ?? "Unknown Project",
           actorId: e.user_id,
           actorName: actor.full_name ?? "Unknown",
+          actorAvatarUrl: actor.avatar_url ?? null,
           actorDepartment: actor.department ?? null,
           actorUniversity: actor.university ?? null,
           actorSkills: actor.skills ?? [],
@@ -174,7 +178,7 @@ export default function NotificationsScreen() {
     // ── Section 3: incoming connection requests ─────────────────────────────
     const { data: connReqs } = await supabase
       .from("connections")
-      .select("id, requester_id, recipient_id, initiated_by, created_at, requester:profiles!requester_id(full_name), recipient:profiles!recipient_id(full_name)")
+      .select("id, requester_id, recipient_id, initiated_by, created_at, requester:profiles!requester_id(full_name, avatar_url), recipient:profiles!recipient_id(full_name, avatar_url)")
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .neq("initiated_by", user.id)   // only incoming — not ones I sent
       .eq("status", "pending")
@@ -188,6 +192,7 @@ export default function NotificationsScreen() {
         id: c.id,
         requesterId: c.initiated_by,
         requesterName: initiatorProfile?.full_name ?? null,
+        requesterAvatarUrl: initiatorProfile?.avatar_url ?? null,
         createdAt: c.created_at,
       };
     });
@@ -329,8 +334,13 @@ export default function NotificationsScreen() {
                           backgroundColor: "rgba(104,36,204,0.35)",
                           borderWidth: 2, borderColor: "rgba(168,85,247,0.5)",
                           alignItems: "center", justifyContent: "center",
+                          overflow: "hidden",
                         }}>
-                          <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(16) }}>{initials}</Text>
+                          {conn.requesterAvatarUrl ? (
+                            <Image source={{ uri: conn.requesterAvatarUrl }} style={{ width: s(50), height: s(50) }} />
+                          ) : (
+                            <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(16) }}>{initials}</Text>
+                          )}
                         </View>
 
                         <View style={{ flex: 1 }}>
@@ -488,8 +498,12 @@ export default function NotificationsScreen() {
                         onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: req.actorId } })}
                         pressScale={0.92}
                       >
-                        <View style={{ width: s(44), height: s(44), borderRadius: s(22), backgroundColor: C.purple, alignItems: "center", justifyContent: "center" }}>
-                          <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(15) }}>{initials}</Text>
+                        <View style={{ width: s(44), height: s(44), borderRadius: s(22), backgroundColor: C.purple, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                          {req.actorAvatarUrl ? (
+                            <Image source={{ uri: req.actorAvatarUrl }} style={{ width: s(44), height: s(44) }} />
+                          ) : (
+                            <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(15) }}>{initials}</Text>
+                          )}
                         </View>
                       </Btn>
 
