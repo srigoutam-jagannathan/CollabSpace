@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  View, Text, TextInput,
+  View, Text, TextInput, Pressable,
   KeyboardAvoidingView, Platform, ScrollView,
 } from "react-native";
 import { router } from "expo-router";
@@ -41,17 +41,6 @@ export default function SignInScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {/* Back button — top-left, always visible above scroll */}
-      <Btn
-        onPress={() => router.navigate("/(auth)/onboarding" as any)}
-        style={{ position: "absolute", top: vs(56), left: s(16), zIndex: 10, flexDirection: "row", alignItems: "center", gap: s(2) }}
-        hitSlop={16}
-        pressScale={0.9}
-      >
-        <ChevronLeft size={s(18)} color={C.textMuted} strokeWidth={2} />
-        <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(14) }}>Back</Text>
-      </Btn>
-
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingHorizontal: s(28), paddingVertical: vs(40) }}
         keyboardShouldPersistTaps="handled"
@@ -98,10 +87,9 @@ export default function SignInScreen() {
         </View>
 
         {/* Remember Me — inline row */}
-        <Btn
+        <Pressable
           onPress={() => setRememberMe((v) => !v)}
           style={{ flexDirection: "row", alignItems: "center", gap: s(10), marginBottom: vs(28), alignSelf: "flex-start" }}
-          pressScale={0.97}
         >
           <View style={{
             width: s(20), height: s(20), borderRadius: s(5), borderWidth: 1.5,
@@ -112,7 +100,7 @@ export default function SignInScreen() {
             {rememberMe && <Text style={{ color: C.white, fontSize: fs(12), fontFamily: FONT.bold, lineHeight: fs(14) }}>✓</Text>}
           </View>
           <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>Remember me</Text>
-        </Btn>
+        </Pressable>
 
         {error && (
           <Text style={{ color: C.danger, fontFamily: FONT.regular, fontSize: fs(13), marginBottom: vs(16), textAlign: "center" }}>
@@ -138,7 +126,7 @@ export default function SignInScreen() {
 
         {/* DEV ONLY */}
         {__DEV__ && devSignIn && (
-          <View style={{ alignItems: "center", marginTop: vs(64), paddingBottom: vs(8) }}>
+          <View style={{ alignItems: "center", marginTop: vs(32), paddingBottom: vs(8) }}>
             <Btn
               onPress={async () => {
                 await AsyncStorage.setItem("skills_set", "true");
@@ -154,6 +142,15 @@ export default function SignInScreen() {
             </Btn>
           </View>
         )}
+
+        {/* Back button — bottom-centre */}
+        <Pressable
+          onPress={() => router.navigate("/(auth)/onboarding" as any)}
+          style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: s(4), marginTop: vs(28), paddingBottom: vs(4) }}
+        >
+          <ChevronLeft size={s(16)} color={C.textFaint} strokeWidth={2} />
+          <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(13) }}>Back</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
