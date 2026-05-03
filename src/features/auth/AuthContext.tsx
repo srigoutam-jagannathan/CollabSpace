@@ -89,7 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRestrictedEmail(null);
       setStatus("authenticated");
 
-      // Upsert the profile row so it always exists for new sign-ins
+      // Upsert the profile row so it always exists for new sign-ins.
+      // avatar_url is intentionally excluded — it's managed by the user via
+      // edit-profile and must not be overwritten from OAuth metadata on each login.
       await supabase.from("profiles").upsert(
         {
           id: incoming.user.id,
@@ -97,7 +99,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             incoming.user.user_metadata?.full_name ??
             incoming.user.user_metadata?.name ??
             null,
-          avatar_url: incoming.user.user_metadata?.avatar_url ?? null,
           university: uni,
           updated_at: new Date().toISOString(),
         },
