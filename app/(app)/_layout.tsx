@@ -161,6 +161,9 @@ export default function AppLayout() {
   // since the last time the user opened the chat tab.
   const checkUnreadMessages = useCallback(async () => {
     if (!user?.id) return;
+    const notifRaw = await AsyncStorage.getItem("notif_prefs");
+    const notifPrefs = notifRaw ? JSON.parse(notifRaw) : {};
+    if (notifPrefs.newMessages === false) { setHasChatUnread(false); return; }
     const since = chatLastOpenRef.current;
 
     // Run DM check + member lookup in parallel
@@ -232,9 +235,7 @@ export default function AppLayout() {
           {...props}
           hasChatUnread={hasChatUnread}
           onChatTabPress={() => {
-            const now = new Date().toISOString();
-            chatLastOpenRef.current = now;
-            AsyncStorage.setItem(CHAT_LAST_OPEN_KEY, now);
+            chatLastOpenRef.current = new Date().toISOString();
             setHasChatUnread(false);
           }}
         />
@@ -250,6 +251,7 @@ export default function AppLayout() {
       <Tabs.Screen name="projects" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="users/[id]" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }
