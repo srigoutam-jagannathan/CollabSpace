@@ -10,6 +10,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, MapPin, BookOpen } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
+import { Avatar } from "@/components/Avatar";
 import { C, FONT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
 
@@ -146,27 +147,8 @@ export default function UserProfileScreen() {
 
         {/* Avatar */}
         <View style={{ alignItems: "center", marginTop: vs(20) }}>
-          <View
-            style={{
-              width: s(80),
-              height: s(80),
-              borderRadius: s(40),
-              backgroundColor: C.purple,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 2,
-              borderColor: C.purpleL,
-            }}
-          >
-            <Text
-              style={{
-                color: C.white,
-                fontFamily: FONT.extraBold,
-                fontSize: fs(28),
-              }}
-            >
-              {initials}
-            </Text>
+          <View style={{ borderWidth: 2, borderColor: C.purpleL, borderRadius: s(40) }}>
+            <Avatar url={profile.avatar_url} initials={initials} size={s(80)} bgColor={C.purple} />
           </View>
         </View>
 
@@ -249,15 +231,17 @@ export default function UserProfileScreen() {
                 <View
                   key={skill}
                   style={{
-                    backgroundColor: C.yellow,
+                    backgroundColor: "rgba(255,255,255,0.09)",
                     borderRadius: s(20),
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.18)",
                     paddingHorizontal: s(14),
                     paddingVertical: vs(7),
                   }}
                 >
                   <Text
                     style={{
-                      color: "#1a0a2e",
+                      color: C.white,
                       fontFamily: FONT.semiBold,
                       fontSize: fs(13),
                     }}
