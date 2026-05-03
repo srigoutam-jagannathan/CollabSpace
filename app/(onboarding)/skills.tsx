@@ -9,13 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ChevronLeft } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Btn } from "@/components/Btn";
 import { GradientBtn } from "@/components/GradientBtn";
-import { C } from "@/utils/theme";
+import { C, FONT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
 
 // ─── Skill data ───────────────────────────────────────────────────────────────
@@ -61,22 +63,18 @@ function SkillChip({
   onPress: () => void;
 }) {
   return (
-    <Btn
-      onPress={onPress}
-      pressScale={0.93}
-      style={{ marginBottom: vs(8), marginRight: s(8) }}
-    >
+    <Btn onPress={onPress} pressScale={0.93}>
       <View
         style={{
-          paddingHorizontal: s(16),
-          paddingVertical: vs(9),
-          borderRadius: s(20),
+          paddingHorizontal: s(13),
+          paddingVertical: vs(7),
+          borderRadius: s(16),
           borderWidth: 1.5,
-          borderColor: selected ? "#FFD1E3" : "rgba(255,255,255,0.35)",
-          backgroundColor: selected ? "#FFD1E3" : "rgba(255,255,255,0.08)",
+          borderColor: selected ? "rgba(210,160,255,0.50)" : "rgba(255,255,255,0.35)",
+          backgroundColor: selected ? "rgba(180,100,255,0.22)" : "rgba(255,255,255,0.08)",
         }}
       >
-        <Text style={{ color: selected ? "#1a0a2e" : "#ffffff", fontWeight: selected ? "700" : "400", fontSize: fs(13) }}>
+        <Text style={{ color: "#ffffff", fontFamily: selected ? FONT.bold : FONT.regular, fontSize: fs(12) }}>
           {label}
         </Text>
       </View>
@@ -170,53 +168,31 @@ export default function SkillsScreen() {
     }
   }
 
-  async function handleSkip() {
-    const storageKey = user ? `skills_set_${user.id}` : "skills_set";
-    await AsyncStorage.setItem(storageKey, "true");
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/(app)/");
-    }
-  }
-
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {/* Back to Profile */}
-      {router.canGoBack() && (
-        <Btn
-          onPress={() => router.back()}
-          style={{ position: "absolute", top: vs(56), left: s(24), zIndex: 10 }}
-          hitSlop={16}
-          pressScale={0.9}
-        >
-          <Text style={{ color: C.textMuted, fontSize: fs(16) }}>‹ Back</Text>
-        </Btn>
-      )}
-
-      {/* Skip */}
-      <Btn
-        onPress={handleSkip}
-        style={{ position: "absolute", top: vs(56), right: s(24), zIndex: 10 }}
-        hitSlop={16}
-        pressScale={0.9}
-      >
-        <Text style={{ color: C.textMuted, fontSize: fs(16) }}>Skip</Text>
-      </Btn>
+      {/* Header */}
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingTop: vs(8), paddingBottom: vs(16) }}>
+        {router.canGoBack() && (
+          <Btn onPress={() => router.back()} hitSlop={16} pressScale={0.9} style={{ marginRight: s(10) }}>
+            <ChevronLeft size={s(22)} color={C.textMuted} strokeWidth={2} />
+          </Btn>
+        )}
+        <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>
+          Skills and Interests
+        </Text>
+      </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: vs(80), paddingHorizontal: s(24), paddingBottom: vs(140) }}
+        contentContainerStyle={{ paddingTop: vs(4), paddingHorizontal: s(24), paddingBottom: vs(140) }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ color: C.white, fontWeight: "800", fontSize: fs(28), marginBottom: vs(6) }}>
-          Add Skills and Interests.
-        </Text>
-        <Text style={{ color: C.textMuted, fontSize: fs(15), marginBottom: vs(32) }}>
+        <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(14), marginBottom: vs(28) }}>
           What skills and interests can you bring to the table?
         </Text>
 
@@ -225,7 +201,7 @@ export default function SkillsScreen() {
             <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(15), marginBottom: vs(14) }}>
               {category.title}
             </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(8) }}>
               {category.skills.map((skill) => (
                 <SkillChip
                   key={skill}
@@ -243,7 +219,7 @@ export default function SkillsScreen() {
           <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(15), marginBottom: vs(12) }}>
             Others
           </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(8) }}>
             {customSkills.map((skill) => (
               <SkillChip
                 key={skill}
@@ -257,8 +233,8 @@ export default function SkillsScreen() {
             <View style={{
               flexDirection: "row", alignItems: "center",
               borderWidth: 1, borderColor: C.border,
-              borderRadius: s(20), paddingLeft: s(14), paddingRight: s(6),
-              paddingVertical: vs(4), marginBottom: vs(6), marginRight: s(6),
+              borderRadius: s(16), paddingLeft: s(13), paddingRight: s(6),
+              paddingVertical: vs(4),
               backgroundColor: "rgba(255,255,255,0.05)",
             }}>
               <TextInput
@@ -300,5 +276,6 @@ export default function SkillsScreen() {
         <GradientBtn onPress={handleSubmit} loading={loading} label="Submit" />
       </View>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

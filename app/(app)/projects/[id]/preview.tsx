@@ -74,14 +74,19 @@ export default function ProjectPreviewScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: s(20), paddingBottom: vs(120) }} showsVerticalScrollIndicator={false}>
-        {/* Project card — yellow with pink strip */}
-        <View style={{ backgroundColor: C.yellow, borderRadius: s(20), overflow: "hidden", marginBottom: vs(20) }}>
-          <View style={{ height: vs(4), backgroundColor: C.pinkD }} />
+        {/* Project card — glass with gradient strip */}
+        <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", borderRadius: s(20), overflow: "hidden", marginBottom: vs(20) }}>
+          <LinearGradient
+            colors={GRADIENT.cta}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ height: vs(4) }}
+          />
           <View style={{ padding: s(20) }}>
-            <Text style={{ color: "#1a0a2e", fontWeight: "800", fontSize: fs(22), marginBottom: vs(8) }}>
+            <Text style={{ color: C.white, fontWeight: "800", fontSize: fs(22), marginBottom: vs(8) }}>
               {project.title}
             </Text>
-            <Text style={{ color: "rgba(26,10,46,0.7)", fontSize: fs(14), lineHeight: vs(21) }}>
+            <Text style={{ color: "rgba(255,255,255,0.60)", fontSize: fs(14), lineHeight: vs(21) }}>
               {project.description}
             </Text>
           </View>
@@ -127,8 +132,8 @@ export default function ProjectPreviewScreen() {
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.white, fontWeight: "600", fontSize: fs(14) }}>{(project as any).owner_name ?? "Project Owner"}</Text>
               {(project as any).owner_role ? (
-                <View style={{ alignSelf: "flex-start", backgroundColor: C.yellow, borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(3), marginTop: vs(4) }}>
-                  <Text style={{ color: "#1a0a2e", fontWeight: "700", fontSize: fs(11) }}>{(project as any).owner_role}</Text>
+                <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.09)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(3), marginTop: vs(4) }}>
+                  <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(11) }}>{(project as any).owner_role}</Text>
                 </View>
               ) : (
                 <View style={{ alignSelf: "flex-start", backgroundColor: C.purple, borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(3), marginTop: vs(4) }}>
@@ -146,8 +151,8 @@ export default function ProjectPreviewScreen() {
             <View style={{ gap: vs(8) }}>
               {((project as any).role_requirements as { role: string; description: string }[]).map((req, i) => (
                 <View key={i} style={{ backgroundColor: C.surface, borderRadius: s(14), borderWidth: 1, borderColor: C.border, padding: s(14) }}>
-                  <View style={{ backgroundColor: C.yellow, alignSelf: "flex-start", borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(3), marginBottom: vs(6) }}>
-                    <Text style={{ color: "#1a0a2e", fontWeight: "700", fontSize: fs(12) }}>{req.role}</Text>
+                  <View style={{ backgroundColor: "rgba(255,255,255,0.09)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", alignSelf: "flex-start", borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(3), marginBottom: vs(6) }}>
+                    <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(12) }}>{req.role}</Text>
                   </View>
                   {req.description ? (
                     <Text style={{ color: C.textMuted, fontSize: fs(13), lineHeight: vs(19) }}>{req.description}</Text>

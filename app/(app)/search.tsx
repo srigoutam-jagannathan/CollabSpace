@@ -9,11 +9,12 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Search, SlidersHorizontal, ChevronDown, Check, X, ArrowUpDown } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
-import { C, FONT } from "@/utils/theme";
+import { C, FONT, GRADIENT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
 import type { Profile } from "@/types/database";
 
@@ -351,35 +352,41 @@ export default function SearchScreen() {
         >
           {results.map(project => (
             <View key={project.id} style={{
-              backgroundColor: C.yellow, borderRadius: s(16),
+              backgroundColor: "rgba(255,255,255,0.07)", borderRadius: s(16),
+              borderWidth: 1, borderColor: "rgba(255,255,255,0.14)",
               marginBottom: vs(12), overflow: "hidden",
             }}>
-              <View style={{ height: vs(3), backgroundColor: C.pinkD }} />
+              <LinearGradient
+                colors={GRADIENT.cta}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ height: vs(3) }}
+              />
               <View style={{ padding: s(16) }}>
-                <Text style={{ color: "#1a0a2e", fontFamily: FONT.extraBold, fontSize: fs(16), marginBottom: vs(4) }} numberOfLines={1}>
+                <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(16), marginBottom: vs(4) }} numberOfLines={1}>
                   {project.title}
                 </Text>
                 {/* Meta row */}
                 <View style={{ flexDirection: "row", gap: s(8), marginBottom: vs(8), flexWrap: "wrap" }}>
                   {project.project_type && (
-                    <View style={{ backgroundColor: "rgba(26,10,46,0.12)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
-                      <Text style={{ color: "rgba(26,10,46,0.6)", fontFamily: FONT.medium, fontSize: fs(11) }}>{project.project_type}</Text>
+                    <View style={{ backgroundColor: "rgba(255,255,255,0.10)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+                      <Text style={{ color: "rgba(255,255,255,0.60)", fontFamily: FONT.medium, fontSize: fs(11) }}>{project.project_type}</Text>
                     </View>
                   )}
                   {project.collaboration_style && (
-                    <View style={{ backgroundColor: "rgba(26,10,46,0.12)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
-                      <Text style={{ color: "rgba(26,10,46,0.6)", fontFamily: FONT.medium, fontSize: fs(11) }}>{project.collaboration_style}</Text>
+                    <View style={{ backgroundColor: "rgba(255,255,255,0.10)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+                      <Text style={{ color: "rgba(255,255,255,0.60)", fontFamily: FONT.medium, fontSize: fs(11) }}>{project.collaboration_style}</Text>
                     </View>
                   )}
                   {(project.team_size ?? 0) > 0 && (
-                    <View style={{ backgroundColor: "rgba(26,10,46,0.12)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
-                      <Text style={{ color: "rgba(26,10,46,0.6)", fontFamily: FONT.medium, fontSize: fs(11) }}>
+                    <View style={{ backgroundColor: "rgba(255,255,255,0.10)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+                      <Text style={{ color: "rgba(255,255,255,0.60)", fontFamily: FONT.medium, fontSize: fs(11) }}>
                         Team of {project.team_size}
                       </Text>
                     </View>
                   )}
                 </View>
-                <Text style={{ color: "rgba(26,10,46,0.65)", fontFamily: FONT.regular, fontSize: fs(13), lineHeight: vs(19), marginBottom: vs(12) }} numberOfLines={2}>
+                <Text style={{ color: "rgba(255,255,255,0.55)", fontFamily: FONT.regular, fontSize: fs(13), lineHeight: vs(19), marginBottom: vs(12) }} numberOfLines={2}>
                   {project.description}
                 </Text>
                 <View style={{ alignItems: "flex-end" }}>

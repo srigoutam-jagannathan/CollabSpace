@@ -57,6 +57,25 @@ export const C = {
   success: "#34D399",
 } as const;
 
+// ── Glass tile system ──────────────────────────────────────────────────────────
+export const GLASS = {
+  card: {
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderColor:     "rgba(255,255,255,0.14)",
+    borderWidth: 1,
+  },
+  chip: {
+    backgroundColor: "rgba(255,255,255,0.09)",
+    borderColor:     "rgba(255,255,255,0.18)",
+    borderWidth: 1,
+  },
+  chipSelected: {
+    backgroundColor: "rgba(180,100,255,0.22)",
+    borderColor:     "rgba(210,160,255,0.50)",
+    borderWidth: 1.5,
+  },
+} as const;
+
 // ── Typography ─────────────────────────────────────────────────────────────────
 // Lato weights: 400 Regular, 700 Bold, 900 Black (no 500/600 — medium collapses to regular intentionally)
 export const FONT = {

@@ -5,10 +5,11 @@ import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Bell } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
 import { useAuth } from "@/features/auth/AuthContext";
-import { C, FONT } from "@/utils/theme";
+import { C, FONT, GRADIENT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -81,48 +82,50 @@ function ProjectCard({
     >
       <View style={{
         borderRadius: s(20),
-        backgroundColor: C.yellow,
+        backgroundColor: "rgba(255,255,255,0.07)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.14)",
         overflow: "hidden",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.18,
-        shadowRadius: 8,
-        elevation: 5,
       }}>
-        <View style={{ height: vs(4), backgroundColor: C.pinkD }} />
+        <LinearGradient
+          colors={GRADIENT.cta}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ height: vs(4) }}
+        />
         <View style={{ padding: s(18), paddingBottom: s(16) }}>
-          <Text style={{ color: "#1a0a2e", fontFamily: FONT.extraBold, fontSize: fs(17), letterSpacing: -0.3, marginBottom: vs(8) }} numberOfLines={1}>
+          <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(17), letterSpacing: -0.3, marginBottom: vs(8) }} numberOfLines={1}>
             {project.title}
           </Text>
 
           {metaPills.length > 0 && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(5), marginBottom: vs(10) }}>
               {metaPills.map((pill) => (
-                <View key={pill} style={{ backgroundColor: "rgba(26,10,46,0.10)", borderRadius: s(8), paddingHorizontal: s(9), paddingVertical: vs(3) }}>
-                  <Text style={{ color: "rgba(26,10,46,0.65)", fontFamily: FONT.semiBold, fontSize: fs(10.5) }}>{pill}</Text>
+                <View key={pill} style={{ backgroundColor: "rgba(255,255,255,0.10)", borderRadius: s(8), paddingHorizontal: s(9), paddingVertical: vs(3) }}>
+                  <Text style={{ color: "rgba(255,255,255,0.60)", fontFamily: FONT.semiBold, fontSize: fs(10.5) }}>{pill}</Text>
                 </View>
               ))}
             </View>
           )}
 
-          <Text style={{ color: "rgba(26,10,46,0.60)", fontFamily: FONT.regular, fontSize: fs(13), lineHeight: vs(20), marginBottom: vs(10) }} numberOfLines={2}>
+          <Text style={{ color: "rgba(255,255,255,0.55)", fontFamily: FONT.regular, fontSize: fs(13), lineHeight: vs(20), marginBottom: vs(10) }} numberOfLines={2}>
             {project.description}
           </Text>
 
           {tags.length > 0 && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(5), marginBottom: vs(12) }}>
               {tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={{ backgroundColor: "rgba(26,10,46,0.08)", borderRadius: s(8), paddingHorizontal: s(9), paddingVertical: vs(3), borderWidth: 1, borderColor: "rgba(26,10,46,0.12)" }}>
-                  <Text style={{ color: "rgba(26,10,46,0.65)", fontFamily: FONT.medium, fontSize: fs(11) }}>{tag}</Text>
+                <View key={tag} style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: s(8), paddingHorizontal: s(9), paddingVertical: vs(3), borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}>
+                  <Text style={{ color: "rgba(255,255,255,0.60)", fontFamily: FONT.medium, fontSize: fs(11) }}>{tag}</Text>
                 </View>
               ))}
             </View>
           )}
 
-          <View style={{ height: 1, backgroundColor: "rgba(26,10,46,0.08)", marginBottom: vs(10) }} />
+          <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.10)", marginBottom: vs(10) }} />
 
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: "rgba(26,10,46,0.45)", fontFamily: FONT.medium, fontSize: fs(12) }}>
+            <Text style={{ color: "rgba(255,255,255,0.40)", fontFamily: FONT.medium, fontSize: fs(12) }}>
               by {project.owner?.full_name ?? "Unknown"}
             </Text>
             {project.owner_id !== currentUserId && (
@@ -211,8 +214,8 @@ function TalentCard({
           {/* Skills */}
           <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: s(5) }}>
             {skills.map((skill) => (
-              <View key={skill} style={{ backgroundColor: C.yellow, borderRadius: s(12), paddingHorizontal: s(10), paddingVertical: vs(3) }}>
-                <Text style={{ color: "#1a0a2e", fontFamily: FONT.semiBold, fontSize: fs(10.5) }}>{skill}</Text>
+              <View key={skill} style={{ backgroundColor: "rgba(255,255,255,0.09)", borderRadius: s(12), borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", paddingHorizontal: s(10), paddingVertical: vs(3) }}>
+                <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(10.5) }}>{skill}</Text>
               </View>
             ))}
           </View>
@@ -365,30 +368,40 @@ export default function DiscoveryFeed() {
 
   const checkUnreadNotif = useCallback(async () => {
     if (!user) return;
-    // Pending incoming connection requests
-    const { count: connCount } = await supabase
-      .from("connections")
-      .select("id", { count: "exact", head: true })
-      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
-      .neq("initiated_by", user.id)
-      .eq("status", "pending");
+    const notifRaw = await AsyncStorage.getItem("notif_prefs");
+    const notifPrefs = notifRaw ? JSON.parse(notifRaw) : {};
+    const showConn = notifPrefs.connectionRequests !== false;
+    const showJoin = notifPrefs.joinRequests !== false;
 
-    // Unapproved join requests on owned projects
-    const { data: ownedProjects } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("owner_id", user.id);
-    let joinCount = 0;
-    if (ownedProjects && ownedProjects.length > 0) {
-      const ownedIds = ownedProjects.map((p: any) => p.id);
+    let connCount = 0;
+    if (showConn) {
       const { count } = await supabase
-        .from("project_members")
-        .select("user_id", { count: "exact", head: true })
-        .in("project_id", ownedIds)
-        .eq("mou_accepted", false);
-      joinCount = count ?? 0;
+        .from("connections")
+        .select("id", { count: "exact", head: true })
+        .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .neq("initiated_by", user.id)
+        .eq("status", "pending");
+      connCount = count ?? 0;
     }
-    setHasUnreadNotif((connCount ?? 0) > 0 || joinCount > 0);
+
+    let joinCount = 0;
+    if (showJoin) {
+      const { data: ownedProjects } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("owner_id", user.id);
+      if (ownedProjects && ownedProjects.length > 0) {
+        const ownedIds = ownedProjects.map((p: any) => p.id);
+        const { count } = await supabase
+          .from("project_members")
+          .select("user_id", { count: "exact", head: true })
+          .in("project_id", ownedIds)
+          .eq("mou_accepted", false);
+        joinCount = count ?? 0;
+      }
+    }
+
+    setHasUnreadNotif(connCount > 0 || joinCount > 0);
   }, [user]);
 
   useFocusEffect(useCallback(() => {
