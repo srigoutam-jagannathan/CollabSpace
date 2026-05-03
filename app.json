@@ -4,7 +4,7 @@
     "slug": "collabspace",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/collabspace-logo.png",
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
