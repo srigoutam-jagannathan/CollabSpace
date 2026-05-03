@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { LogOut } from "lucide-react-native";
+import { Settings, BadgeCheck } from "lucide-react-native";
+import { Avatar } from "@/components/Avatar";
 import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Btn } from "@/components/Btn";
@@ -12,6 +13,7 @@ import { s, vs, fs } from "@/utils/scale";
 
 type ProfileData = {
   full_name: string | null;
+  avatar_url: string | null;
   department: string | null;
   bio: string | null;
   pvs_score: number | null;
@@ -29,8 +31,19 @@ type OwnedProject = {
   created_at: string;
 };
 
+type MyCollab = {
+  membershipId: string;
+  projectId: string;
+  title: string;
+  projectType: string | null;
+  status: string;
+  role: string;
+  mouAccepted: boolean;
+};
+
 const DEV_PROFILE: ProfileData = {
   full_name: "Jacob (Dev)",
+  avatar_url: null,
   department: "M.Des User Experience Design",
   bio: "Aspiring Ux/Ui Designer",
   pvs_score: 72,
@@ -70,10 +83,12 @@ function Section({ title, children, action }: {
 }
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [myProjects, setMyProjects] = useState<OwnedProject[]>([]);
+  const [myCollabs, setMyCollabs] = useState<MyCollab[]>([]);
+  const [signingId, setSigningId] = useState<string | null>(null);
 
   const loadProfile = useCallback(() => {
     if (!user) {
@@ -83,12 +98,12 @@ export default function ProfileScreen() {
     }
     supabase
       .from("profiles")
-      .select("full_name, department, bio, pvs_score, skills, portfolio_links, badges")
+      .select("full_name, avatar_url, department, bio, pvs_score, skills, portfolio_links, badges")
       .eq("id", user.id)
       .single()
       .then(({ data, error }) => {
         if (error) {
-          setProfile({ full_name: user.user_metadata?.full_name ?? null, department: null, bio: null, pvs_score: 0, skills: [], portfolio_links: [], badges: [] });
+          setProfile({ full_name: user.user_metadata?.full_name ?? null, avatar_url: null, department: null, bio: null, pvs_score: 0, skills: [], portfolio_links: [], badges: [] });
         } else {
           setProfile(data as ProfileData);
         }
@@ -102,9 +117,59 @@ export default function ProfileScreen() {
       .then(({ data: ownedProjects }) => {
         setMyProjects((ownedProjects as OwnedProject[]) ?? []);
       });
+    supabase
+      .from("project_members")
+      .select("id, role, mou_accepted, project:projects!project_id(id, title, project_type, status, owner_id)")
+      .eq("user_id", user.id)
+      .then(({ data: memberData }) => {
+        const collabs: MyCollab[] = (memberData ?? [])
+          .filter((m: any) => m.project?.owner_id !== user.id)
+          .map((m: any) => ({
+            membershipId: m.id,
+            projectId: m.project?.id ?? "",
+            title: m.project?.title ?? "Unknown Project",
+            projectType: m.project?.project_type ?? null,
+            status: m.project?.status ?? "recruiting",
+            role: m.role ?? "Member",
+            mouAccepted: m.mou_accepted ?? false,
+          }));
+        setMyCollabs(collabs);
+      });
   }, [user?.id]);
 
   useFocusEffect(loadProfile);
+
+  async function handleSignMOU(membershipId: string, projectTitle: string) {
+    Alert.alert(
+      "Sign MOU",
+      `Confirm your commitment to "${projectTitle}"? This will be recorded as a collaboration event.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign MOU",
+          onPress: async () => {
+            setSigningId(membershipId);
+            try {
+              const { error } = await supabase
+                .from("project_members")
+                .update({ mou_accepted: true, mou_accepted_at: new Date().toISOString() })
+                .eq("id", membershipId);
+              if (error) throw error;
+              setMyCollabs((prev) =>
+                prev.map((c) =>
+                  c.membershipId === membershipId ? { ...c, mouAccepted: true } : c
+                )
+              );
+            } catch {
+              Alert.alert("Error", "Failed to sign MOU. Please try again.");
+            } finally {
+              setSigningId(null);
+            }
+          },
+        },
+      ]
+    );
+  }
 
   const displayName = profile?.full_name ?? user?.user_metadata?.full_name ?? "Student";
   const initials = displayName.trim().split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -127,29 +192,26 @@ export default function ProfileScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
       <ScrollView contentContainerStyle={{ paddingBottom: vs(32) }} showsVerticalScrollIndicator={false}>
 
+        {/* ── Screen header ─────────────────────────────────────────────── */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: s(20), paddingTop: vs(12), paddingBottom: vs(4) }}>
+          <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(20) }}>Profile</Text>
+          <Btn onPress={() => router.push("/(app)/settings" as any)} pressScale={0.88} hitSlop={12}>
+            <View style={{ backgroundColor: C.surface, borderRadius: s(10), borderWidth: 1, borderColor: C.border, padding: s(8) }}>
+              <Settings size={s(18)} color={C.textMuted} strokeWidth={1.8} />
+            </View>
+          </Btn>
+        </View>
+
         {/* ── Avatar + Identity ──────────────────────────────────────────── */}
-        <View style={{ alignItems: "center", paddingTop: vs(32), paddingBottom: vs(28) }}>
+        <View style={{ alignItems: "center", paddingTop: vs(20), paddingBottom: vs(28) }}>
           {/* Avatar with gradient ring */}
           <View style={{ marginBottom: vs(14) }}>
-            <LinearGradient
-              colors={GRADIENT.cta}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ width: s(96), height: s(96), borderRadius: s(48), padding: 3 }}
-            >
-              <View style={{
-                flex: 1, borderRadius: s(45),
-                backgroundColor: C.bgMid,
-                alignItems: "center", justifyContent: "center",
-              }}>
-                <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(28) }}>{initials}</Text>
-              </View>
-            </LinearGradient>
+            <Avatar url={profile?.avatar_url} initials={initials} size={s(96)} ring />
           </View>
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), marginBottom: vs(4) }}>
             <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(20) }}>{displayName}</Text>
-            <Text style={{ color: C.pink, fontSize: fs(16) }}>✓</Text>
+            <BadgeCheck size={s(20)} color={C.pink} strokeWidth={2} />
           </View>
 
           {profile?.department ? (
@@ -175,16 +237,13 @@ export default function ProfileScreen() {
         </Section>
 
         {/* ── Skills ────────────────────────────────────────────────────── */}
-        <Section
-          title="Skills"
-          action={{ label: skills.length > 0 ? "+ Edit" : "+ Add", onPress: () => router.push("/(onboarding)/skills") }}
-        >
+        <Section title="Skills">
           {skills.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row", gap: s(8) }}>
                 {skills.map((skill) => (
-                  <View key={skill} style={{ backgroundColor: C.yellow, borderRadius: s(20), paddingHorizontal: s(14), paddingVertical: vs(7) }}>
-                    <Text style={{ color: "#1a0a2e", fontWeight: "600", fontSize: fs(13) }}>{skill}</Text>
+                  <View key={skill} style={{ backgroundColor: "rgba(255,255,255,0.09)", borderRadius: s(20), borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", paddingHorizontal: s(14), paddingVertical: vs(7) }}>
+                    <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(13) }}>{skill}</Text>
                   </View>
                 ))}
               </View>
@@ -195,7 +254,7 @@ export default function ProfileScreen() {
         </Section>
 
         {/* ── My Projects ────────────────────────────────────────────────── */}
-        <Section title="My Projects" action={{ label: "+ New", onPress: () => router.push("/(app)/projects/create") }}>
+        <Section title="My Projects">
           {myProjects.length === 0 ? (
             <Text style={{ color: C.textFaint, fontSize: fs(13) }}>No projects yet. Tap + New to create one.</Text>
           ) : (
@@ -233,16 +292,83 @@ export default function ProfileScreen() {
           )}
         </Section>
 
+        {/* ── My Collabs ─────────────────────────────────────────────────── */}
+        {myCollabs.length > 0 && (
+          <Section title="My Collabs">
+            <View style={{ gap: vs(10) }}>
+              {myCollabs.map((collab) => {
+                const isSigning = signingId === collab.membershipId;
+                return (
+                  <Btn
+                    key={collab.membershipId}
+                    onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: collab.projectId } })}
+                    pressScale={0.97}
+                  >
+                    <View style={{
+                      backgroundColor: C.surface, borderRadius: s(14), borderWidth: 1,
+                      borderColor: C.border, padding: s(14),
+                    }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: vs(4) }}>
+                        <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14), flex: 1, marginRight: s(8) }} numberOfLines={1}>
+                          {collab.title}
+                        </Text>
+                        <View style={{
+                          backgroundColor: collab.status === "recruiting" ? "rgba(52,211,153,0.15)" : "rgba(255,255,255,0.08)",
+                          borderRadius: s(8), paddingHorizontal: s(8), paddingVertical: vs(2),
+                        }}>
+                          <Text style={{ color: collab.status === "recruiting" ? C.success : C.textMuted, fontFamily: FONT.medium, fontSize: fs(10), textTransform: "capitalize" }}>
+                            {collab.status}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={{ color: C.purpleL, fontFamily: FONT.medium, fontSize: fs(12), marginBottom: vs(8) }}>
+                        {collab.role}
+                      </Text>
+                      {collab.mouAccepted ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: s(5), alignSelf: "flex-start" }}>
+                          <View style={{ width: s(7), height: s(7), borderRadius: s(4), backgroundColor: C.success }} />
+                          <Text style={{ color: C.success, fontFamily: FONT.medium, fontSize: fs(11) }}>MOU Signed</Text>
+                        </View>
+                      ) : (
+                        <Btn
+                          onPress={() => handleSignMOU(collab.membershipId, collab.title)}
+                          pressScale={0.92}
+                          disabled={isSigning}
+                          style={{ alignSelf: "flex-start" }}
+                        >
+                          <View style={{
+                            backgroundColor: "rgba(245,158,11,0.12)", borderWidth: 1,
+                            borderColor: "rgba(245,158,11,0.4)", borderRadius: s(10),
+                            paddingHorizontal: s(12), paddingVertical: vs(5),
+                            flexDirection: "row", alignItems: "center", gap: s(5),
+                          }}>
+                            {isSigning ? (
+                              <ActivityIndicator size="small" color="#f59e0b" />
+                            ) : (
+                              <Text style={{ color: "#f59e0b", fontFamily: FONT.semiBold, fontSize: fs(12) }}>Sign MOU</Text>
+                            )}
+                          </View>
+                        </Btn>
+                      )}
+                    </View>
+                  </Btn>
+                );
+              })}
+            </View>
+          </Section>
+        )}
+
         {/* ── Portfolio ──────────────────────────────────────────────────── */}
         <Section title="Portfolio" action={{ label: "See all", onPress: () => {} }}>
           <View style={{ gap: vs(10) }}>
             {portfolioLinks.map((item) => (
               <View key={item.title} style={{
-                backgroundColor: C.yellow, borderRadius: s(14),
+                backgroundColor: "rgba(255,255,255,0.07)", borderRadius: s(14),
+                borderWidth: 1, borderColor: "rgba(255,255,255,0.14)",
                 flexDirection: "row", alignItems: "center",
                 justifyContent: "space-between", padding: s(16),
               }}>
-                <Text style={{ color: "#1a0a2e", fontWeight: "700", fontSize: fs(14) }}>{item.title}</Text>
+                <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14) }}>{item.title}</Text>
                 <Btn pressScale={0.93} style={{ borderRadius: s(16), overflow: "hidden" }}>
                   <LinearGradient
                     colors={GRADIENT.cta}
@@ -292,21 +418,6 @@ export default function ProfileScreen() {
           </View>
         </Section>
 
-        {/* ── Sign Out ───────────────────────────────────────────────────── */}
-        <View style={{ paddingHorizontal: s(20), marginTop: vs(8) }}>
-          <Btn
-            onPress={signOut}
-            pressScale={0.97}
-            style={{
-              flexDirection: "row", alignItems: "center", gap: s(10),
-              padding: s(16), borderRadius: s(14),
-              backgroundColor: C.surface, borderWidth: 1, borderColor: "rgba(248,113,113,0.3)",
-            }}
-          >
-            <LogOut size={s(18)} color={C.danger} />
-            <Text style={{ color: C.danger, fontWeight: "600", fontSize: fs(14) }}>Sign Out</Text>
-          </Btn>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
