@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
+  Image,
   Pressable,
   FlatList,
   TextInput,
@@ -22,16 +23,27 @@ type ConnectionConvo = {
   id: string;          // connection id
   otherUserId: string;
   otherUserName: string;
+  otherUserAvatarUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
   lastMessageSenderId: string | null;
 };
 
-function AvatarCircle({ initials, hasUnread }: { initials: string; hasUnread?: boolean }) {
+type GroupConvo = Project & {
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  lastMessageSenderId: string | null;
+};
+
+function AvatarCircle({ url, initials, hasUnread }: { url?: string | null; initials: string; hasUnread?: boolean }) {
   return (
     <View style={{ position: "relative", marginRight: s(14) }}>
-      <View style={{ width: s(48), height: s(48), borderRadius: s(24), backgroundColor: "#2d1b69", alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(15) }}>{initials}</Text>
+      <View style={{ width: s(48), height: s(48), borderRadius: s(24), backgroundColor: "#2d1b69", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        {url ? (
+          <Image source={{ uri: url }} style={{ width: s(48), height: s(48) }} />
+        ) : (
+          <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(15) }}>{initials}</Text>
+        )}
       </View>
       {hasUnread && (
         <View style={{
@@ -56,7 +68,7 @@ export default function MessagesScreen() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"individual" | "group">("individual");
   const [searchQuery, setSearchQuery] = useState("");
-  const [groupProjects, setGroupProjects] = useState<Project[]>([]);
+  const [groupProjects, setGroupProjects] = useState<GroupConvo[]>([]);
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState<ConnectionConvo[]>([]);
   const [loadingConnections, setLoadingConnections] = useState(true);
@@ -74,7 +86,30 @@ export default function MessagesScreen() {
     const joined = (data ?? [])
       .map((row: any) => row.project as Project)
       .filter(Boolean);
-    setGroupProjects(joined);
+
+    if (joined.length === 0) {
+      setGroupProjects([]);
+      setLoading(false);
+      return;
+    }
+
+    const projectIds = joined.map((p) => p.id);
+    const { data: msgs } = await supabase
+      .from("chat_messages")
+      .select("project_id, content, created_at, sender_id")
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false })
+      .limit(projectIds.length * 10);
+
+    const lastMsgMap = new Map<string, { content: string; created_at: string; sender_id: string }>();
+    for (const msg of (msgs ?? [])) {
+      if (!lastMsgMap.has(msg.project_id)) lastMsgMap.set(msg.project_id, msg);
+    }
+
+    setGroupProjects(joined.map((p) => {
+      const m = lastMsgMap.get(p.id) ?? null;
+      return { ...p, lastMessage: m?.content ?? null, lastMessageAt: m?.created_at ?? null, lastMessageSenderId: m?.sender_id ?? null };
+    }));
     setLoading(false);
   }, [user]);
 
@@ -85,8 +120,8 @@ export default function MessagesScreen() {
       .from("connections")
       .select(`
         id, requester_id, recipient_id,
-        requester:profiles!requester_id(id, full_name),
-        recipient:profiles!recipient_id(id, full_name),
+        requester:profiles!requester_id(id, full_name, avatar_url),
+        recipient:profiles!recipient_id(id, full_name, avatar_url),
         direct_messages(content, created_at, sender_id)
       `)
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
@@ -103,6 +138,7 @@ export default function MessagesScreen() {
         id: c.id,
         otherUserId: other?.id ?? "",
         otherUserName: other?.full_name ?? "Unknown",
+        otherUserAvatarUrl: other?.avatar_url ?? null,
         lastMessage: lastMsg?.content ?? null,
         lastMessageAt: lastMsg?.created_at ?? null,
         lastMessageSenderId: lastMsg?.sender_id ?? null,
@@ -114,16 +150,20 @@ export default function MessagesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchJoinedProjects();
-      fetchConnections();
-      // Sync the threshold so unread dots reflect the last time this tab was opened
+      // Load the threshold from last time the user LEFT this screen
       AsyncStorage.getItem("chat_last_open").then((val) => {
         if (val) setChatLastOpen(val);
       });
+      fetchJoinedProjects();
+      fetchConnections();
+      // Mark all conversations as seen when the user leaves
+      return () => {
+        AsyncStorage.setItem("chat_last_open", new Date().toISOString());
+      };
     }, [fetchJoinedProjects, fetchConnections])
   );
 
-  // Realtime: refresh list when a new DM arrives OR a connection is accepted
+  // Realtime: refresh list when a new DM/group message arrives OR a connection is accepted
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -135,6 +175,11 @@ export default function MessagesScreen() {
       )
       .on(
         "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages" },
+        () => { fetchJoinedProjects(); }
+      )
+      .on(
+        "postgres_changes",
         { event: "UPDATE", schema: "public", table: "connections" },
         (payload) => {
           if ((payload.new as any).status === "accepted") fetchConnections();
@@ -142,7 +187,7 @@ export default function MessagesScreen() {
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user?.id, fetchConnections]);
+  }, [user?.id, fetchConnections, fetchJoinedProjects]);
 
   const filteredConnections = searchQuery.trim()
     ? connections.filter((c) =>
@@ -214,39 +259,35 @@ export default function MessagesScreen() {
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: vs(100) }}
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => router.push({ pathname: "/(app)/chat/dm/[id]", params: { id: item.id } })}
-                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}
-              >
-                <AvatarCircle
-                  initials={getInitials(item.otherUserName)}
-                  hasUnread={
-                    item.lastMessageSenderId !== null &&
-                    item.lastMessageSenderId !== user?.id &&
-                    (item.lastMessageAt ?? "") > chatLastOpen
-                  }
-                />
-                <View style={{ flex: 1 }}>
-                  {(() => {
-                    const unread =
-                      item.lastMessageSenderId !== null &&
-                      item.lastMessageSenderId !== user?.id &&
-                      (item.lastMessageAt ?? "") > chatLastOpen;
-                    return (
-                      <>
-                        <Text style={{ color: C.white, fontFamily: unread ? FONT.bold : FONT.semiBold, fontSize: fs(14), marginBottom: vs(2) }}>
-                          {item.otherUserName}
-                        </Text>
-                        <Text style={{ color: unread ? "rgba(255,255,255,0.75)" : C.textFaint, fontFamily: unread ? FONT.semiBold : FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
-                          {item.lastMessage ?? "Start a conversation"}
-                        </Text>
-                      </>
-                    );
-                  })()}
-                </View>
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const unread =
+                item.lastMessageSenderId !== null &&
+                item.lastMessageSenderId !== user?.id &&
+                (item.lastMessageAt ?? "") > chatLastOpen;
+              return (
+                <Pressable
+                  onPress={() => router.push({ pathname: "/(app)/chat/dm/[id]", params: { id: item.id } })}
+                  style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)", backgroundColor: unread ? "rgba(168, 85, 247, 0.1)" : "transparent" }}
+                >
+                  <AvatarCircle
+                    url={item.otherUserAvatarUrl}
+                    initials={getInitials(item.otherUserName)}
+                    hasUnread={unread}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: unread ? C.white : C.textMuted, fontFamily: unread ? FONT.bold : FONT.regular, fontSize: fs(14), marginBottom: vs(2) }}>
+                      {item.otherUserName}
+                    </Text>
+                    <Text style={{ color: unread ? "rgba(255,255,255,0.88)" : C.textFaint, fontFamily: unread ? FONT.semiBold : FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
+                      {item.lastMessage ?? "Start a conversation"}
+                    </Text>
+                  </View>
+                  {unread && (
+                    <View style={{ width: s(9), height: s(9), borderRadius: s(5), backgroundColor: C.pink, marginLeft: s(8) }} />
+                  )}
+                </Pressable>
+              );
+            }}
           />
         )
       ) : loading ? (
@@ -265,22 +306,31 @@ export default function MessagesScreen() {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: vs(100) }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: item.id } })}
-              style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}
-            >
-              <AvatarCircle initials={getInitials(item.title)} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(14), marginBottom: vs(2) }} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
-                  Tap to open group chat
-                </Text>
-              </View>
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const unread =
+              item.lastMessageSenderId !== null &&
+              item.lastMessageSenderId !== user?.id &&
+              (item.lastMessageAt ?? "") > chatLastOpen;
+            return (
+              <Pressable
+                onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: item.id } })}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)", backgroundColor: unread ? "rgba(168, 85, 247, 0.1)" : "transparent" }}
+              >
+                <AvatarCircle initials={getInitials(item.title)} hasUnread={unread} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: unread ? C.white : C.textMuted, fontFamily: unread ? FONT.bold : FONT.regular, fontSize: fs(14), marginBottom: vs(2) }} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={{ color: unread ? "rgba(255,255,255,0.88)" : C.textFaint, fontFamily: unread ? FONT.semiBold : FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
+                    {item.lastMessage ?? "Tap to open group chat"}
+                  </Text>
+                </View>
+                {unread && (
+                  <View style={{ width: s(9), height: s(9), borderRadius: s(5), backgroundColor: C.pink, marginLeft: s(8) }} />
+                )}
+              </Pressable>
+            );
+          }}
         />
       )}
     </SafeAreaView>
