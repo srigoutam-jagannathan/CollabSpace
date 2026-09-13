@@ -37,12 +37,36 @@ export function ms(size: number, factor = 0.5): number {
 }
 
 /**
- * Font scale — respects the device's accessibility text-size setting.
- * Pass the design font size in pt; returns a scaled value.
+ * Font scale — maps a design font size onto the current screen width.
+ *
+ * This does NOT apply the user's accessibility text-size setting, and must
+ * not: React Native's <Text> has allowFontScaling on by default and nothing
+ * in this app overrides it, so Dynamic Type is already applied downstream.
+ * Multiplying by PixelRatio.getFontScale() here would apply it twice.
+ *
+ * What that leaves is the layout problem — see ts().
  */
 export function fs(size: number): number {
   const scaled = ms(size, 0.3);
   return Math.round(PixelRatio.roundToNearestPixel(scaled));
+}
+
+/**
+ * Text-aware container scale — for a width or height that has to grow when
+ * the user's text does.
+ *
+ * Text scales itself; the boxes around it do not, so a fixed-width rail card
+ * at 200% text truncates every label inside it. Sizing those containers with
+ * ts() instead of s() lets them grow in step, which is the "rails grow taller
+ * rather than truncating" clause of the design spec.
+ *
+ * Clamped to 2x, matching the 200% ceiling that clause names. Use s() for
+ * anything that should stay put regardless of text size — gutters, hairlines,
+ * icon boxes, corner radii.
+ */
+export function ts(size: number): number {
+  const fontScale = Math.min(Math.max(PixelRatio.getFontScale(), 1), 2);
+  return s(size) * fontScale;
 }
 
 /** Screen width — use for percentage-based widths */

@@ -4,7 +4,7 @@ import { Btn } from "@/components/Btn";
 import { Avatar } from "@/components/Avatar";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
-import { s, vs, fs } from "@/utils/scale";
+import { s, vs, fs, ts } from "@/utils/scale";
 import type { PersonItem } from "../types";
 
 function initials(name: string | null): string {
@@ -89,7 +89,7 @@ export function PeopleToKnow({ items, variant = "rail" }: PeopleToKnowProps) {
             accessibilityLabel={`${person.full_name ?? "Unknown"}${meta ? `. ${meta}` : ""}. Opens their profile.`}
             pressScale={0.97}
             style={{
-              width: s(96), borderRadius: s(13), paddingVertical: vs(11), paddingHorizontal: s(8),
+              width: ts(96), borderRadius: s(13), paddingVertical: vs(11), paddingHorizontal: s(8),
               alignItems: "center",
               backgroundColor: GLASS.card.backgroundColor,
               borderWidth: 1, borderColor: GLASS.card.borderColor,

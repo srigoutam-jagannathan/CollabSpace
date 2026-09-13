@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { Btn } from "@/components/Btn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
-import { s, vs, fs } from "@/utils/scale";
+import { s, vs, fs, ts } from "@/utils/scale";
 import type { ActiveItem } from "../types";
 
 interface ActiveNowProps {
@@ -75,7 +75,7 @@ export function ActiveNow({ items, variant = "rail" }: ActiveNowProps) {
             accessibilityLabel={`${item.title}. ${events}.`}
             pressScale={0.97}
             style={{
-              width: s(118), borderRadius: s(13), padding: s(10),
+              width: ts(118), borderRadius: s(13), padding: s(10),
               backgroundColor: GLASS.card.backgroundColor,
               borderWidth: 1, borderColor: GLASS.card.borderColor,
             }}

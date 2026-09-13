@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Animated, View } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { s, vs } from "@/utils/scale";
+import { s, vs, ts } from "@/utils/scale";
 
 /** Which section's shape to imitate while its first load is in flight. */
 export type SkeletonShape = "strip" | "hero" | "rail" | "people";
@@ -84,7 +84,9 @@ export function SectionSkeleton({ shape }: { shape: SkeletonShape }) {
     );
   }
 
-  const width = shape === "rail" ? s(118) : s(96);
+  // Must track the real cards in ActiveNow / PeopleToKnow, or the
+  // layout shifts sideways the moment data lands.
+  const width = shape === "rail" ? ts(118) : ts(96);
   return (
     <View style={{ flexDirection: "row", gap: s(8), paddingHorizontal: s(20) }}>
       {[0, 1, 2].map(i => (
