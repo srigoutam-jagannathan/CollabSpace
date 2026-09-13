@@ -1,3 +1,3 @@
-import DiscoveryFeed from "@/features/projects/DiscoveryFeed";
+import DiscoverScreen from "@/features/discover/DiscoverScreen";
 
-export default DiscoveryFeed;
+export default DiscoverScreen;

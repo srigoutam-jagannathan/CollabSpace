@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Redirect, Tabs, router } from "expo-router";
-import { View, Text, AppState, type AppStateStatus, type BottomTabBarProps } from "react-native";
+import { Redirect, Tabs, router, usePathname } from "expo-router";
+import { View, Text, AppState, type AppStateStatus } from "react-native";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { LinearGradient } from "expo-linear-gradient";
 import { Btn } from "@/components/Btn";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,36 +9,37 @@ import { Home, Search, Plus, MessageCircle, User } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/features/auth/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
-import { C, GRADIENT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { CTokens } from "@/utils/theme";
 import { s, vs } from "@/utils/scale";
 
 type TabItem = {
   name: string;
-  icon: (active: boolean) => React.ReactNode;
+  icon: (active: boolean, C: CTokens) => React.ReactNode;
   isFab?: boolean;
 };
 
 const TABS: TabItem[] = [
   {
     name: "index",
-    icon: (active) => <Home size={s(22)} color={active ? C.white : "rgba(255,255,255,0.38)"} strokeWidth={active ? 2.5 : 1.8} />,
+    icon: (active, C) => <Home size={s(22)} color={active ? C.white : C.textMuted} strokeWidth={active ? 2.5 : 1.8} />,
   },
   {
     name: "search",
-    icon: (active) => <Search size={s(22)} color={active ? C.white : "rgba(255,255,255,0.38)"} strokeWidth={active ? 2.5 : 1.8} />,
+    icon: (active, C) => <Search size={s(22)} color={active ? C.white : C.textMuted} strokeWidth={active ? 2.5 : 1.8} />,
   },
   {
     name: "fab",
     isFab: true,
-    icon: () => <Plus size={s(24)} color={C.white} strokeWidth={2.5} />,
+    icon: (_active, C) => <Plus size={s(24)} color={C.white} strokeWidth={2.5} />,
   },
   {
     name: "chat",
-    icon: (active) => <MessageCircle size={s(22)} color={active ? C.pink : "rgba(255,255,255,0.38)"} strokeWidth={active ? 2.5 : 1.8} />,
+    icon: (active, C) => <MessageCircle size={s(22)} color={active ? C.pink : C.textMuted} strokeWidth={active ? 2.5 : 1.8} />,
   },
   {
     name: "profile",
-    icon: (active) => <User size={s(22)} color={active ? C.pink : "rgba(255,255,255,0.38)"} strokeWidth={active ? 2.5 : 1.8} />,
+    icon: (active, C) => <User size={s(22)} color={active ? C.pink : C.textMuted} strokeWidth={active ? 2.5 : 1.8} />,
   },
 ];
 
@@ -50,16 +52,23 @@ interface CollabTabBarProps extends BottomTabBarProps {
 
 function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress }: CollabTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { tokens: { C, GRADIENT } } = useTheme();
+  const pathname = usePathname();
+  const fabGuardRef = useRef(false);
+
+  useEffect(() => {
+    fabGuardRef.current = false;
+  }, [pathname]);
 
   return (
     <View
       style={{
-        backgroundColor: "rgba(18,0,45,0.88)",
+        backgroundColor: C.tabBarBg,
         paddingHorizontal: s(12),
         paddingTop: vs(8),
         paddingBottom: Math.max(insets.bottom, vs(12)),
         borderTopWidth: 1,
-        borderTopColor: "rgba(200,62,210,0.25)",
+        borderTopColor: C.borderBright,
       }}
     >
       <View
@@ -76,16 +85,31 @@ function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress }: Coll
       >
         {TABS.map((tab) => {
           const route = state.routes.find((r) => r.name === tab.name);
-          const focused = route ? state.index === state.routes.indexOf(route) : false;
+          const activeRouteName = state.routes[state.index]?.name ?? "";
+          // Stacks reached from a tab keep that tab lit — see audit finding 19.
+          const OWNED_BY: Record<string, string> = {
+            "discover/[section]": "index",
+            projects: "index",
+            notifications: "index",
+            "users/[id]": "index",
+            settings: "profile",
+          };
+          const owner = OWNED_BY[activeRouteName] ?? activeRouteName;
+          const focused = tab.name === owner;
 
           if (tab.isFab) {
             return (
               <View key={tab.name} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                 <Btn
-                  onPress={() => router.push("/(app)/projects/create")}
+                  onPress={() => {
+                    if (fabGuardRef.current) return;
+                    fabGuardRef.current = true;
+                    router.navigate("/(app)/projects/create" as any);
+                  }}
                   style={{ borderRadius: s(26), overflow: "hidden" }}
                   hitSlop={8}
                   pressScale={0.92}
+                  debounceMs={0}
                 >
                   <LinearGradient
                     colors={GRADIENT.cta}
@@ -118,12 +142,12 @@ function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress }: Coll
                 pressScale={0.88}
               >
                 <View style={{ position: "relative" }}>
-                  {tab.icon(focused)}
+                  {tab.icon(focused, C)}
                   {tab.name === "chat" && hasChatUnread && (
                     <View style={{
                       position: "absolute", top: -2, right: -3,
                       width: s(9), height: s(9), borderRadius: s(5),
-                      backgroundColor: C.pink, borderWidth: 1.5, borderColor: "rgba(18,0,45,1)",
+                      backgroundColor: C.pink, borderWidth: 1.5, borderColor: C.bgDeep,
                     }} />
                   )}
                 </View>
@@ -252,6 +276,7 @@ export default function AppLayout() {
       <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="users/[id]" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="discover/[section]" options={{ href: null }} />
     </Tabs>
   );
 }
