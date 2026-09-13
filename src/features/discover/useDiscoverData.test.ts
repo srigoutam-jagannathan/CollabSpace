@@ -129,3 +129,55 @@ test("re-rendering with a new-but-equal skills array does not refetch", async ()
   expect(mocked.fetchActive).toHaveBeenCalledTimes(1);
   expect(mocked.fetchPeople).toHaveBeenCalledTimes(1);
 });
+
+describe("stale", () => {
+  const person = {
+    id: "p1", full_name: "Ana", avatar_url: null,
+    department: "CS", university: "qub" as const, pvs_score: 5,
+  };
+
+  test("is false while every section is healthy", async () => {
+    const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+    await waitFor(() => expect(result.current.people.loading).toBe(false));
+    expect(result.current.stale).toBe(false);
+  });
+
+  test("is true when a refetch fails over data already on screen", async () => {
+    mocked.fetchPeople.mockResolvedValue({ data: [person], error: null });
+    const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+    await waitFor(() => expect(result.current.people.data).toHaveLength(1));
+    expect(result.current.stale).toBe(false);
+
+    // The network drops; the kept payload must not be presented as current.
+    mocked.fetchPeople.mockResolvedValue({ data: [], error: "Couldn't load people." });
+    await act(async () => { await result.current.refresh(); });
+
+    expect(result.current.people.data).toHaveLength(1);
+    expect(result.current.stale).toBe(true);
+  });
+
+  test("a section that failed with nothing cached is not stale", async () => {
+    // It renders its own inline retry instead, so the banner would double up.
+    mocked.fetchPeople.mockResolvedValue({ data: [], error: "Couldn't load people." });
+    const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+    await waitFor(() => expect(result.current.people.loading).toBe(false));
+    expect(result.current.people.error).toBe("Couldn't load people.");
+    expect(result.current.stale).toBe(false);
+  });
+});
+
+test("a pull drives refreshing, a focus refetch drives revalidating", async () => {
+  const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+  await waitFor(() => expect(result.current.people.loading).toBe(false));
+  expect(result.current.refreshing).toBe(false);
+  expect(result.current.revalidating).toBe(false);
+
+  // revalidate() must never raise refreshing — that would pop the
+  // pull-to-refresh spinner on every screen focus.
+  let pending: Promise<void>;
+  act(() => { pending = result.current.revalidate(); });
+  await waitFor(() => expect(result.current.revalidating).toBe(true));
+  expect(result.current.refreshing).toBe(false);
+  await act(async () => { await pending; });
+  expect(result.current.revalidating).toBe(false);
+});

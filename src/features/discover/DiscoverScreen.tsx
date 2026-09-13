@@ -5,6 +5,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { Bell } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
+import { ProgressLine } from "@/components/ProgressLine";
 import { useAuth } from "@/features/auth/AuthContext";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -40,14 +41,21 @@ export default function DiscoverScreen() {
       });
   }, [user?.id]);
 
-  const { pulse, needs, needsMode, active, people, refreshing, refresh, retry } =
-    useDiscoverData(skills, department);
+  const {
+    pulse, needs, needsMode, active, people,
+    refreshing, revalidating, stale, refresh, revalidate, retry,
+  } = useDiscoverData(skills, department);
 
-  // Refetch on focus without clearing what is already on screen.
-  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+  // Refetch on focus without clearing what is already on screen. revalidate()
+  // rather than refresh() so this does not drive the pull-to-refresh spinner.
+  useFocusEffect(useCallback(() => { revalidate(); }, [revalidate]));
 
   const allFailed =
     !!pulse.error && !!needs.error && !!active.error && !!people.error;
+
+  const hasContent =
+    pulse.data.length > 0 || needs.data.length > 0 ||
+    active.data.length > 0 || people.data.length > 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
@@ -69,6 +77,37 @@ export default function DiscoverScreen() {
           <Bell size={s(22)} color={C.white} />
         </Btn>
       </View>
+
+      {/* Only once something is on screen — during the first load the
+          skeletons already say the screen is working. */}
+      <ProgressLine visible={revalidating && hasContent} />
+
+      {stale && (
+        <View style={{
+          flexDirection: "row", alignItems: "center", gap: s(10),
+          marginHorizontal: s(20), marginBottom: vs(10),
+          paddingHorizontal: s(12), paddingVertical: vs(8),
+          borderRadius: s(10), borderWidth: 1, borderColor: C.border,
+          backgroundColor: C.surface,
+        }}>
+          <Text
+            accessibilityRole="alert"
+            style={{ flex: 1, color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(11.5) }}
+          >
+            Showing saved results — couldn&apos;t reach CollabSpace.
+          </Text>
+          <Btn
+            onPress={refresh}
+            accessibilityLabel="Retry loading Discover"
+            style={{
+              paddingHorizontal: s(10), paddingVertical: vs(5), borderRadius: s(8),
+              borderWidth: 1, borderColor: C.borderBright,
+            }}
+          >
+            <Text style={{ color: C.purpleL, fontFamily: FONT.bold, fontSize: fs(11) }}>Retry</Text>
+          </Btn>
+        </View>
+      )}
 
       {allFailed ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: s(24) }}>
@@ -97,8 +136,11 @@ export default function DiscoverScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.purpleL} />
           }
         >
+          {/* Unlabelled by design — see SectionFrame's showHeader note. */}
           <SectionFrame
             title="Recent activity"
+            showHeader={false}
+            skeleton="strip"
             visible={sectionVisible("pulse", pulse.data.length)}
             loading={pulse.loading && pulse.data.length === 0}
             error={pulse.error}
@@ -110,6 +152,7 @@ export default function DiscoverScreen() {
           {skills.length === 0 ? (
             <SectionFrame
               title="Needs your skills"
+              skeleton="hero"
               visible
               loading={false}
               error={null}
@@ -120,6 +163,7 @@ export default function DiscoverScreen() {
           ) : (
             <SectionFrame
               title={needsMode === "matched" ? "Needs your skills" : "New projects"}
+              skeleton="hero"
               visible={sectionVisible("needs", needs.data.length)}
               loading={needs.loading && needs.data.length === 0}
               error={needs.error}
@@ -132,6 +176,7 @@ export default function DiscoverScreen() {
 
           <SectionFrame
             title="Active right now"
+            skeleton="rail"
             visible={sectionVisible("active", active.data.length)}
             loading={active.loading && active.data.length === 0}
             error={active.error}
@@ -143,6 +188,7 @@ export default function DiscoverScreen() {
 
           <SectionFrame
             title="People to know"
+            skeleton="people"
             visible={sectionVisible("people", people.data.length)}
             loading={people.loading && people.data.length === 0}
             error={people.error}

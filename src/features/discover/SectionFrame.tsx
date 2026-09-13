@@ -1,9 +1,10 @@
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text } from "react-native";
 import { ChevronRight } from "lucide-react-native";
 import { Btn } from "@/components/Btn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { SectionSkeleton, type SkeletonShape } from "./SectionSkeleton";
 
 interface Props {
   title: string;
@@ -13,10 +14,21 @@ interface Props {
   error: string | null;
   onRetry: () => void;
   onSeeAll?: () => void;
+  /** Shape the first-load placeholder borrows from this section. */
+  skeleton: SkeletonShape;
+  /**
+   * The pulse strip is deliberately unlabelled in the approved design — it is
+   * the thinnest thing on the screen and announcing it gives it the same
+   * billing as the hero. It still needs the frame for its loading and error
+   * states, so the header is suppressed rather than the frame skipped.
+   */
+  showHeader?: boolean;
   children: React.ReactNode;
 }
 
-export function SectionFrame({ title, visible, loading, error, onRetry, onSeeAll, children }: Props) {
+export function SectionFrame({
+  title, visible, loading, error, onRetry, onSeeAll, skeleton, showHeader = true, children,
+}: Props) {
   const { tokens: { C } } = useTheme();
 
   // Nothing to say — render nothing at all, not an empty placeholder.
@@ -24,6 +36,7 @@ export function SectionFrame({ title, visible, loading, error, onRetry, onSeeAll
 
   return (
     <View style={{ marginBottom: vs(16) }}>
+      {showHeader && (
       <View style={{
         flexDirection: "row", alignItems: "center", justifyContent: "space-between",
         paddingHorizontal: s(20), marginBottom: vs(8),
@@ -48,12 +61,9 @@ export function SectionFrame({ title, visible, loading, error, onRetry, onSeeAll
           </Btn>
         )}
       </View>
-
-      {loading && (
-        <View style={{ paddingHorizontal: s(20), paddingVertical: vs(12) }}>
-          <ActivityIndicator size="small" color={C.purpleL} />
-        </View>
       )}
+
+      {loading && <SectionSkeleton shape={skeleton} />}
 
       {error && (
         <View style={{
