@@ -16,6 +16,7 @@ import {
   type GestureResponderEvent,
   type AccessibilityRole,
 } from "react-native";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -44,6 +45,10 @@ export function Btn({
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const lastPressAt = useRef(0);
   const [pressed, setPressed] = useState(false);
+  // With Reduce Motion on, the press still gives feedback through opacity —
+  // only the scale spring is dropped. Opacity is a fade, not motion, so it
+  // stays: removing it too would leave presses with no feedback at all.
+  const reducedMotion = useReducedMotion();
 
   function handlePress(e: GestureResponderEvent) {
     if (debounceMs > 0) {
@@ -56,6 +61,7 @@ export function Btn({
 
   function handlePressIn() {
     setPressed(true);
+    if (reducedMotion) return;
     Animated.spring(scaleAnim, {
       toValue: pressScale,
       useNativeDriver: true,
@@ -66,6 +72,7 @@ export function Btn({
 
   function handlePressOut() {
     setPressed(false);
+    if (reducedMotion) return;
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
