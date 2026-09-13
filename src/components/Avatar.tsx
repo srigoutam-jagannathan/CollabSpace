@@ -1,6 +1,7 @@
 import { View, Text, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { C, FONT, GRADIENT } from "@/utils/theme";
+import { FONT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s } from "@/utils/scale";
 
 type Props = {
@@ -13,11 +14,12 @@ type Props = {
 };
 
 export function Avatar({ url, initials, size, ring = false, bgColor, hasUnread = false }: Props) {
+  const { tokens: { C, GRADIENT } } = useTheme();
   const radius = size / 2;
   const innerSize = ring ? size - 6 : size;
   const innerRadius = ring ? radius - 3 : radius;
   const fontSize = Math.round(size * 0.3);
-  const bg = bgColor ?? (ring ? C.bgMid : "#2d1b69");
+  const bg = bgColor ?? (ring ? C.bgMid : C.avatarBg);
 
   const face = (
     <View style={{
@@ -55,7 +57,7 @@ export function Avatar({ url, initials, size, ring = false, bgColor, hasUnread =
         <View style={{
           position: "absolute", top: 1, right: 1,
           width: s(11), height: s(11), borderRadius: s(6),
-          backgroundColor: C.pink, borderWidth: 2, borderColor: "#120030",
+          backgroundColor: C.pink, borderWidth: 2, borderColor: "#120908",
         }} />
       )}
     </View>
