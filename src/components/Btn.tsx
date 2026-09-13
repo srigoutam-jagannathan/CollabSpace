@@ -1,26 +1,61 @@
 /**
- * Btn — a Pressable wrapper that adds visual press feedback to every interactive
- * element in the app.  Opacity drops to 0.65 on press; scale subtly shrinks.
+ * Btn — a Pressable that adds visual press feedback to every interactive
+ * element in the app. Opacity drops on press; scale subtly shrinks.
  *
- * Usage: drop-in replacement for Pressable anywhere you want feedback.
- *
- *   import { Btn } from "@/components/Btn";
- *   <Btn onPress={...} style={{ ... }}>...</Btn>
+ * The style you pass lands on the pressable itself and the children are its
+ * direct descendants, so layout styles (flexDirection, gap, justifyContent)
+ * behave exactly as they would on a View.
  */
-import { Pressable, type PressableProps, type ViewStyle, type StyleProp, Animated } from "react-native";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import {
+  Animated,
+  Pressable,
+  type PressableProps,
+  type ViewStyle,
+  type StyleProp,
+  type GestureResponderEvent,
+  type AccessibilityRole,
+} from "react-native";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface BtnProps extends Omit<PressableProps, "style"> {
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
   /** Scale factor on press. Defaults to 0.96. Set to 1 to disable scale. */
   pressScale?: number;
+  /**
+   * Minimum ms between accepted presses. Prevents double-tap from pushing the
+   * same screen twice. Defaults to 500. Pass 0 to disable (e.g. steppers).
+   */
+  debounceMs?: number;
 }
 
-export function Btn({ children, style, pressScale = 0.96, onPress, ...rest }: BtnProps) {
+export function Btn({
+  children,
+  style,
+  pressScale = 0.96,
+  onPress,
+  debounceMs = 500,
+  accessibilityRole = "button" as AccessibilityRole,
+  disabled,
+  ...rest
+}: BtnProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const lastPressAt = useRef(0);
+  const [pressed, setPressed] = useState(false);
+
+  function handlePress(e: GestureResponderEvent) {
+    if (debounceMs > 0) {
+      const now = Date.now();
+      if (now - lastPressAt.current < debounceMs) return;
+      lastPressAt.current = now;
+    }
+    onPress?.(e);
+  }
 
   function handlePressIn() {
+    setPressed(true);
     Animated.spring(scaleAnim, {
       toValue: pressScale,
       useNativeDriver: true,
@@ -30,6 +65,7 @@ export function Btn({ children, style, pressScale = 0.96, onPress, ...rest }: Bt
   }
 
   function handlePressOut() {
+    setPressed(false);
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
@@ -39,19 +75,23 @@ export function Btn({ children, style, pressScale = 0.96, onPress, ...rest }: Bt
   }
 
   return (
-    <Pressable
+    <AnimatedPressable
       {...rest}
-      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={{ disabled: !!disabled }}
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={({ pressed }) => [
-        style as ViewStyle,
-        { opacity: pressed ? 0.72 : 1 },
+      style={[
+        style,
+        {
+          opacity: disabled ? 0.5 : pressed ? 0.72 : 1,
+          transform: [{ scale: scaleAnim }],
+        },
       ]}
     >
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        {children}
-      </Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }
