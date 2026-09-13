@@ -5,7 +5,7 @@
 import { View, Text, ActivityIndicator, type StyleProp, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Btn } from "@/components/Btn";
-import { GRADIENT, C } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 
 interface GradientBtnProps {
@@ -28,6 +28,7 @@ export function GradientBtn({
   soft,
   children,
 }: GradientBtnProps) {
+  const { tokens: { C, GRADIENT } } = useTheme();
   const colors = soft ? GRADIENT.ctaSoft : GRADIENT.cta;
 
   return (
@@ -35,13 +36,14 @@ export function GradientBtn({
       onPress={onPress}
       disabled={disabled || loading}
       pressScale={0.97}
-      style={[{ borderRadius: s(32), overflow: "hidden", opacity: disabled || loading ? 0.65 : 1 }, style]}
+      // Btn owns disabled dimming — setting opacity here would be silently overridden.
+      style={[{ borderRadius: s(32), overflow: "hidden" }, style]}
     >
       <LinearGradient
         colors={colors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={{ paddingVertical: vs(16), alignItems: "center", paddingHorizontal: s(20) }}
+        style={{ borderRadius: s(32), paddingVertical: vs(16), alignItems: "center", paddingHorizontal: s(20) }}
       >
         {loading ? (
           <ActivityIndicator size="small" color={C.white} />
