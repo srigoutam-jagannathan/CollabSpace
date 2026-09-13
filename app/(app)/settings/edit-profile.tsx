@@ -12,7 +12,8 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
 import { GradientBtn } from "@/components/GradientBtn";
-import { C, FONT, GRADIENT } from "@/utils/theme";
+import { FONT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 
 type FormState = {
@@ -25,6 +26,7 @@ type FormState = {
 const EMPTY: FormState = { full_name: "", bio: "", department: "", year_of_study: "" };
 
 function FieldLabel({ label }: { label: string }) {
+  const { tokens: { C } } = useTheme();
   return (
     <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(13), marginBottom: vs(8), letterSpacing: 0.2 }}>
       {label}
@@ -33,6 +35,7 @@ function FieldLabel({ label }: { label: string }) {
 }
 
 export default function EditProfileScreen() {
+  const { tokens: { C, GRADIENT } } = useTheme();
   const { user } = useAuth();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
@@ -146,6 +149,19 @@ export default function EditProfileScreen() {
       setSaving(false);
     }
   }
+
+  const inputStyle = {
+    backgroundColor: C.fieldBg,
+    borderRadius: s(10),
+    borderWidth: 1,
+    borderColor: C.border,
+    color: C.white,
+    fontSize: fs(15),
+    paddingHorizontal: s(16),
+    paddingVertical: vs(14),
+    height: vs(52),
+    fontFamily: FONT.regular,
+  };
 
   if (loading) {
     return (
@@ -269,15 +285,3 @@ export default function EditProfileScreen() {
   );
 }
 
-const inputStyle = {
-  backgroundColor: "rgba(255,255,255,0.06)",
-  borderRadius: s(10),
-  borderWidth: 1,
-  borderColor: "rgba(139,92,246,0.3)",
-  color: "#ffffff" as const,
-  fontSize: fs(15),
-  paddingHorizontal: s(16),
-  paddingVertical: vs(14),
-  height: vs(52),
-  fontFamily: FONT.regular,
-};

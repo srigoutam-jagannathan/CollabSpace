@@ -14,7 +14,8 @@ import { useRouter } from "expo-router";
 import { Search, SlidersHorizontal, ChevronDown, Check, X, ArrowUpDown } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
-import { C, FONT, GRADIENT } from "@/utils/theme";
+import { FONT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Profile } from "@/types/database";
 
@@ -104,6 +105,7 @@ const SORT_OPTIONS: { key: SortOrder; label: string; sub: string }[] = [
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SearchScreen() {
+  const { tokens: { C, GLASS, GRADIENT } } = useTheme();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [showFilter, setShowFilter] = useState(false);
@@ -186,9 +188,9 @@ export default function SearchScreen() {
       <View style={{
         flexDirection: "row", alignItems: "center",
         marginHorizontal: s(20), marginBottom: vs(10),
-        backgroundColor: "rgba(255,255,255,0.07)",
+        backgroundColor: GLASS.card.backgroundColor,
         borderRadius: s(28), paddingHorizontal: s(16), height: vs(50),
-        borderWidth: 1, borderColor: "rgba(255,255,255,0.10)",
+        borderWidth: 1, borderColor: GLASS.chip.backgroundColor,
       }}>
         <Search size={s(16)} color={C.textFaint} />
         <TextInput
@@ -228,14 +230,14 @@ export default function SearchScreen() {
       {showFilter && (
         <View style={{
           marginHorizontal: s(20), marginBottom: vs(10),
-          backgroundColor: "rgba(20,4,58,0.82)",
+          backgroundColor: C.filterPanelBg,
           borderRadius: s(18), overflow: "hidden",
-          borderWidth: 1, borderColor: "rgba(192,54,160,0.20)",
+          borderWidth: 1, borderColor: "rgba(192,133,82,0.25)",
         }}>
           <View style={{ flexDirection: "row" }}>
             {/* Category list */}
             <ScrollView
-              style={{ width: s(130), borderRightWidth: 1, borderRightColor: "rgba(255,255,255,0.07)" }}
+              style={{ width: s(130), borderRightWidth: 1, borderRightColor: GLASS.card.backgroundColor }}
               showsVerticalScrollIndicator={false}
             >
               {FILTER_CATEGORIES.map(cat => {
@@ -245,7 +247,7 @@ export default function SearchScreen() {
                   <Btn key={cat.key} onPress={() => setActiveCategory(cat.key)} pressScale={0.97}>
                     <View style={{
                       paddingVertical: vs(12), paddingHorizontal: s(14),
-                      backgroundColor: active ? "rgba(100,36,204,0.30)" : "transparent",
+                      backgroundColor: active ? "rgba(192,133,82,0.22)" : "transparent",
                       borderLeftWidth: active ? 2 : 0,
                       borderLeftColor: C.pink,
                       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -281,7 +283,7 @@ export default function SearchScreen() {
                   >
                     <View style={{
                       width: s(18), height: s(18), borderRadius: s(5), borderWidth: 1.5,
-                      borderColor: checked ? C.pink : "rgba(255,255,255,0.25)",
+                      borderColor: checked ? C.pink : C.border,
                       backgroundColor: checked ? C.pink : "transparent",
                       marginRight: s(10), alignItems: "center", justifyContent: "center",
                     }}>
@@ -301,7 +303,7 @@ export default function SearchScreen() {
           {activeFilterCount > 0 && (
             <Btn
               onPress={() => setSelectedOptions({})}
-              style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.07)", padding: s(12), alignItems: "center" }}
+              style={{ borderTopWidth: 1, borderTopColor: GLASS.card.backgroundColor, padding: s(12), alignItems: "center" }}
               pressScale={0.97}
             >
               <Text style={{ color: C.pink, fontFamily: FONT.semiBold, fontSize: fs(13) }}>
@@ -326,9 +328,9 @@ export default function SearchScreen() {
           onPress={() => setShowSortSheet(true)}
           style={{
             flexDirection: "row", alignItems: "center", gap: s(6),
-            backgroundColor: "rgba(255,255,255,0.07)",
+            backgroundColor: GLASS.card.backgroundColor,
             borderRadius: s(20), paddingHorizontal: s(14), paddingVertical: vs(7),
-            borderWidth: 1, borderColor: "rgba(192,54,160,0.25)",
+            borderWidth: 1, borderColor: "rgba(192,133,82,0.28)",
           }}
           pressScale={0.95}
         >
@@ -352,8 +354,8 @@ export default function SearchScreen() {
         >
           {results.map(project => (
             <View key={project.id} style={{
-              backgroundColor: "rgba(255,255,255,0.07)", borderRadius: s(16),
-              borderWidth: 1, borderColor: "rgba(255,255,255,0.14)",
+              backgroundColor: GLASS.card.backgroundColor, borderRadius: s(16),
+              borderWidth: 1, borderColor: GLASS.card.borderColor,
               marginBottom: vs(12), overflow: "hidden",
             }}>
               <LinearGradient
@@ -369,24 +371,24 @@ export default function SearchScreen() {
                 {/* Meta row */}
                 <View style={{ flexDirection: "row", gap: s(8), marginBottom: vs(8), flexWrap: "wrap" }}>
                   {project.project_type && (
-                    <View style={{ backgroundColor: "rgba(255,255,255,0.10)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
-                      <Text style={{ color: "rgba(255,255,255,0.60)", fontFamily: FONT.medium, fontSize: fs(11) }}>{project.project_type}</Text>
+                    <View style={{ backgroundColor: GLASS.chip.backgroundColor, borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+                      <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(11) }}>{project.project_type}</Text>
                     </View>
                   )}
                   {project.collaboration_style && (
-                    <View style={{ backgroundColor: "rgba(255,255,255,0.10)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
-                      <Text style={{ color: "rgba(255,255,255,0.60)", fontFamily: FONT.medium, fontSize: fs(11) }}>{project.collaboration_style}</Text>
+                    <View style={{ backgroundColor: GLASS.chip.backgroundColor, borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+                      <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(11) }}>{project.collaboration_style}</Text>
                     </View>
                   )}
                   {(project.team_size ?? 0) > 0 && (
-                    <View style={{ backgroundColor: "rgba(255,255,255,0.10)", borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
-                      <Text style={{ color: "rgba(255,255,255,0.60)", fontFamily: FONT.medium, fontSize: fs(11) }}>
+                    <View style={{ backgroundColor: GLASS.chip.backgroundColor, borderRadius: s(10), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+                      <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(11) }}>
                         Team of {project.team_size}
                       </Text>
                     </View>
                   )}
                 </View>
-                <Text style={{ color: "rgba(255,255,255,0.55)", fontFamily: FONT.regular, fontSize: fs(13), lineHeight: vs(19), marginBottom: vs(12) }} numberOfLines={2}>
+                <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13), lineHeight: vs(19), marginBottom: vs(12) }} numberOfLines={2}>
                   {project.description}
                 </Text>
                 <View style={{ alignItems: "flex-end" }}>
@@ -423,15 +425,15 @@ export default function SearchScreen() {
         >
           <Pressable onPress={e => e.stopPropagation()}>
             <View style={{
-              backgroundColor: "#180440",
+              backgroundColor: C.modalBg,
               borderTopLeftRadius: s(28), borderTopRightRadius: s(28),
               paddingTop: vs(8), paddingBottom: vs(36),
-              borderTopWidth: 1, borderColor: "rgba(192,54,160,0.25)",
+              borderTopWidth: 1, borderColor: "rgba(192,133,82,0.28)",
             }}>
               {/* Handle */}
               <View style={{
                 width: s(36), height: vs(4), borderRadius: s(2),
-                backgroundColor: "rgba(255,255,255,0.2)",
+                backgroundColor: C.surface,
                 alignSelf: "center", marginBottom: vs(20),
               }} />
 
@@ -453,15 +455,15 @@ export default function SearchScreen() {
                     <View style={{
                       flexDirection: "row", alignItems: "center",
                       paddingHorizontal: s(24), paddingVertical: vs(16),
-                      backgroundColor: selected ? "rgba(192,54,160,0.12)" : "transparent",
+                      backgroundColor: selected ? GLASS.card.borderColor : "transparent",
                       borderTopWidth: i === 0 ? 0 : 1,
-                      borderTopColor: "rgba(255,255,255,0.06)",
+                      borderTopColor: C.border,
                     }}>
                       {/* Left: radio dot */}
                       <View style={{
                         width: s(22), height: s(22), borderRadius: s(11),
                         borderWidth: 2,
-                        borderColor: selected ? C.pink : "rgba(255,255,255,0.25)",
+                        borderColor: selected ? C.pink : C.border,
                         alignItems: "center", justifyContent: "center",
                         marginRight: s(14),
                       }}>

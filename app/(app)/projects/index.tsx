@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { FolderKanban, Plus, Zap } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import type { Project } from "@/types/database";
 
 function ProjectRow({ project, onPress }: { project: Project; onPress: () => void }) {
@@ -44,6 +45,7 @@ function ProjectRow({ project, onPress }: { project: Project; onPress: () => voi
 }
 
 export default function MyProjectsScreen() {
+  const { tokens: { C } } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -79,7 +81,7 @@ export default function MyProjectsScreen() {
           className="w-9 h-9 rounded-full bg-primary-500 items-center justify-center active:opacity-70"
           onPress={() => router.push("/(app)/projects/create")}
         >
-          <Plus size={18} color="#fff" />
+          <Plus size={18} color={C.white} />
         </Pressable>
       </View>
 
@@ -98,7 +100,7 @@ export default function MyProjectsScreen() {
             className="flex-row items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-500 active:opacity-70"
             onPress={() => router.push("/(app)/projects/create")}
           >
-            <Zap size={16} color="#fff" />
+            <Zap size={16} color={C.white} />
             <Text className="text-white font-semibold">Launch a Project</Text>
           </Pressable>
         </View>

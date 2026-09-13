@@ -14,12 +14,14 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { GradientBtn } from "@/components/GradientBtn";
 import { Btn } from "@/components/Btn";
-import { C, FONT } from "@/utils/theme";
+import { FONT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 
 const ROLES = ["Developer", "Designer", "Marketer", "Legal", "Finance", "Other"];
 
 export default function JoinProjectScreen() {
+  const { tokens: { C } } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
@@ -90,10 +92,10 @@ export default function JoinProjectScreen() {
             pressScale={0.88}
             style={{ flexDirection: "row", alignItems: "center", gap: s(4) }}
           >
-            <ChevronLeft size={s(18)} color="rgba(255,255,255,0.55)" />
+            <ChevronLeft size={s(18)} color={C.textMuted} />
             <Text
               style={{
-                color: "rgba(255,255,255,0.55)",
+                color: C.textMuted,
                 fontFamily: FONT.medium,
                 fontSize: fs(14),
               }}
@@ -149,7 +151,7 @@ export default function JoinProjectScreen() {
                   paddingVertical: vs(8),
                   backgroundColor: isSelected ? C.pink : "transparent",
                   borderWidth: 1.5,
-                  borderColor: isSelected ? C.pink : "rgba(255,255,255,0.2)",
+                  borderColor: isSelected ? C.pink : C.border,
                 }}>
                   <Text style={{
                     color: isSelected ? C.white : C.textMuted,
@@ -186,14 +188,14 @@ export default function JoinProjectScreen() {
           textAlignVertical="top"
           style={{
             height: vs(140),
-            backgroundColor: "rgba(255,255,255,0.06)",
+            backgroundColor: C.fieldBg,
             borderRadius: s(14),
             padding: s(16),
             color: C.white,
             fontSize: fs(14),
             fontFamily: FONT.regular,
             borderWidth: 1,
-            borderColor: "rgba(192,54,160,0.2)",
+            borderColor: "rgba(192,133,82,0.22)",
           }}
         />
 

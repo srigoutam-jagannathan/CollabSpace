@@ -9,14 +9,37 @@ import { ChevronLeft } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
 import { GradientBtn } from "@/components/GradientBtn";
-import { C, FONT } from "@/utils/theme";
+import { FONT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 
 export default function ChangePasswordScreen() {
+  const { tokens: { C } } = useTheme();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const labelStyle = {
+    color: C.white,
+    fontFamily: FONT.semiBold,
+    fontSize: fs(13),
+    marginBottom: vs(8),
+    letterSpacing: 0.2,
+  };
+
+  const inputStyle = {
+    backgroundColor: C.fieldBg,
+    borderRadius: s(10),
+    borderWidth: 1,
+    borderColor: C.border,
+    color: C.white,
+    fontSize: fs(15),
+    paddingHorizontal: s(16),
+    paddingVertical: vs(14),
+    height: vs(52),
+    fontFamily: FONT.regular,
+  };
 
   async function handleSave() {
     setError(null);
@@ -104,23 +127,3 @@ export default function ChangePasswordScreen() {
   );
 }
 
-const labelStyle = {
-  color: "#ffffff" as const,
-  fontFamily: FONT.semiBold,
-  fontSize: fs(13),
-  marginBottom: vs(8),
-  letterSpacing: 0.2,
-};
-
-const inputStyle = {
-  backgroundColor: "rgba(255,255,255,0.06)",
-  borderRadius: s(10),
-  borderWidth: 1,
-  borderColor: "rgba(139,92,246,0.3)",
-  color: "#ffffff" as const,
-  fontSize: fs(15),
-  paddingHorizontal: s(16),
-  paddingVertical: vs(14),
-  height: vs(52),
-  fontFamily: FONT.regular,
-};

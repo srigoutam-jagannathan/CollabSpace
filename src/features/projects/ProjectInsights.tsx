@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { ChevronLeft, Copy, Check, Scale, Cpu, Megaphone, Zap, MessageSquare } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
+import { Btn } from "@/components/Btn";
+import { useTheme } from "@/contexts/ThemeContext";
+import { FONT } from "@/utils/theme";
+import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -16,83 +20,139 @@ interface SubAgentPrompt {
   starter_question: string;
 }
 
-type DomainConfig = {
+type DomainMeta = {
   icon: typeof Scale;
-  color: string;
-  bgClass: string;
-  borderClass: string;
+  accentColor: string;
+  bgColor: string;
+  borderColor: string;
 };
 
-const DOMAIN_CONFIG: Record<SubAgentPrompt["domain"], DomainConfig> = {
+const DOMAIN_META: Record<SubAgentPrompt["domain"], DomainMeta> = {
   legal: {
     icon: Scale,
-    color: "#f59e0b",
-    bgClass: "bg-amber-950/40",
-    borderClass: "border-amber-800/40",
+    accentColor: "#f5a623",
+    bgColor: "rgba(245,166,35,0.08)",
+    borderColor: "rgba(245,166,35,0.22)",
   },
   tech: {
     icon: Cpu,
-    color: "#3b82f6",
-    bgClass: "bg-primary-950/40",
-    borderClass: "border-primary-800/40",
+    accentColor: "#c08552",
+    bgColor: "rgba(192,133,82,0.08)",
+    borderColor: "rgba(192,133,82,0.22)",
   },
   marketing: {
     icon: Megaphone,
-    color: "#10b981",
-    bgClass: "bg-emerald-950/40",
-    borderClass: "border-emerald-800/40",
+    accentColor: "#52c0a8",
+    bgColor: "rgba(82,192,168,0.08)",
+    borderColor: "rgba(82,192,168,0.20)",
   },
 };
 
 // ─── Prompt Card ──────────────────────────────────────────────────────────────
 
 function PromptCard({ prompt }: { prompt: SubAgentPrompt }) {
+  const { tokens: { C } } = useTheme();
   const [copied, setCopied] = useState(false);
-  const config = DOMAIN_CONFIG[prompt.domain];
-  const Icon = config.icon;
+  const meta = DOMAIN_META[prompt.domain];
+  const Icon = meta.icon;
 
-  const handleCopy = async () => {
+  async function handleCopy() {
     await Clipboard.setStringAsync(prompt.system_prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
+  }
 
   return (
-    <View className={`mb-4 rounded-2xl border p-4 ${config.bgClass} ${config.borderClass}`}>
+    <View style={{
+      marginBottom: vs(12),
+      borderRadius: s(16),
+      borderWidth: 1,
+      borderColor: meta.borderColor,
+      backgroundColor: meta.bgColor,
+      overflow: "hidden",
+    }}>
       {/* Card header */}
-      <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center gap-2">
-          <Icon size={18} color={config.color} />
-          <Text className="text-white font-bold text-base">{prompt.label}</Text>
-        </View>
-        <Pressable
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 active:opacity-60"
-          onPress={handleCopy}
-        >
-          {copied ? (
-            <Check size={14} color="#10b981" />
-          ) : (
-            <Copy size={14} color="#94a3b8" />
-          )}
-          <Text className={`text-xs font-medium ${copied ? "text-emerald-400" : "text-slate-400"}`}>
-            {copied ? "Copied!" : "Copy"}
+      <View style={{
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+        paddingHorizontal: s(14), paddingTop: vs(12), paddingBottom: vs(10),
+        borderBottomWidth: 1, borderBottomColor: meta.borderColor,
+      }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
+          <View style={{
+            width: s(30), height: s(30), borderRadius: s(8),
+            backgroundColor: `${meta.accentColor}18`,
+            alignItems: "center", justifyContent: "center",
+          }}>
+            <Icon size={s(15)} color={meta.accentColor} strokeWidth={1.8} />
+          </View>
+          <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14) }}>
+            {prompt.label}
           </Text>
-        </Pressable>
+        </View>
+
+        <Btn onPress={handleCopy} pressScale={0.9} debounceMs={0}>
+          <View style={{
+            flexDirection: "row", alignItems: "center", gap: s(5),
+            paddingHorizontal: s(10), paddingVertical: vs(5),
+            borderRadius: s(8),
+            backgroundColor: copied ? "rgba(82,192,168,0.12)" : C.surface,
+            borderWidth: 1,
+            borderColor: copied ? "rgba(82,192,168,0.30)" : C.border,
+          }}>
+            {copied
+              ? <Check size={s(12)} color="#52c0a8" strokeWidth={2.5} />
+              : <Copy size={s(12)} color={C.textMuted} strokeWidth={1.8} />}
+            <Text style={{
+              color: copied ? "#52c0a8" : C.textMuted,
+              fontFamily: FONT.semiBold,
+              fontSize: fs(12),
+            }}>
+              {copied ? "Copied!" : "Copy"}
+            </Text>
+          </View>
+        </Btn>
       </View>
 
       {/* Prompt preview */}
-      <Text className="text-slate-300 text-sm leading-5 mb-3" numberOfLines={5}>
-        {prompt.system_prompt}
-      </Text>
+      <View style={{ paddingHorizontal: s(14), paddingTop: vs(10), paddingBottom: vs(10) }}>
+        <Text style={{
+          color: C.textMuted,
+          fontFamily: FONT.regular,
+          fontSize: fs(13),
+          lineHeight: vs(20),
+          marginBottom: vs(10),
+        }} numberOfLines={5}>
+          {prompt.system_prompt}
+        </Text>
 
-      {/* Starter question */}
-      <View className="bg-slate-900/60 rounded-xl p-3">
-        <Text className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
-          Starter Question
-        </Text>
-        <Text className="text-slate-300 text-sm italic leading-5">
-          {prompt.starter_question}
-        </Text>
+        {/* Starter question */}
+        <View style={{
+          backgroundColor: "rgba(255,248,240,0.04)",
+          borderRadius: s(10),
+          borderWidth: 1,
+          borderColor: C.border,
+          padding: s(12),
+        }}>
+          <Text style={{
+            color: C.textFaint,
+            fontFamily: FONT.semiBold,
+            fontSize: fs(10),
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+            marginBottom: vs(4),
+          }}>
+            Starter Question
+          </Text>
+          <Text style={{
+            color: C.textMuted,
+            fontFamily: FONT.regular,
+            fontSize: fs(13),
+            fontStyle: "italic",
+            lineHeight: vs(19),
+          }}>
+            {prompt.starter_question}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -102,16 +162,15 @@ function PromptCard({ prompt }: { prompt: SubAgentPrompt }) {
 
 export default function ProjectInsights({ projectId }: { projectId: string }) {
   const router = useRouter();
+  const { tokens: { C } } = useTheme();
   const [project, setProject] = useState<Project | null>(null);
   const [prompts, setPrompts] = useState<SubAgentPrompt[]>([]);
   const [loadingProject, setLoadingProject] = useState(true);
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Fetch project details
   useEffect(() => {
     if (!projectId) return;
-
     supabase
       .from("projects")
       .select("*")
@@ -123,13 +182,10 @@ export default function ProjectInsights({ projectId }: { projectId: string }) {
       });
   }, [projectId]);
 
-  // Call analyze-project Edge Function once project is loaded
   useEffect(() => {
     if (!project) return;
-
     setLoadingAI(true);
     setAiError(null);
-
     supabase.functions
       .invoke("analyze-project", {
         body: {
@@ -148,7 +204,7 @@ export default function ProjectInsights({ projectId }: { projectId: string }) {
       });
   }, [project]);
 
-  const retryAI = () => {
+  function retryAI() {
     if (!project) return;
     setAiError(null);
     setLoadingAI(true);
@@ -168,80 +224,113 @@ export default function ProjectInsights({ projectId }: { projectId: string }) {
         }
         setLoadingAI(false);
       });
-  };
+  }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
       {/* Header */}
-      <View className="flex-row items-center px-4 pt-2 pb-4 border-b border-surface-border">
-        <Pressable className="mr-3 active:opacity-60" onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#94a3b8" />
-        </Pressable>
-        <View className="flex-1">
-          <Text className="text-slate-400 text-xs mb-0.5">AI Insights</Text>
-          <Text className="text-white font-bold text-base" numberOfLines={1}>
+      <View style={{
+        flexDirection: "row", alignItems: "center",
+        paddingHorizontal: s(16), paddingTop: vs(8), paddingBottom: vs(14),
+        borderBottomWidth: 1, borderBottomColor: C.border,
+      }}>
+        <Btn onPress={() => router.back()} pressScale={0.9} hitSlop={12} style={{ marginRight: s(10) }}>
+          <ChevronLeft size={s(22)} color={C.textMuted} strokeWidth={2} />
+        </Btn>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(11) }}>AI Insights</Text>
+          <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(15) }} numberOfLines={1}>
             {loadingProject ? "Loading…" : (project?.title ?? "Project")}
           </Text>
         </View>
-        <Pressable
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-card border border-surface-border active:opacity-60"
-          onPress={() =>
-            router.push({ pathname: "/(app)/chat/[id]", params: { id: projectId } })
-          }
+        <Btn
+          onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: projectId } })}
+          pressScale={0.9}
         >
-          <MessageSquare size={14} color="#3b82f6" />
-          <Text className="text-primary-400 text-sm font-medium">Chat</Text>
-        </Pressable>
+          <View style={{
+            flexDirection: "row", alignItems: "center", gap: s(6),
+            paddingHorizontal: s(12), paddingVertical: vs(7),
+            borderRadius: s(10),
+            backgroundColor: C.surface,
+            borderWidth: 1, borderColor: C.border,
+          }}>
+            <MessageSquare size={s(14)} color={C.purple} strokeWidth={1.8} />
+            <Text style={{ color: C.purple, fontFamily: FONT.semiBold, fontSize: fs(13) }}>Chat</Text>
+          </View>
+        </Btn>
       </View>
 
       {loadingProject ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#3b82f6" />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={C.purple} />
         </View>
       ) : (
         <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: s(16), paddingBottom: vs(48) }}
           showsVerticalScrollIndicator={false}
         >
           {/* BYO-AI banner */}
-          <View className="flex-row items-start gap-3 mb-5 p-4 rounded-2xl bg-surface-card border border-surface-border">
-            <Zap size={18} color="#f59e0b" />
-            <View className="flex-1">
-              <Text className="text-white font-semibold text-sm mb-0.5">
+          <View style={{
+            flexDirection: "row", alignItems: "flex-start", gap: s(12),
+            marginBottom: vs(20),
+            padding: s(14),
+            borderRadius: s(14),
+            backgroundColor: "rgba(245,166,35,0.07)",
+            borderWidth: 1, borderColor: "rgba(245,166,35,0.20)",
+          }}>
+            <Zap size={s(18)} color="#f5a623" strokeWidth={1.8} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(13), marginBottom: vs(3) }}>
                 BYO-AI Sub-Agent Prompts
               </Text>
-              <Text className="text-slate-500 text-xs leading-4">
+              <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(12), lineHeight: vs(17) }}>
                 Copy any prompt into ChatGPT, Claude, or Gemini for expert guidance tailored to your project.
               </Text>
             </View>
-            {loadingAI && <ActivityIndicator size="small" color="#f59e0b" />}
+            {loadingAI && <ActivityIndicator size="small" color="#f5a623" />}
           </View>
 
           {/* AI error */}
           {aiError && (
-            <View className="mb-4 p-4 rounded-2xl bg-red-950/40 border border-red-800/40">
-              <Text className="text-red-400 text-sm mb-3">{aiError}</Text>
-              <Pressable
-                className="self-start px-3 py-1.5 rounded-lg bg-slate-800 active:opacity-70"
-                onPress={retryAI}
-              >
-                <Text className="text-slate-300 text-sm">Retry</Text>
-              </Pressable>
+            <View style={{
+              marginBottom: vs(16), padding: s(14),
+              borderRadius: s(14),
+              backgroundColor: "rgba(248,113,113,0.08)",
+              borderWidth: 1, borderColor: "rgba(248,113,113,0.22)",
+            }}>
+              <Text style={{ color: C.danger, fontFamily: FONT.regular, fontSize: fs(13), marginBottom: vs(10) }}>
+                {aiError}
+              </Text>
+              <Btn onPress={retryAI} pressScale={0.94} style={{ alignSelf: "flex-start" }}>
+                <View style={{
+                  paddingHorizontal: s(12), paddingVertical: vs(6),
+                  borderRadius: s(8),
+                  backgroundColor: C.surface,
+                  borderWidth: 1, borderColor: C.border,
+                }}>
+                  <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(13) }}>Retry</Text>
+                </View>
+              </Btn>
             </View>
           )}
 
           {/* Loading skeletons */}
-          {loadingAI && prompts.length === 0 &&
-            [1, 2, 3].map((i) => (
-              <View
-                key={i}
-                className="mb-4 rounded-2xl bg-surface-card border border-surface-border p-4 h-44 items-center justify-center gap-2"
-              >
-                <ActivityIndicator size="small" color="#3b82f6" />
-                <Text className="text-slate-600 text-xs">Generating prompt {i} of 3…</Text>
-              </View>
-            ))}
+          {loadingAI && prompts.length === 0 && [1, 2, 3].map((i) => (
+            <View key={i} style={{
+              marginBottom: vs(12),
+              borderRadius: s(16),
+              backgroundColor: C.surface,
+              borderWidth: 1, borderColor: C.border,
+              height: vs(160),
+              alignItems: "center", justifyContent: "center", gap: s(8),
+            }}>
+              <ActivityIndicator size="small" color={C.purple} />
+              <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(12) }}>
+                Generating prompt {i} of 3…
+              </Text>
+            </View>
+          ))}
 
           {/* Prompt cards */}
           {prompts.map((p) => (

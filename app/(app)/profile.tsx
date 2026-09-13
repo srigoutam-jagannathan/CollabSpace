@@ -1,14 +1,17 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { View, Text, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Settings, BadgeCheck } from "lucide-react-native";
+import { Settings, BadgeCheck, Share2 } from "lucide-react-native";
 import { Avatar } from "@/components/Avatar";
 import { router, useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Btn } from "@/components/Btn";
+import { ShareProfileSheet } from "@/components/ShareProfileSheet";
 import { supabase } from "@/lib/supabaseClient";
-import { C, GRADIENT, FONT } from "@/utils/theme";
+import { FONT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 
 type ProfileData = {
@@ -38,7 +41,7 @@ type MyCollab = {
   projectType: string | null;
   status: string;
   role: string;
-  mouAccepted: boolean;
+  committed: boolean;
 };
 
 const DEV_PROFILE: ProfileData = {
@@ -53,10 +56,11 @@ const DEV_PROFILE: ProfileData = {
 };
 
 function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
+  const { tokens: { C } } = useTheme();
   return (
     <View style={{ flexDirection: "row", gap: s(2) }}>
       {Array.from({ length: max }).map((_, i) => (
-        <Text key={i} style={{ fontSize: fs(14), color: i < rating ? C.yellow : "rgba(255,255,255,0.18)" }}>★</Text>
+        <Text key={i} style={{ fontSize: fs(14), color: i < rating ? C.yellow : C.border }}>★</Text>
       ))}
     </View>
   );
@@ -67,6 +71,7 @@ function Section({ title, children, action }: {
   children: React.ReactNode;
   action?: { label: string; onPress: () => void };
 }) {
+  const { tokens: { C } } = useTheme();
   return (
     <View style={{ paddingHorizontal: s(20), marginBottom: vs(28) }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: vs(12) }}>
@@ -83,12 +88,15 @@ function Section({ title, children, action }: {
 }
 
 export default function ProfileScreen() {
+  const { tokens: { C, GRADIENT, GLASS } } = useTheme();
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [myProjects, setMyProjects] = useState<OwnedProject[]>([]);
   const [myCollabs, setMyCollabs] = useState<MyCollab[]>([]);
   const [signingId, setSigningId] = useState<string | null>(null);
+  const [showBadge, setShowBadge] = useState(true);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
 
   const loadProfile = useCallback(() => {
     if (!user) {
@@ -131,22 +139,34 @@ export default function ProfileScreen() {
             projectType: m.project?.project_type ?? null,
             status: m.project?.status ?? "recruiting",
             role: m.role ?? "Member",
-            mouAccepted: m.mou_accepted ?? false,
+            committed: m.mou_accepted ?? false,
           }));
         setMyCollabs(collabs);
       });
   }, [user?.id]);
 
-  useFocusEffect(loadProfile);
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+      AsyncStorage.getItem("privacy_prefs").then((raw) => {
+        if (raw) {
+          const prefs = JSON.parse(raw);
+          if (typeof prefs.showUniversityBadge === "boolean") {
+            setShowBadge(prefs.showUniversityBadge);
+          }
+        }
+      });
+    }, [loadProfile])
+  );
 
-  async function handleSignMOU(membershipId: string, projectTitle: string) {
+  async function handleCommit(membershipId: string, projectTitle: string) {
     Alert.alert(
-      "Sign MOU",
+      "Commit to Project",
       `Confirm your commitment to "${projectTitle}"? This will be recorded as a collaboration event.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Sign MOU",
+          text: "Commit",
           onPress: async () => {
             setSigningId(membershipId);
             try {
@@ -157,11 +177,11 @@ export default function ProfileScreen() {
               if (error) throw error;
               setMyCollabs((prev) =>
                 prev.map((c) =>
-                  c.membershipId === membershipId ? { ...c, mouAccepted: true } : c
+                  c.membershipId === membershipId ? { ...c, committed: true } : c
                 )
               );
             } catch {
-              Alert.alert("Error", "Failed to sign MOU. Please try again.");
+              Alert.alert("Error", "Failed to commit. Please try again.");
             } finally {
               setSigningId(null);
             }
@@ -195,11 +215,18 @@ export default function ProfileScreen() {
         {/* ── Screen header ─────────────────────────────────────────────── */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: s(20), paddingTop: vs(12), paddingBottom: vs(4) }}>
           <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(20) }}>Profile</Text>
-          <Btn onPress={() => router.push("/(app)/settings" as any)} pressScale={0.88} hitSlop={12}>
-            <View style={{ backgroundColor: C.surface, borderRadius: s(10), borderWidth: 1, borderColor: C.border, padding: s(8) }}>
-              <Settings size={s(18)} color={C.textMuted} strokeWidth={1.8} />
-            </View>
-          </Btn>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
+            <Btn onPress={() => setShareSheetOpen(true)} pressScale={0.88} hitSlop={12}>
+              <View style={{ backgroundColor: C.surface, borderRadius: s(10), borderWidth: 1, borderColor: C.border, padding: s(8) }}>
+                <Share2 size={s(18)} color={C.textMuted} strokeWidth={1.8} />
+              </View>
+            </Btn>
+            <Btn onPress={() => router.push("/(app)/settings" as any)} pressScale={0.88} hitSlop={12}>
+              <View style={{ backgroundColor: C.surface, borderRadius: s(10), borderWidth: 1, borderColor: C.border, padding: s(8) }}>
+                <Settings size={s(18)} color={C.textMuted} strokeWidth={1.8} />
+              </View>
+            </Btn>
+          </View>
         </View>
 
         {/* ── Avatar + Identity ──────────────────────────────────────────── */}
@@ -211,7 +238,7 @@ export default function ProfileScreen() {
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), marginBottom: vs(4) }}>
             <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(20) }}>{displayName}</Text>
-            <BadgeCheck size={s(20)} color={C.pink} strokeWidth={2} />
+            {showBadge && <BadgeCheck size={s(20)} color={C.pink} strokeWidth={2} />}
           </View>
 
           {profile?.department ? (
@@ -225,7 +252,7 @@ export default function ProfileScreen() {
 
         {/* ── Commitment Score ───────────────────────────────────────────── */}
         <Section title="Commitment Score">
-          <View style={{ height: vs(8), backgroundColor: "rgba(255,255,255,0.08)", borderRadius: s(4), overflow: "hidden" }}>
+          <View style={{ height: vs(8), backgroundColor: C.fieldBg, borderRadius: s(4), overflow: "hidden" }}>
             <LinearGradient
               colors={GRADIENT.cta}
               start={{ x: 0, y: 0 }}
@@ -242,7 +269,7 @@ export default function ProfileScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row", gap: s(8) }}>
                 {skills.map((skill) => (
-                  <View key={skill} style={{ backgroundColor: "rgba(255,255,255,0.09)", borderRadius: s(20), borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", paddingHorizontal: s(14), paddingVertical: vs(7) }}>
+                  <View key={skill} style={{ backgroundColor: "rgba(75,46,43,0.10)", borderRadius: s(20), borderWidth: 1, borderColor: "rgba(192,133,82,0.20)", paddingHorizontal: s(14), paddingVertical: vs(7) }}>
                     <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(13) }}>{skill}</Text>
                   </View>
                 ))}
@@ -273,7 +300,7 @@ export default function ProfileScreen() {
                       <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14), flex: 1, marginRight: s(8) }} numberOfLines={1}>
                         {proj.title}
                       </Text>
-                      <View style={{ backgroundColor: proj.status === "recruiting" ? "rgba(52,211,153,0.15)" : "rgba(255,255,255,0.08)", borderRadius: s(8), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+                      <View style={{ backgroundColor: proj.status === "recruiting" ? "rgba(52,211,153,0.15)" : C.fieldBg, borderRadius: s(8), paddingHorizontal: s(8), paddingVertical: vs(2) }}>
                         <Text style={{ color: proj.status === "recruiting" ? C.success : C.textMuted, fontFamily: FONT.medium, fontSize: fs(10), textTransform: "capitalize" }}>
                           {proj.status}
                         </Text>
@@ -313,7 +340,7 @@ export default function ProfileScreen() {
                           {collab.title}
                         </Text>
                         <View style={{
-                          backgroundColor: collab.status === "recruiting" ? "rgba(52,211,153,0.15)" : "rgba(255,255,255,0.08)",
+                          backgroundColor: collab.status === "recruiting" ? "rgba(52,211,153,0.15)" : C.fieldBg,
                           borderRadius: s(8), paddingHorizontal: s(8), paddingVertical: vs(2),
                         }}>
                           <Text style={{ color: collab.status === "recruiting" ? C.success : C.textMuted, fontFamily: FONT.medium, fontSize: fs(10), textTransform: "capitalize" }}>
@@ -324,28 +351,33 @@ export default function ProfileScreen() {
                       <Text style={{ color: C.purpleL, fontFamily: FONT.medium, fontSize: fs(12), marginBottom: vs(8) }}>
                         {collab.role}
                       </Text>
-                      {collab.mouAccepted ? (
+                      {collab.committed ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: s(5), alignSelf: "flex-start" }}>
                           <View style={{ width: s(7), height: s(7), borderRadius: s(4), backgroundColor: C.success }} />
-                          <Text style={{ color: C.success, fontFamily: FONT.medium, fontSize: fs(11) }}>MOU Signed</Text>
+                          <Text style={{ color: C.success, fontFamily: FONT.medium, fontSize: fs(11) }}>Committed</Text>
                         </View>
                       ) : (
                         <Btn
-                          onPress={() => handleSignMOU(collab.membershipId, collab.title)}
+                          onPress={() => handleCommit(collab.membershipId, collab.title)}
                           pressScale={0.92}
                           disabled={isSigning}
-                          style={{ alignSelf: "flex-start" }}
                         >
                           <View style={{
-                            backgroundColor: "rgba(245,158,11,0.12)", borderWidth: 1,
-                            borderColor: "rgba(245,158,11,0.4)", borderRadius: s(10),
-                            paddingHorizontal: s(12), paddingVertical: vs(5),
-                            flexDirection: "row", alignItems: "center", gap: s(5),
+                            alignSelf: "flex-end",
+                            backgroundColor: GLASS.chip.backgroundColor,
+                            borderWidth: 1,
+                            borderColor: GLASS.chip.borderColor,
+                            borderRadius: s(20),
+                            paddingHorizontal: s(14),
+                            paddingVertical: vs(6),
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: s(6),
                           }}>
                             {isSigning ? (
-                              <ActivityIndicator size="small" color="#f59e0b" />
+                              <ActivityIndicator size="small" color={C.purpleL} />
                             ) : (
-                              <Text style={{ color: "#f59e0b", fontFamily: FONT.semiBold, fontSize: fs(12) }}>Sign MOU</Text>
+                              <Text style={{ color: C.purpleL, fontFamily: FONT.semiBold, fontSize: fs(12) }}>Commit</Text>
                             )}
                           </View>
                         </Btn>
@@ -363,8 +395,8 @@ export default function ProfileScreen() {
           <View style={{ gap: vs(10) }}>
             {portfolioLinks.map((item) => (
               <View key={item.title} style={{
-                backgroundColor: "rgba(255,255,255,0.07)", borderRadius: s(14),
-                borderWidth: 1, borderColor: "rgba(255,255,255,0.14)",
+                backgroundColor: "rgba(75,46,43,0.08)", borderRadius: s(14),
+                borderWidth: 1, borderColor: "rgba(192,133,82,0.15)",
                 flexDirection: "row", alignItems: "center",
                 justifyContent: "space-between", padding: s(16),
               }}>
@@ -374,7 +406,7 @@ export default function ProfileScreen() {
                     colors={GRADIENT.cta}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={{ paddingHorizontal: s(16), paddingVertical: vs(6) }}
+                    style={{ borderRadius: s(16), paddingHorizontal: s(16), paddingVertical: vs(6) }}
                   >
                     <Text style={{ color: C.white, fontWeight: "600", fontSize: fs(12) }}>Open</Text>
                   </LinearGradient>
@@ -419,6 +451,17 @@ export default function ProfileScreen() {
         </Section>
 
       </ScrollView>
+
+      <ShareProfileSheet
+        visible={shareSheetOpen}
+        profileId={user?.id ?? ""}
+        profileName={profile?.full_name ?? null}
+        avatarUrl={profile?.avatar_url ?? null}
+        university={null}
+        department={profile?.department ?? null}
+        skills={profile?.skills ?? []}
+        onClose={() => setShareSheetOpen(false)}
+      />
     </SafeAreaView>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import {
-  View, Text, ScrollView, Switch, Alert, Linking, ActivityIndicator, Pressable,
+  View, Text, ScrollView, Switch, Alert, Linking, ActivityIndicator, Pressable, Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -9,17 +9,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import {
   ChevronLeft, ChevronRight,
-  Pencil, Code2, KeyRound,
+  Pencil, Code2, KeyRound, Link,
   UserPlus, MessageCircle, Briefcase, Users,
   BadgeCheck, Eye,
   Info, Shield, FileText, Bug,
   LogOut, Trash2,
+  Sun, DoorOpen,
 } from "lucide-react-native";
 import { useAuth } from "@/features/auth/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
+import { QuitProjectSheet } from "@/components/QuitProjectSheet";
 import { Btn } from "@/components/Btn";
-import { C, FONT } from "@/utils/theme";
+import { FONT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
+import { useTheme } from "@/contexts/ThemeContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +60,7 @@ function isEmailPasswordUser(user: any): boolean {
 // ─── SettingsSection ──────────────────────────────────────────────────────────
 
 function SettingsSection({ label, children }: { label: string; children: ReactNode }) {
+  const { tokens: { C } } = useTheme();
   return (
     <View style={{ marginBottom: vs(24) }}>
       <Text style={{
@@ -93,6 +97,7 @@ type InfoRow   = RowBase & { kind: "info";   value: string };
 type RowProps  = NavRow | ToggleRow | InfoRow;
 
 function SettingsRow(props: RowProps) {
+  const { tokens: { C } } = useTheme();
   const inner = (
     <View style={{
       flexDirection: "row",
@@ -129,9 +134,9 @@ function SettingsRow(props: RowProps) {
         <Switch
           value={props.value}
           onValueChange={props.onToggle}
-          trackColor={{ false: "rgba(255,255,255,0.12)", true: C.purple }}
+          trackColor={{ false: C.switchTrackOff, true: C.purple }}
           thumbColor={C.white}
-          ios_backgroundColor="rgba(255,255,255,0.12)"
+          ios_backgroundColor={C.switchTrackOff}
         />
       )}
       {props.kind === "info" && (
@@ -150,11 +155,19 @@ function SettingsRow(props: RowProps) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
+type OwnedProject = { id: string; title: string };
+type MemberProject = { projectId: string; role: string; title: string };
+
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
+  const { mode, setMode, tokens: { C } } = useTheme();
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(NOTIF_DEFAULTS);
   const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(PRIVACY_DEFAULTS);
   const [deleting, setDeleting] = useState(false);
+  const [ownedProjects, setOwnedProjects] = useState<OwnedProject[]>([]);
+  const [memberProjects, setMemberProjects] = useState<MemberProject[]>([]);
+  const [quitTarget, setQuitTarget] = useState<MemberProject | null>(null);
+  const [myFullName, setMyFullName] = useState("");
 
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   const emailPw = isEmailPasswordUser(user);
@@ -168,7 +181,29 @@ export default function SettingsScreen() {
         if (notifRaw) setNotifPrefs({ ...NOTIF_DEFAULTS, ...JSON.parse(notifRaw) });
         if (privacyRaw) setPrivacyPrefs({ ...PRIVACY_DEFAULTS, ...JSON.parse(privacyRaw) });
       });
-    }, [])
+
+      if (!user) return;
+      Promise.all([
+        supabase.from("projects").select("id, title").eq("owner_id", user.id),
+        supabase
+          .from("project_members")
+          .select("project_id, role, projects(id, title)")
+          .eq("user_id", user.id),
+        supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+      ]).then(([ownedRes, memberRes, profileRes]) => {
+        setOwnedProjects(
+          (ownedRes.data ?? []).map((p: any) => ({ id: p.id, title: p.title }))
+        );
+        setMemberProjects(
+          (memberRes.data ?? []).map((m: any) => ({
+            projectId: m.project_id,
+            role: m.role ?? "Member",
+            title: (m.projects as any)?.title ?? "Unknown Project",
+          }))
+        );
+        if (profileRes.data) setMyFullName(profileRes.data.full_name ?? "");
+      });
+    }, [user])
   );
 
   async function updateNotif<K extends keyof NotifPrefs>(key: K, value: boolean) {
@@ -262,26 +297,45 @@ export default function SettingsScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: vs(48) }} showsVerticalScrollIndicator={false}>
 
+        {/* APPEARANCE */}
+        <SettingsSection label="Appearance">
+          <SettingsRow
+            kind="toggle"
+            label="Light Mode"
+            icon={<Sun size={s(16)} color={C.white} strokeWidth={1.8} />}
+            iconBg="rgba(192,133,82,0.70)"
+            value={mode === "light"}
+            onToggle={(v) => setMode(v ? "light" : "dark")}
+            isLast
+          />
+        </SettingsSection>
+
         {/* MY ACCOUNT */}
         <SettingsSection label="My Account">
           <SettingsRow
             kind="nav" label="Edit Profile"
             icon={<Pencil size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(104,36,204,0.7)"
+            iconBg="rgba(192,133,82,0.70)"
             onPress={() => router.push("/(app)/settings/edit-profile")}
           />
           <SettingsRow
             kind="nav" label="Edit Skills"
             icon={<Code2 size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(192,54,160,0.7)"
-            onPress={() => router.push("/(onboarding)/skills")}
+            iconBg="rgba(140,90,60,0.70)"
+            onPress={() => router.push({ pathname: "/(onboarding)/skills", params: { from: "settings" } } as any)}
+          />
+          <SettingsRow
+            kind="nav" label="Portfolio Links"
+            icon={<Link size={s(16)} color={C.white} strokeWidth={1.8} />}
+            iconBg="rgba(140,90,60,0.55)"
+            onPress={() => router.push("/(app)/settings/portfolio-links" as any)}
             isLast={!emailPw}
           />
           {emailPw && (
             <SettingsRow
               kind="nav" label="Change Password"
               icon={<KeyRound size={s(16)} color={C.white} strokeWidth={1.8} />}
-              iconBg="rgba(60,130,200,0.7)"
+              iconBg="rgba(192,133,82,0.55)"
               onPress={() => router.push("/(app)/settings/change-password")}
               isLast
             />
@@ -293,28 +347,28 @@ export default function SettingsScreen() {
           <SettingsRow
             kind="toggle" label="Connection Requests"
             icon={<UserPlus size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(104,36,204,0.7)"
+            iconBg="rgba(192,133,82,0.70)"
             value={notifPrefs.connectionRequests}
             onToggle={(v) => updateNotif("connectionRequests", v)}
           />
           <SettingsRow
             kind="toggle" label="New Messages"
             icon={<MessageCircle size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(60,130,200,0.7)"
+            iconBg="rgba(192,133,82,0.55)"
             value={notifPrefs.newMessages}
             onToggle={(v) => updateNotif("newMessages", v)}
           />
           <SettingsRow
             kind="toggle" label="Project Updates"
             icon={<Briefcase size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(30,150,100,0.7)"
+            iconBg="rgba(140,90,60,0.70)"
             value={notifPrefs.projectUpdates}
             onToggle={(v) => updateNotif("projectUpdates", v)}
           />
           <SettingsRow
             kind="toggle" label="Join Requests"
             icon={<Users size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(192,54,160,0.7)"
+            iconBg="rgba(140,90,60,0.70)"
             value={notifPrefs.joinRequests}
             onToggle={(v) => updateNotif("joinRequests", v)}
             isLast
@@ -327,7 +381,7 @@ export default function SettingsScreen() {
             <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(11), textTransform: "uppercase", letterSpacing: 0.6, marginBottom: vs(10) }}>
               Profile Visibility
             </Text>
-            <View style={{ flexDirection: "row", gap: s(6), backgroundColor: "rgba(255,255,255,0.06)", borderRadius: s(12), padding: s(5) }}>
+            <View style={{ flexDirection: "row", gap: s(6), backgroundColor: C.fieldBg, borderRadius: s(12), padding: s(5) }}>
               {visibilityOptions.map((opt) => {
                 const active = privacyPrefs.profileVisibility === opt.value;
                 return (
@@ -358,7 +412,7 @@ export default function SettingsScreen() {
           <SettingsRow
             kind="toggle" label="Show University Badge"
             icon={<BadgeCheck size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(104,36,204,0.7)"
+            iconBg="rgba(192,133,82,0.70)"
             value={privacyPrefs.showUniversityBadge}
             onToggle={(v) => updatePrivacy("showUniversityBadge", v)}
             isLast
@@ -370,29 +424,122 @@ export default function SettingsScreen() {
           <SettingsRow
             kind="info" label="App Version"
             icon={<Info size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(80,80,120,0.7)"
+            iconBg="rgba(75,46,43,0.70)"
             value={`v${appVersion}`}
           />
           <SettingsRow
             kind="nav" label="Privacy Policy"
             icon={<Shield size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(80,80,120,0.7)"
+            iconBg="rgba(75,46,43,0.70)"
             onPress={() => Linking.openURL("https://collabspace.app/privacy")}
           />
           <SettingsRow
             kind="nav" label="Terms of Service"
             icon={<FileText size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(80,80,120,0.7)"
+            iconBg="rgba(75,46,43,0.70)"
             onPress={() => Linking.openURL("https://collabspace.app/terms")}
           />
           <SettingsRow
             kind="nav" label="Report a Bug"
             icon={<Bug size={s(16)} color={C.white} strokeWidth={1.8} />}
-            iconBg="rgba(80,80,120,0.7)"
+            iconBg="rgba(75,46,43,0.70)"
             onPress={() => Linking.openURL("mailto:support@collabspace.app?subject=Bug%20Report")}
             isLast
           />
         </SettingsSection>
+
+        {/* MY PROJECTS */}
+        {(ownedProjects.length > 0 || memberProjects.length > 0) && (
+          <View style={{ marginBottom: vs(24) }}>
+            <Text style={{
+              color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(11),
+              textTransform: "uppercase", letterSpacing: 0.8,
+              paddingHorizontal: s(20), marginBottom: vs(8),
+            }}>
+              My Projects
+            </Text>
+            <View style={{ marginHorizontal: s(16), backgroundColor: C.surface, borderRadius: s(16), borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
+              {ownedProjects.map((p, i) => (
+                <Btn
+                  key={p.id}
+                  onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: p.id } } as any)}
+                  pressScale={0.97}
+                >
+                  <View style={{
+                    flexDirection: "row", alignItems: "center",
+                    paddingHorizontal: s(16), paddingVertical: vs(13),
+                    borderBottomWidth: (i < ownedProjects.length - 1 || memberProjects.length > 0) ? 1 : 0,
+                    borderBottomColor: C.border,
+                  }}>
+                    <View style={{ width: s(32), height: s(32), borderRadius: s(8), backgroundColor: "rgba(107,79,160,0.25)", alignItems: "center", justifyContent: "center", marginRight: s(12) }}>
+                      <Briefcase size={s(15)} color={C.purpleL} strokeWidth={1.8} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: C.white, fontFamily: FONT.regular, fontSize: fs(15) }}>{p.title}</Text>
+                      <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12), marginTop: vs(1) }}>Owner</Text>
+                    </View>
+                    <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13), marginRight: s(4) }}>Manage</Text>
+                    <ChevronRight size={s(16)} color={C.textMuted} strokeWidth={1.8} />
+                  </View>
+                </Btn>
+              ))}
+              {memberProjects.map((m, i) => (
+                <View
+                  key={m.projectId}
+                  style={{
+                    flexDirection: "row", alignItems: "center",
+                    paddingHorizontal: s(16), paddingVertical: vs(13),
+                    borderBottomWidth: i < memberProjects.length - 1 ? 1 : 0,
+                    borderBottomColor: C.border,
+                  }}
+                >
+                  <View style={{ width: s(32), height: s(32), borderRadius: s(8), backgroundColor: "rgba(107,79,160,0.12)", alignItems: "center", justifyContent: "center", marginRight: s(12) }}>
+                    <Users size={s(15)} color={C.textMuted} strokeWidth={1.8} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: C.white, fontFamily: FONT.regular, fontSize: fs(15) }}>{m.title}</Text>
+                    <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12), marginTop: vs(1) }}>{m.role}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setQuitTarget(m)}
+                    hitSlop={12}
+                  >
+                    <Text style={{ color: C.danger, fontFamily: FONT.semiBold, fontSize: fs(13) }}>Quit</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <QuitProjectSheet
+          visible={!!quitTarget}
+          projectTitle={quitTarget?.title ?? ""}
+          onClose={() => setQuitTarget(null)}
+          onQuit={async () => {
+            if (!quitTarget || !user) return;
+            await supabase.from("project_members").delete()
+              .eq("project_id", quitTarget.projectId).eq("user_id", user.id);
+            await supabase.from("collaboration_events").insert({
+              project_id: quitTarget.projectId, user_id: user.id, event_type: "member_quit",
+            });
+            await supabase.from("chat_messages").insert({
+              project_id: quitTarget.projectId, sender_id: user.id,
+              type: "member_left", content: "",
+              metadata: { userName: myFullName || "A user" },
+              read_by: [],
+            });
+            await supabase.functions.invoke("notify-owner", {
+              body: {
+                projectId: quitTarget.projectId,
+                title: `${myFullName || "A member"} left ${quitTarget.title}`,
+                body: `${myFullName || "A member"} has left the project.`,
+              },
+            });
+            setQuitTarget(null);
+            setMemberProjects((prev) => prev.filter((p) => p.projectId !== quitTarget.projectId));
+          }}
+        />
 
         {/* ACCOUNT ACTIONS */}
         <SettingsSection label="Account">
