@@ -1,83 +1,205 @@
 /**
- * CollabSpace — "Midnight Bloom" design system
+ * CollabSpace — "Warm Espresso / Warm Cream" dual design system
  *
- * Palette: purple · pink · yellow · white · black
- * Background: near-void black → deep violet → rich purple-magenta bloom
+ * Palette (shared by both themes):
+ *   #fff8f0  Warm cream     — bg in light, text/highlight in dark
+ *   #c08552  Caramel brown  — primary accent (CTAs, active states)
+ *   #8c5a3c  Deep tan       — secondary accent, gradient end
+ *   #4b2e2b  Espresso brown — bg in dark, text in light
+ *
+ * Token names are stable — components import { FONT } statically and
+ * destructure { C, GLASS, GRADIENT } from useTheme() at runtime.
+ * The backward-compat static C/GLASS/GRADIENT exports point at the
+ * dark theme so any unmigrated file still compiles correctly.
  */
 
-// ── Background gradient ────────────────────────────────────────────────────────
-export const GRADIENT = {
-  /** Full-screen background — handled by GradientBg SVG component */
-  bg: ["#0F0230", "#0F0230"] as const,
-  /** Subtle surface card gradient */
-  card: ["rgba(60,12,110,0.40)", "rgba(20,4,58,0.60)"] as const,
-  /**
-   * CTA button — purple → mid-violet → soft dusty-pink.
-   * Three stops for a smooth, diffuse transition; no harsh neon end.
-   */
-  cta: ["#5E1EC8", "#8C28B4", "#B0309A"] as const,
-  /** Softer / secondary CTA */
-  ctaSoft: ["#4A18A8", "#7020A0", "#942890"] as const,
-} as const;
+// ── Shared types ──────────────────────────────────────────────────────────────
 
-// ── Static colours ─────────────────────────────────────────────────────────────
-export const C = {
-  // Backgrounds
-  bgDeep:   "#0A0120",
-  bgMid:    "#160340",
-  bgBottom: "#0F0230",
+export type CTokens = {
+  bgDeep: string; bgMid: string; bgBottom: string;
+  surface: string; surfaceBright: string;
+  border: string; borderBright: string;
+  purple: string; purpleL: string;
+  pink: string; pinkD: string;
+  yellow: string; yellowD: string;
+  white: string; textMuted: string; textFaint: string;
+  danger: string; success: string;
+  // Semantic surface tokens (used in place of hardcoded hex values)
+  inputBg: string;
+  chatBubbleOther: string;
+  tabActiveBg: string;
+  tabActiveText: string;
+  tabBarBg: string;
+  fieldBg: string;
+  switchTrackOff: string;
+  modalBg: string;
+  filterPanelBg: string;
+  avatarBg: string;
+  borderSubtle: string;
+};
 
-  // Surfaces — semi-transparent so the radial bg bleeds through
-  surface:       "rgba(30, 8, 72, 0.68)",
-  surfaceBright: "rgba(50, 12, 100, 0.55)",
+export type GlassTokens = {
+  card:         { backgroundColor: string; borderColor: string; borderWidth: number };
+  chip:         { backgroundColor: string; borderColor: string; borderWidth: number };
+  chipSelected: { backgroundColor: string; borderColor: string; borderWidth: number };
+};
 
-  // Borders
-  border:       "rgba(120, 60, 220, 0.22)",
-  borderBright: "rgba(180, 50, 160, 0.35)",
+export type GradientTokens = {
+  bg:      readonly [string, string];
+  card:    readonly [string, string];
+  cta:     readonly [string, string, string];
+  ctaSoft: readonly [string, string, string];
+};
 
-  // Accent purple — slightly muted, less neon
-  purple:  "#6824CC",
-  purpleL: "#9434D8",
+export type ThemeTokens = {
+  C: CTokens;
+  GLASS: GlassTokens;
+  GRADIENT: GradientTokens;
+};
 
-  // Accent pink — dusty/warm, not harsh magenta
-  pink:    "#C036A0",
-  pinkD:   "#A02888",
+// ── Dark theme — "Warm Espresso" ──────────────────────────────────────────────
 
-  // Pink card colour (replaces yellow)
-  yellow:  "#FFD1E3",
-  yellowD: "#FFB3CC",
-
-  // Text
-  white:      "#FFFFFF",
-  textMuted:  "rgba(255,255,255,0.50)",
-  textFaint:  "rgba(255,255,255,0.26)",
-
-  // Semantic
-  danger:  "#F87171",
-  success: "#34D399",
-} as const;
-
-// ── Glass tile system ──────────────────────────────────────────────────────────
-export const GLASS = {
-  card: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderColor:     "rgba(255,255,255,0.14)",
-    borderWidth: 1,
+export const DARK_THEME: ThemeTokens = {
+  GRADIENT: {
+    bg:      ["#1a0e0c", "#1a0e0c"],
+    card:    ["rgba(75,46,43,0.42)", "rgba(27,14,13,0.62)"],
+    cta:     ["#c08552", "#a06840", "#8c5a3c"],
+    ctaSoft: ["#a06840", "#8c5a3c", "#6e4530"],
   },
-  chip: {
-    backgroundColor: "rgba(255,255,255,0.09)",
-    borderColor:     "rgba(255,255,255,0.18)",
-    borderWidth: 1,
-  },
-  chipSelected: {
-    backgroundColor: "rgba(180,100,255,0.22)",
-    borderColor:     "rgba(210,160,255,0.50)",
-    borderWidth: 1.5,
-  },
-} as const;
+  C: {
+    bgDeep:   "#120908",
+    bgMid:    "#1f1210",
+    bgBottom: "#1a0e0c",
 
-// ── Typography ─────────────────────────────────────────────────────────────────
-// Lato weights: 400 Regular, 700 Bold, 900 Black (no 500/600 — medium collapses to regular intentionally)
+    surface:       "rgba(75,46,43,0.68)",
+    surfaceBright: "rgba(140,90,60,0.52)",
+
+    border:       "rgba(192,133,82,0.22)",
+    borderBright: "rgba(192,133,82,0.40)",
+
+    purple:  "#c08552",
+    purpleL: "#d4a06a",
+
+    pink:    "#c08552",
+    pinkD:   "#a06840",
+
+    yellow:  "#fff8f0",
+    yellowD: "#f0dcc0",
+
+    white:      "#fff8f0",
+    textMuted:  "rgba(255,248,240,0.50)",
+    textFaint:  "rgba(255,248,240,0.26)",
+
+    danger:  "#F87171",
+    success: "#34D399",
+
+    inputBg:         "#1f1210",
+    chatBubbleOther: "#1f1210",
+    tabActiveBg:     "#fff8f0",
+    tabActiveText:   "#4b2e2b",
+    tabBarBg:        "rgba(26,14,12,0.92)",
+    fieldBg:         "rgba(255,255,255,0.06)",
+    switchTrackOff:  "rgba(255,248,240,0.12)",
+    modalBg:         "#1a0e0c",
+    filterPanelBg:   "rgba(26,14,12,0.88)",
+    avatarBg:        "#2e1815",
+    borderSubtle:    "#2e1815",
+  },
+  GLASS: {
+    card: {
+      backgroundColor: "rgba(75,46,43,0.08)",
+      borderColor:     "rgba(192,133,82,0.15)",
+      borderWidth: 1,
+    },
+    chip: {
+      backgroundColor: "rgba(75,46,43,0.10)",
+      borderColor:     "rgba(192,133,82,0.20)",
+      borderWidth: 1,
+    },
+    chipSelected: {
+      backgroundColor: "rgba(192,133,82,0.24)",
+      borderColor:     "rgba(212,160,106,0.55)",
+      borderWidth: 1.5,
+    },
+  },
+};
+
+// ── Light theme — "Warm Cream" ────────────────────────────────────────────────
+
+export const LIGHT_THEME: ThemeTokens = {
+  GRADIENT: {
+    bg:      ["#faf0e4", "#faf0e4"],
+    card:    ["rgba(192,133,82,0.12)", "rgba(140,90,60,0.08)"],
+    cta:     ["#c08552", "#a06840", "#8c5a3c"],
+    ctaSoft: ["#a06840", "#8c5a3c", "#6e4530"],
+  },
+  C: {
+    bgDeep:   "#ecdcc8",
+    bgMid:    "#f5e8d8",
+    bgBottom: "#faf0e4",
+
+    surface:       "rgba(255,255,255,0.55)",
+    surfaceBright: "rgba(255,255,255,0.75)",
+
+    border:       "rgba(192,133,82,0.30)",
+    borderBright: "rgba(192,133,82,0.55)",
+
+    purple:  "#8c5a3c",
+    purpleL: "#a06840",
+
+    pink:    "#8c5a3c",
+    pinkD:   "#6e4530",
+
+    yellow:  "#c08552",
+    yellowD: "#a06840",
+
+    white:      "#4b2e2b",
+    textMuted:  "rgba(75,46,43,0.55)",
+    textFaint:  "rgba(75,46,43,0.32)",
+
+    danger:  "#c0392b",
+    success: "#1a7a50",
+
+    inputBg:         "rgba(255,255,255,0.50)",
+    chatBubbleOther: "rgba(255,255,255,0.60)",
+    tabActiveBg:     "#4b2e2b",
+    tabActiveText:   "#fff8f0",
+    tabBarBg:        "rgba(250,240,228,0.94)",
+    fieldBg:         "rgba(255,255,255,0.55)",
+    switchTrackOff:  "rgba(140,90,60,0.18)",
+    modalBg:         "#faf0e4",
+    filterPanelBg:   "rgba(250,240,228,0.97)",
+    avatarBg:        "rgba(255,255,255,0.55)",
+    borderSubtle:    "rgba(192,133,82,0.22)",
+  },
+  GLASS: {
+    card: {
+      backgroundColor: "rgba(255,255,255,0.60)",
+      borderColor:     "rgba(192,133,82,0.32)",
+      borderWidth: 1,
+    },
+    chip: {
+      backgroundColor: "rgba(255,255,255,0.50)",
+      borderColor:     "rgba(192,133,82,0.38)",
+      borderWidth: 1,
+    },
+    chipSelected: {
+      backgroundColor: "rgba(192,133,82,0.25)",
+      borderColor:     "rgba(192,133,82,0.60)",
+      borderWidth: 1.5,
+    },
+  },
+};
+
+// ── Backward-compat static exports (point at dark theme) ─────────────────────
+// Any file that hasn't migrated to useTheme() still works identically.
+
+export const GRADIENT = DARK_THEME.GRADIENT;
+export const C        = DARK_THEME.C;
+export const GLASS    = DARK_THEME.GLASS;
+
+// ── Typography — static, never themed ────────────────────────────────────────
+
 export const FONT = {
   regular:   "Lato_400Regular",
   medium:    "Lato_400Regular",
