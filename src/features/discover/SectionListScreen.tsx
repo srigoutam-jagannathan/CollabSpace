@@ -10,11 +10,20 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
-import { fetchActive, fetchNeeds, fetchPeople, fetchMemberProjectIds } from "./queries";
+import { fetchActive, fetchNeeds, fetchPeople, fetchMemberProjectIds, WINDOW } from "./queries";
 import { rankActive, rankNeeds, rankPeople } from "./ranking";
 import { NeedsYourSkills } from "./sections/NeedsYourSkills";
 import { ActiveNow } from "./sections/ActiveNow";
 import { PeopleToKnow } from "./sections/PeopleToKnow";
+
+/**
+ * Rows revealed per page. The whole ranked window is fetched once and paged
+ * through in memory rather than with .range(): needs, active and people are
+ * all ordered client-side (match count, event count, shared department), so a
+ * server-side page would be ordered by the wrong key and the list would
+ * reshuffle as it grew.
+ */
+const PAGE = 20;
 
 const TITLES: Record<string, string> = {
   needs: "Needs your skills",
@@ -28,6 +37,7 @@ export function SectionListScreen({ section }: { section: string }) {
   const router = useRouter();
 
   const [rows, setRows] = useState<any[]>([]);
+  const [shown, setShown] = useState(PAGE);
   const [loading, setLoading] = useState(true);
   // Separate from `loading`: drives the pull-to-refresh spinner once content
   // is already on screen, so a manual pull actually shows feedback instead
@@ -44,20 +54,24 @@ export function SectionListScreen({ section }: { section: string }) {
         supabase.from("profiles").select("skills").eq("id", user.id).single(),
         fetchMemberProjectIds(user.id),
       ]);
-      const { data, error: e } = await fetchNeeds(user.id, skillsRow.data?.skills ?? [], memberIds);
-      // Infinity lifts the 3-card section cap — this screen shows every match.
+      const { data, error: e } = await fetchNeeds(
+        user.id, skillsRow.data?.skills ?? [], memberIds, WINDOW.seeAll.needs
+      );
+      // Infinity lifts the 3-card section cap; the query window above is what
+      // actually bounds this screen.
       if (e) setError(e); else setRows(rankNeeds(data, Infinity));
     } else if (section === "active") {
-      const { data, error: e } = await fetchActive();
+      const { data, error: e } = await fetchActive(WINDOW.seeAll.active);
       if (e) setError(e); else setRows(rankActive(data, Infinity));
     } else if (section === "people") {
       const [profileRow, result] = await Promise.all([
         supabase.from("profiles").select("department").eq("id", user.id).single(),
-        fetchPeople(user.id),
+        fetchPeople(user.id, WINDOW.seeAll.people),
       ]);
       if (result.error) setError(result.error);
       else setRows(rankPeople(result.data, profileRow.data?.department ?? null, Infinity));
     }
+    setShown(PAGE);
     setLoading(false);
     setRefreshing(false);
   }, [section, user?.id]);
@@ -110,9 +124,11 @@ export function SectionListScreen({ section }: { section: string }) {
         </View>
       ) : (
         <FlashList
-          data={rows}
+          data={rows.slice(0, shown)}
           keyExtractor={(item: any) => item.id}
           contentContainerStyle={{ paddingBottom: vs(32) }}
+          onEndReachedThreshold={0.6}
+          onEndReached={() => setShown(n => (n >= rows.length ? n : n + PAGE))}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.purpleL} />}
           renderItem={({ item }) => {
             if (section === "needs") return <NeedsYourSkills items={[item]} />;
@@ -124,6 +140,13 @@ export function SectionListScreen({ section }: { section: string }) {
             if (section === "active") return <ActiveNow items={[item]} variant="row" />;
             return <PeopleToKnow items={[item]} variant="row" />;
           }}
+          ListFooterComponent={
+            shown < rows.length ? (
+              <View style={{ paddingVertical: vs(18) }}>
+                <ActivityIndicator size="small" color={C.purpleL} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={{ alignItems: "center", paddingTop: vs(60) }}>
               <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(14) }}>

@@ -10,6 +10,27 @@ export interface QueryResult<T> {
 const PULSE_WINDOW_HOURS = 48;
 const ACTIVE_WINDOW_DAYS = 7;
 
+/**
+ * How many rows each query may read.
+ *
+ * Every query is bounded — no unbounded table reads. `section` is what the
+ * Discover screen needs to fill a rail; `seeAll` is the wider window the
+ * see-all screen ranks over. Ranking for needs, active and people all happens
+ * client-side (match count, event count, shared department), so these are
+ * genuinely the sets being ordered, not a server-side page of an ordered set.
+ * That is why the see-all screen pages through the ranked array rather than
+ * calling .range() — a .range() page would be ordered by the wrong key.
+ */
+export const WINDOW = {
+  section: { needs: 50, active: 30, people: 40 },
+  seeAll: { needs: 200, active: 200, people: 200 },
+  /** Supporting reads that only ever describe the viewer. */
+  viewerMemberships: 200,
+  viewerConnections: 500,
+  /** Events counted when ranking Active right now. */
+  activeEvents: 1000,
+} as const;
+
 function hoursAgo(h: number): string {
   return new Date(Date.now() - h * 3600_000).toISOString();
 }
@@ -50,7 +71,8 @@ export async function fetchPulse(): Promise<QueryResult<PulseItem>> {
 export async function fetchNeeds(
   viewerId: string,
   viewerSkills: string[],
-  memberProjectIds: string[]
+  memberProjectIds: string[],
+  limit: number = WINDOW.section.needs
 ): Promise<QueryResult<NeedsItem>> {
   let query = supabase
     .from("projects")
@@ -58,7 +80,7 @@ export async function fetchNeeds(
     .eq("status", "recruiting")
     .neq("owner_id", viewerId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(limit);
 
   if (memberProjectIds.length > 0) {
     query = query.not("id", "in", `(${memberProjectIds.join(",")})`);
@@ -90,12 +112,23 @@ export async function fetchNeeds(
   return { data: rows, error: null };
 }
 
-/** Projects with at least one collaboration event in the last 7 days. */
-export async function fetchActive(): Promise<QueryResult<ActiveItem>> {
+/**
+ * Projects with at least one collaboration event in the last 7 days.
+ *
+ * Event counts are taken over the most recent WINDOW.activeEvents events in
+ * the window rather than every row in the table. Past that ceiling the
+ * ordering between two very busy projects can blur, which is a far better
+ * failure than an unbounded read of an append-only audit log.
+ */
+export async function fetchActive(
+  limit: number = WINDOW.section.active
+): Promise<QueryResult<ActiveItem>> {
   const { data: events, error: eventsError } = await supabase
     .from("collaboration_events")
     .select("project_id")
-    .gt("created_at", hoursAgo(ACTIVE_WINDOW_DAYS * 24));
+    .gt("created_at", hoursAgo(ACTIVE_WINDOW_DAYS * 24))
+    .order("created_at", { ascending: false })
+    .limit(WINDOW.activeEvents);
 
   if (eventsError) return { data: [], error: "Couldn't load active projects." };
 
@@ -111,7 +144,7 @@ export async function fetchActive(): Promise<QueryResult<ActiveItem>> {
     .select("id, title, description, project_health")
     .in("id", ids)
     .neq("status", "completed")
-    .limit(30);
+    .limit(limit);
 
   if (error) return { data: [], error: "Couldn't load active projects." };
 
@@ -126,12 +159,20 @@ export async function fetchActive(): Promise<QueryResult<ActiveItem>> {
 }
 
 /** Everyone except the viewer, the deleted, and existing accepted connections. */
-export async function fetchPeople(viewerId: string): Promise<QueryResult<PersonItem>> {
+export async function fetchPeople(
+  viewerId: string,
+  limit: number = WINDOW.section.people
+): Promise<QueryResult<PersonItem>> {
+  // Bounded like every other read. A viewer with more accepted connections
+  // than this would start seeing an already-connected person in the rail —
+  // a cosmetic duplicate, not a data leak — and no student network on two
+  // campuses comes close to the ceiling.
   const { data: connections } = await supabase
     .from("connections")
     .select("requester_id, recipient_id")
     .eq("status", "accepted")
-    .or(`requester_id.eq.${viewerId},recipient_id.eq.${viewerId}`);
+    .or(`requester_id.eq.${viewerId},recipient_id.eq.${viewerId}`)
+    .limit(WINDOW.viewerConnections);
 
   const connected = new Set<string>(
     (connections ?? []).map((c: any) =>
@@ -145,7 +186,7 @@ export async function fetchPeople(viewerId: string): Promise<QueryResult<PersonI
     .neq("id", viewerId)
     .is("deleted_at", null)
     .order("pvs_score", { ascending: false })
-    .limit(40);
+    .limit(limit);
 
   if (error) return { data: [], error: "Couldn't load people." };
 
@@ -167,6 +208,7 @@ export async function fetchMemberProjectIds(viewerId: string): Promise<string[]>
   const { data } = await supabase
     .from("project_members")
     .select("project_id")
-    .eq("user_id", viewerId);
+    .eq("user_id", viewerId)
+    .limit(WINDOW.viewerMemberships);
   return (data ?? []).map((m: any) => m.project_id);
 }
