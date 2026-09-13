@@ -23,3 +23,8 @@ supabase/.temp
 
 expo-env.d.ts
 # @end expo-cli
+
+# Planning and development files
+Plans/
+# Tool scratch
+.superpowers/
