@@ -15,15 +15,20 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Send, Check, Info } from "lucide-react-native";
+import { ChevronLeft, Send, Check, Info, Camera, DoorOpen, UserX } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
-import type { ChatMessage, Project, ProjectMember, Profile } from "@/types/database";
+import { useTheme } from "@/contexts/ThemeContext";
+import { s, vs, fs } from "@/utils/scale";
+import { ProfileCardMessage } from "@/components/ProfileCardMessage";
+import { QuitProjectSheet } from "@/components/QuitProjectSheet";
+import type { ChatMessage, Project, ProjectMember, Profile, ProfileCardMetadata } from "@/types/database";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type MessageWithSender = ChatMessage & {
-  sender: Pick<Profile, "id" | "full_name" | "university" | "avatar_url">;
+  sender: Pick<Profile, "id" | "full_name" | "university" | "avatar_url" | "deleted_at" | "display_name_at_deletion"> | null;
 };
 
 // ─── Member Info ──────────────────────────────────────────────────────────────
@@ -33,9 +38,43 @@ type MemberInfo = {
   fullName: string | null;
   avatarUrl: string | null;
   role: string;
-  mouAccepted: boolean;
+  committed: boolean;
   isOwner: boolean;
 };
+
+// ─── System pill card (account_deleted / member_left) ────────────────────────
+
+function SystemPillCard({ message }: { message: MessageWithSender }) {
+  const { tokens: { C } } = useTheme();
+  const time = new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const userName = (message.metadata as Record<string, string> | null)?.userName ?? "A user";
+  const label = message.type === "account_deleted"
+    ? `${userName} left CollabSpace · ${time}`
+    : `${userName} left the project · ${time}`;
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginVertical: 10, gap: 10 }}>
+      <View style={{ flex: 1, height: 1, backgroundColor: "rgba(200,180,232,0.10)" }} />
+      <View style={{
+        flexDirection: "row", alignItems: "center", gap: 7,
+        backgroundColor: "rgba(200,180,232,0.07)",
+        borderWidth: 1, borderColor: "rgba(200,180,232,0.14)",
+        borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5,
+      }}>
+        <View style={{
+          width: 14, height: 14, borderRadius: 7,
+          backgroundColor: "rgba(100,80,140,0.30)",
+          borderWidth: 1, borderColor: "rgba(200,180,232,0.20)",
+          alignItems: "center", justifyContent: "center",
+        }}>
+          <UserX size={8} color="rgba(200,180,232,0.6)" strokeWidth={2} />
+        </View>
+        <Text style={{ fontSize: 11, color: C.textMuted, letterSpacing: 0.2 }}>{label}</Text>
+      </View>
+      <View style={{ flex: 1, height: 1, backgroundColor: "rgba(200,180,232,0.10)" }} />
+    </View>
+  );
+}
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
@@ -48,25 +87,34 @@ function MessageBubble({
   isOwn: boolean;
   showSenderInfo: boolean;
 }) {
-  const senderName = message.sender.full_name ?? "Anonymous";
-  const initials = senderName.trim().split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
-  const isQUB = message.sender.university === "qub";
+  const { tokens: { C } } = useTheme();
+  const isDeleted = !!message.sender?.deleted_at;
+  const senderName = isDeleted
+    ? `${message.sender?.display_name_at_deletion ?? "Deleted User"} (Deleted User)`
+    : (message.sender?.full_name ?? "Anonymous");
+  const rawName = message.sender?.full_name ?? message.sender?.display_name_at_deletion ?? "?";
+  const initials = rawName.trim().split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
 
-  return (
+  const bubble = (
     <View style={{ marginHorizontal: 16, marginBottom: 6, flexDirection: isOwn ? "row-reverse" : "row", alignItems: "flex-end", gap: 8 }}>
       {/* Avatar column — only for others */}
       {!isOwn && (
         <View style={{ width: 28, alignItems: "center", justifyContent: "flex-end" }}>
           {showSenderInfo ? (
-            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isQUB ? "#8B0000" : "#006E6D", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-              {message.sender.avatar_url ? (
-                <Image source={{ uri: message.sender.avatar_url }} style={{ width: 28, height: 28 }} />
-              ) : (
-                <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{initials}</Text>
-              )}
-            </View>
+            isDeleted ? (
+              <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: "rgba(200,180,232,0.18)", backgroundColor: "rgba(100,80,140,0.20)", alignItems: "center", justifyContent: "center" }}>
+                <UserX size={12} color="rgba(200,180,232,0.5)" strokeWidth={2} />
+              </View>
+            ) : (
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: C.avatarBg, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                {message.sender?.avatar_url ? (
+                  <Image source={{ uri: message.sender.avatar_url }} style={{ width: 28, height: 28 }} />
+                ) : (
+                  <Text style={{ color: C.white, fontSize: 10, fontWeight: "700" }}>{initials}</Text>
+                )}
+              </View>
+            )
           ) : (
-            /* Spacer so bubble aligns when avatar is hidden */
             <View style={{ width: 28 }} />
           )}
         </View>
@@ -75,7 +123,7 @@ function MessageBubble({
       {/* Bubble + name + timestamp */}
       <View style={{ maxWidth: "75%", alignItems: isOwn ? "flex-end" : "flex-start" }}>
         {!isOwn && showSenderInfo && (
-          <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginBottom: 3, marginLeft: 4 }}>
+          <Text style={{ color: isDeleted ? "rgba(200,180,232,0.45)" : C.textFaint, fontSize: 11, marginBottom: 3, marginLeft: 4 }}>
             {senderName}
           </Text>
         )}
@@ -85,25 +133,28 @@ function MessageBubble({
           borderRadius: 20,
           borderBottomRightRadius: isOwn ? 4 : 20,
           borderBottomLeftRadius: isOwn ? 20 : 4,
-          backgroundColor: isOwn ? "#7c3aed" : "#1e1040",
+          backgroundColor: isOwn ? C.purple : (isDeleted ? "rgba(42,32,64,0.55)" : C.chatBubbleOther),
           borderWidth: isOwn ? 0 : 1,
-          borderColor: "#2d1b69",
+          borderColor: isDeleted ? "rgba(200,180,232,0.10)" : C.borderSubtle,
         }}>
-          <Text style={{ color: "#ffffff", fontSize: 14, lineHeight: 20 }}>
+          <Text style={{ color: isDeleted ? "rgba(200,180,232,0.58)" : C.white, fontSize: 14, lineHeight: 20 }}>
             {message.content}
           </Text>
         </View>
-        <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, marginTop: 3, paddingHorizontal: 4 }}>
+        <Text style={{ color: isDeleted ? "rgba(100,90,120,0.45)" : C.textFaint, fontSize: 11, marginTop: 3, paddingHorizontal: 4 }}>
           {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </Text>
       </View>
     </View>
   );
+
+  return isDeleted ? <View style={{ opacity: 0.58 }}>{bubble}</View> : bubble;
 }
 
 // ─── Handshake Chat ───────────────────────────────────────────────────────────
 
 export default function HandshakeChat({ projectId }: { projectId: string }) {
+  const { tokens: { C } } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const flatListRef = useRef<FlatList>(null);
@@ -115,21 +166,25 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showQuitSheet, setShowQuitSheet] = useState(false);
+  const [myFullName, setMyFullName] = useState<string>("");
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
 
-  const hasSigned = membership?.mou_accepted === true;
+  const hasCommitted = membership?.mou_accepted === true;
+  const isOwner = !!user && project?.owner_id === user.id;
 
   // ── Initial data load ───────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     if (!projectId || !user) return;
 
-    const [projectRes, messagesRes, membershipRes] = await Promise.all([
+    const [projectRes, messagesRes, membershipRes, profileRes] = await Promise.all([
       supabase.from("projects").select("*").eq("id", projectId).single(),
       supabase
         .from("chat_messages")
-        .select("*, sender:profiles!sender_id(id, full_name, university, avatar_url)")
+        .select("*, sender:profiles!sender_id(id, full_name, university, avatar_url, deleted_at, display_name_at_deletion)")
         .eq("project_id", projectId)
         .order("created_at", { ascending: true }),
       supabase
@@ -138,11 +193,13 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
         .eq("project_id", projectId)
         .eq("user_id", user.id)
         .maybeSingle(),
+      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
     ]);
 
     if (projectRes.data) setProject(projectRes.data as Project);
     if (messagesRes.data) setMessages(messagesRes.data as MessageWithSender[]);
     if (membershipRes.data) setMembership(membershipRes.data as ProjectMember);
+    if (profileRes.data) setMyFullName(profileRes.data.full_name ?? "");
 
     setLoading(false);
   }, [projectId, user]);
@@ -169,16 +226,22 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
         async (payload) => {
           const newMsg = payload.new as ChatMessage;
 
-          // Fetch sender profile for the incoming message
-          const { data: senderData } = await supabase
-            .from("profiles")
-            .select("id, full_name, university, avatar_url")
-            .eq("id", newMsg.sender_id)
-            .single();
+          // Fetch sender profile for the incoming message (null sender_id = system message)
+          let senderData = null;
+          if (newMsg.sender_id) {
+            const { data } = await supabase
+              .from("profiles")
+              .select("id, full_name, university, avatar_url, deleted_at, display_name_at_deletion")
+              .eq("id", newMsg.sender_id)
+              .single();
+            senderData = data;
+          }
 
           const enriched: MessageWithSender = {
             ...newMsg,
-            sender: senderData ?? { id: newMsg.sender_id, full_name: null, university: "qub", avatar_url: null },
+            sender: senderData ?? (newMsg.sender_id
+              ? { id: newMsg.sender_id, full_name: null, university: "qub" as const, avatar_url: null, deleted_at: null, display_name_at_deletion: null }
+              : null),
           };
 
           setMessages((prev) => {
@@ -240,7 +303,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
         fullName: ownerData.full_name,
         avatarUrl: ownerData.avatar_url,
         role: "Owner",
-        mouAccepted: true,
+        committed: true,
         isOwner: true,
       });
     }
@@ -253,7 +316,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
         fullName: m.profile?.full_name ?? null,
         avatarUrl: m.profile?.avatar_url ?? null,
         role: m.role ?? "Member",
-        mouAccepted: m.mou_accepted ?? false,
+        committed: m.mou_accepted ?? false,
         isOwner: false,
       });
     }
@@ -262,46 +325,159 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
     setLoadingMembers(false);
   }, [project, projectId]);
 
+  // ── Chat icon upload ────────────────────────────────────────────────────────
+
+  const handlePickIcon = async () => {
+    if (!isOwner || !project) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Please allow access to your photo library.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    setUploadingIcon(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("No auth token");
+
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+      const fileName = `project-icons/${project.id}.jpg`;
+      const formData = new FormData();
+      formData.append("file", { uri: result.assets[0].uri, name: fileName, type: "image/jpeg" } as any);
+
+      const res = await fetch(`${supabaseUrl}/storage/v1/object/avatars/${fileName}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "x-upsert": "true" },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
+      const iconUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      await supabase.from("projects").update({ chat_icon_url: iconUrl }).eq("id", project.id);
+      setProject((prev) => prev ? { ...prev, chat_icon_url: iconUrl } : prev);
+    } catch (e: any) {
+      Alert.alert("Upload Failed", e?.message ?? "Could not update the group icon.");
+    } finally {
+      setUploadingIcon(false);
+    }
+  };
+
+  // ── Quit project ───────────────────────────────────────────────────────────
+
+  const handleQuit = async () => {
+    if (!user || !projectId || !project) return;
+    try {
+      await supabase.from("project_members").delete()
+        .eq("project_id", projectId).eq("user_id", user.id);
+
+      await supabase.from("collaboration_events").insert({
+        project_id: projectId, user_id: user.id, event_type: "member_quit",
+      });
+
+      await supabase.from("chat_messages").insert({
+        project_id: projectId,
+        sender_id: user.id,
+        type: "member_left",
+        content: "",
+        metadata: { userName: myFullName || "A user" },
+        read_by: [],
+      });
+
+      await supabase.functions.invoke("notify-owner", {
+        body: {
+          projectId,
+          title: `${myFullName || "A member"} left ${project.title}`,
+          body: `${myFullName || "A member"} has left the project.`,
+        },
+      });
+
+      router.replace("/(app)/projects" as any);
+    } catch {
+      Alert.alert("Error", "Could not leave the project. Please try again.");
+    }
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
       {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2d1b69" }}>
-        <Pressable onPress={() => router.back()} style={{ marginRight: 12 }} hitSlop={12}>
-          <ChevronLeft size={24} color="rgba(255,255,255,0.6)" />
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(14), paddingVertical: vs(10), borderBottomWidth: 1, borderBottomColor: C.borderSubtle }}>
+        <Pressable onPress={() => router.back()} style={{ marginRight: s(10) }} hitSlop={12}>
+          <ChevronLeft size={s(22)} color={C.textMuted} />
         </Pressable>
+
+        {/* Group icon — tappable by owner */}
+        <Pressable
+          onPress={isOwner ? handlePickIcon : undefined}
+          style={{ marginRight: s(10), position: "relative" }}
+          hitSlop={4}
+        >
+          <View style={{ width: s(38), height: s(38), borderRadius: s(19), backgroundColor: C.avatarBg, alignItems: "center", justifyContent: "center", overflow: "hidden", borderWidth: 1, borderColor: C.border }}>
+            {project?.chat_icon_url ? (
+              <Image source={{ uri: project.chat_icon_url }} style={{ width: s(38), height: s(38) }} />
+            ) : (
+              <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(13) }}>
+                {(project?.title ?? "?").slice(0, 2).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          {isOwner && (
+            <View style={{
+              position: "absolute", bottom: -1, right: -1,
+              width: s(16), height: s(16), borderRadius: s(8),
+              backgroundColor: uploadingIcon ? C.fieldBg : C.purple,
+              borderWidth: 1.5, borderColor: C.bgMid,
+              alignItems: "center", justifyContent: "center",
+            }}>
+              {uploadingIcon
+                ? <ActivityIndicator size="small" color={C.white} style={{ transform: [{ scale: 0.55 }] }} />
+                : <Camera size={s(8)} color={C.white} strokeWidth={2.5} />}
+            </View>
+          )}
+        </Pressable>
+
         <Pressable
           style={{ flex: 1 }}
           onPress={() => { fetchMembers(); setShowInfo(true); }}
         >
-          <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 15 }} numberOfLines={1}>
+          <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(14) }} numberOfLines={1}>
             {project?.title ?? "Loading…"}
           </Text>
-          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>Tap for group info</Text>
+          <Text style={{ color: C.textMuted, fontSize: fs(11) }}>Tap for group info</Text>
         </Pressable>
 
         <Pressable
           style={{ marginRight: 10 }}
           onPress={() =>
-            router.push({ pathname: "/(app)/projects/[id]/insights", params: { id: projectId } })
+            router.push({ pathname: "/(app)/chat/insights/[id]", params: { id: projectId } })
           }
           hitSlop={12}
         >
-          <Info size={20} color="rgba(255,255,255,0.4)" />
+          <Info size={20} color={C.textMuted} />
         </Pressable>
 
-        {hasSigned && (
+        {hasCommitted && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: "rgba(16,185,129,0.1)", borderWidth: 1, borderColor: "rgba(16,185,129,0.3)" }}>
             <Check size={13} color="#10b981" />
-            <Text style={{ color: "#10b981", fontSize: 12, fontWeight: "600" }}>MOU Signed</Text>
+            <Text style={{ color: "#10b981", fontSize: 12, fontWeight: "600" }}>Committed</Text>
           </View>
         )}
       </View>
 
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color="#7c3aed" />
+          <ActivityIndicator size="large" color={C.purple} />
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -311,8 +487,8 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
         >
           {messages.length === 0 ? (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
-              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 15, fontWeight: "600", marginBottom: 6 }}>No messages yet</Text>
-              <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center" }}>
+              <Text style={{ color: C.textMuted, fontSize: 15, fontWeight: "600", marginBottom: 6 }}>No messages yet</Text>
+              <Text style={{ color: C.textFaint, fontSize: 13, textAlign: "center" }}>
                 Start the conversation — introduce yourself and your interest in this project.
               </Text>
             </View>
@@ -321,9 +497,24 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
               ref={flatListRef}
               data={messages}
               renderItem={({ item, index }) => {
+                if (item.type === "account_deleted" || item.type === "member_left") {
+                  return <SystemPillCard message={item} />;
+                }
                 const isOwn = item.sender_id === user?.id;
                 const prevMsg = messages[index - 1];
-                const showSenderInfo = !isOwn && (!prevMsg || prevMsg.sender_id !== item.sender_id);
+                const prevIsRegular = prevMsg && prevMsg.type !== "account_deleted" && prevMsg.type !== "member_left";
+                const showSenderInfo = !isOwn && (!prevIsRegular || prevMsg.sender_id !== item.sender_id);
+                if (item.type === "profile_card" && item.metadata) {
+                  const meta = item.metadata as unknown as ProfileCardMetadata;
+                  return (
+                    <View style={{ marginHorizontal: 16, marginBottom: 6, alignItems: isOwn ? "flex-end" : "flex-start" }}>
+                      <ProfileCardMessage
+                        metadata={meta}
+                        onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: meta.userId } } as any)}
+                      />
+                    </View>
+                  );
+                }
                 return <MessageBubble message={item} isOwn={isOwn} showSenderInfo={showSenderInfo} />;
               }}
               keyExtractor={(item) => item.id}
@@ -336,11 +527,11 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
           )}
 
           {/* Input bar */}
-          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "#2d1b69", backgroundColor: "#1e1040" }}>
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.borderSubtle, backgroundColor: C.inputBg }}>
             <TextInput
-              style={{ flex: 1, backgroundColor: "transparent", borderWidth: 1, borderColor: "#2d1b69", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, color: "#ffffff", fontSize: 14 }}
+              style={{ flex: 1, backgroundColor: "transparent", borderWidth: 1, borderColor: C.borderSubtle, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, color: C.white, fontSize: 14 }}
               placeholder="Message…"
-              placeholderTextColor="rgba(255,255,255,0.3)"
+              placeholderTextColor={C.textFaint}
               value={inputText}
               onChangeText={setInputText}
               multiline
@@ -350,17 +541,25 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
             <Pressable
               onPress={sendMessage}
               disabled={!inputText.trim() || sending}
-              style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: inputText.trim() ? "#7c3aed" : "#2d1b69" }}
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: inputText.trim() ? C.purple : C.borderSubtle }}
             >
               {sending ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={C.white} />
               ) : (
-                <Send size={16} color={inputText.trim() ? "#fff" : "rgba(255,255,255,0.3)"} />
+                <Send size={16} color={inputText.trim() ? C.white : C.textFaint} />
               )}
             </Pressable>
           </View>
         </KeyboardAvoidingView>
       )}
+
+      {/* Quit project sheet */}
+      <QuitProjectSheet
+        visible={showQuitSheet}
+        projectTitle={project?.title ?? ""}
+        onClose={() => setShowQuitSheet(false)}
+        onQuit={handleQuit}
+      />
 
       {/* Group info modal */}
       <Modal
@@ -371,26 +570,26 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
       >
         <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} onPress={() => setShowInfo(false)} />
         <View style={{
-          backgroundColor: "#120030",
+          backgroundColor: C.modalBg,
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
           borderTopWidth: 1,
-          borderColor: "#2d1b69",
+          borderColor: C.borderSubtle,
           maxHeight: "75%",
           paddingBottom: 32,
         }}>
           {/* Handle */}
           <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 8 }}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.2)" }} />
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.surface }} />
           </View>
 
           {/* Project info */}
-          <View style={{ paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: "#2d1b69" }}>
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18, marginBottom: 6 }} numberOfLines={2}>
+          <View style={{ paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: C.borderSubtle }}>
+            <Text style={{ color: C.white, fontWeight: "700", fontSize: 18, marginBottom: 6 }} numberOfLines={2}>
               {project?.title}
             </Text>
             {project?.description ? (
-              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 18 }} numberOfLines={3}>
+              <Text style={{ color: C.textMuted, fontSize: 13, lineHeight: 18 }} numberOfLines={3}>
                 {project.description}
               </Text>
             ) : null}
@@ -398,38 +597,38 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
 
           {/* Members header */}
           <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.7 }}>
+            <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.7 }}>
               Members · {members.length}
             </Text>
           </View>
 
           {loadingMembers ? (
-            <ActivityIndicator size="small" color="#7c3aed" style={{ marginTop: 16 }} />
+            <ActivityIndicator size="small" color={C.purple} style={{ marginTop: 16 }} />
           ) : (
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 8 }}>
               {members.map((m) => {
                 const name = m.fullName ?? "Unknown";
                 const initials = name.trim().split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
                 return (
                   <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: m.isOwner ? "#6824CC" : "#2d1b69", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: m.isOwner ? C.purple : C.avatarBg, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                       {m.avatarUrl ? (
                         <Image source={{ uri: m.avatarUrl }} style={{ width: 40, height: 40 }} />
                       ) : (
-                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>{initials}</Text>
+                        <Text style={{ color: C.white, fontWeight: "700", fontSize: 14 }}>{initials}</Text>
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>{name}</Text>
+                      <Text style={{ color: C.white, fontWeight: "600", fontSize: 14 }}>{name}</Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
-                        <Text style={{ color: m.isOwner ? "#9434D8" : "rgba(255,255,255,0.45)", fontSize: 12 }}>{m.role}</Text>
+                        <Text style={{ color: m.isOwner ? C.purpleL : C.textFaint, fontSize: 12 }}>{m.role}</Text>
                         {!m.isOwner && (
                           <View style={{
                             paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8,
-                            backgroundColor: m.mouAccepted ? "rgba(52,211,153,0.15)" : "rgba(255,255,255,0.06)",
+                            backgroundColor: m.committed ? "rgba(52,211,153,0.15)" : C.fieldBg,
                           }}>
-                            <Text style={{ color: m.mouAccepted ? "#34D399" : "rgba(255,255,255,0.3)", fontSize: 10, fontWeight: "600" }}>
-                              {m.mouAccepted ? "MOU Signed" : "Pending"}
+                            <Text style={{ color: m.committed ? "#34D399" : C.textFaint, fontSize: 10, fontWeight: "600" }}>
+                              {m.committed ? "Committed" : "Pending"}
                             </Text>
                           </View>
                         )}
@@ -438,6 +637,26 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
                   </View>
                 );
               })}
+
+              {/* Quit Project — only shown to non-owner members */}
+              {!isOwner && membership && (
+                <>
+                  <View style={{ height: 1, backgroundColor: C.borderSubtle, marginVertical: 4 }} />
+                  <Pressable
+                    onPress={() => { setShowInfo(false); setShowQuitSheet(true); }}
+                    style={{ flexDirection: "row", alignItems: "center", gap: s(10), paddingVertical: vs(6) }}
+                  >
+                    <View style={{
+                      width: s(36), height: s(36), borderRadius: s(10),
+                      backgroundColor: "rgba(248,113,113,0.10)",
+                      alignItems: "center", justifyContent: "center",
+                    }}>
+                      <DoorOpen size={s(16)} color={C.danger} strokeWidth={1.8} />
+                    </View>
+                    <Text style={{ color: C.danger, fontSize: fs(14), fontWeight: "500" }}>Quit Project</Text>
+                  </Pressable>
+                </>
+              )}
             </ScrollView>
           )}
         </View>

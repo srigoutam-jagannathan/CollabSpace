@@ -15,7 +15,8 @@ import { Search } from "lucide-react-native";
 import { FlashList } from "@shopify/flash-list";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
-import { C, FONT } from "@/utils/theme";
+import { FONT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
 
@@ -36,20 +37,21 @@ type GroupConvo = Project & {
 };
 
 function AvatarCircle({ url, initials, hasUnread }: { url?: string | null; initials: string; hasUnread?: boolean }) {
+  const { tokens: { C } } = useTheme();
   return (
     <View style={{ position: "relative", marginRight: s(14) }}>
-      <View style={{ width: s(48), height: s(48), borderRadius: s(24), backgroundColor: "#2d1b69", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      <View style={{ width: s(48), height: s(48), borderRadius: s(24), backgroundColor: C.avatarBg, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         {url ? (
           <Image source={{ uri: url }} style={{ width: s(48), height: s(48) }} />
         ) : (
-          <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(15) }}>{initials}</Text>
+          <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(15) }}>{initials}</Text>
         )}
       </View>
       {hasUnread && (
         <View style={{
           position: "absolute", top: 1, right: 1,
           width: s(11), height: s(11), borderRadius: s(6),
-          backgroundColor: C.pink, borderWidth: 2, borderColor: "#120030",
+          backgroundColor: C.pink, borderWidth: 2, borderColor: C.bgDeep,
         }} />
       )}
     </View>
@@ -64,6 +66,7 @@ function getInitials(name: string) {
 }
 
 export default function MessagesScreen() {
+  const { tokens: { C } } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"individual" | "group">("individual");
@@ -77,15 +80,32 @@ export default function MessagesScreen() {
   const fetchJoinedProjects = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("project_members")
-      .select("project:projects(*)")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
 
-    const joined = (data ?? [])
-      .map((row: any) => row.project as Project)
-      .filter(Boolean);
+    // Fetch both: projects the user is an approved member of, and projects they own.
+    // Owners may not be in project_members for older projects, so we query both sources.
+    const [{ data: memberRows }, { data: ownedRows }] = await Promise.all([
+      supabase
+        .from("project_members")
+        .select("project:projects(*)")
+        .eq("user_id", user.id)
+        .eq("mou_accepted", true)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("projects")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    const seen = new Set<string>();
+    const joined: Project[] = [];
+    for (const row of (memberRows ?? [])) {
+      const p = (row as any).project as Project;
+      if (p && !seen.has(p.id)) { seen.add(p.id); joined.push(p); }
+    }
+    for (const p of (ownedRows ?? []) as Project[]) {
+      if (p && !seen.has(p.id)) { seen.add(p.id); joined.push(p); }
+    }
 
     if (joined.length === 0) {
       setGroupProjects([]);
@@ -210,32 +230,32 @@ export default function MessagesScreen() {
       </View>
 
       {/* Search */}
-      <View style={{ flexDirection: "row", alignItems: "center", marginHorizontal: s(20), marginBottom: vs(16), backgroundColor: "#1e1040", borderRadius: s(28), paddingHorizontal: s(16), height: vs(44) }}>
-        <Search size={16} color="rgba(255,255,255,0.35)" />
+      <View style={{ flexDirection: "row", alignItems: "center", marginHorizontal: s(20), marginBottom: vs(16), backgroundColor: C.inputBg, borderRadius: s(28), paddingHorizontal: s(16), height: vs(44) }}>
+        <Search size={16} color={C.textMuted} />
         <TextInput
-          style={{ flex: 1, color: "#ffffff", fontSize: 14, marginLeft: 10 }}
+          style={{ flex: 1, color: C.white, fontSize: 14, marginLeft: 10 }}
           placeholder="Search Messages"
-          placeholderTextColor="rgba(255,255,255,0.3)"
+          placeholderTextColor={C.textFaint}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
       {/* Tab toggle */}
-      <View style={{ flexDirection: "row", marginHorizontal: 20, marginBottom: 8, backgroundColor: "#1e1040", borderRadius: 12, padding: 4 }}>
+      <View style={{ flexDirection: "row", marginHorizontal: s(20), marginBottom: vs(8), backgroundColor: C.inputBg, borderRadius: s(14), padding: s(4) }}>
         <Pressable
           onPress={() => setActiveTab("individual")}
-          style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", backgroundColor: activeTab === "individual" ? "#ffffff" : "transparent" }}
+          style={{ flex: 1, paddingVertical: vs(10), borderRadius: s(10), alignItems: "center", backgroundColor: activeTab === "individual" ? C.tabActiveBg : "transparent" }}
         >
-          <Text style={{ color: activeTab === "individual" ? "#120a2e" : C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(13) }}>
+          <Text style={{ color: activeTab === "individual" ? C.tabActiveText : C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(13) }}>
             Individual Chats
           </Text>
         </Pressable>
         <Pressable
           onPress={() => setActiveTab("group")}
-          style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", backgroundColor: activeTab === "group" ? "#ffffff" : "transparent" }}
+          style={{ flex: 1, paddingVertical: vs(10), borderRadius: s(10), alignItems: "center", backgroundColor: activeTab === "group" ? C.tabActiveBg : "transparent" }}
         >
-          <Text style={{ color: activeTab === "group" ? "#120a2e" : C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(13) }}>
+          <Text style={{ color: activeTab === "group" ? C.tabActiveText : C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(13) }}>
             Group Chats
           </Text>
         </Pressable>
@@ -245,11 +265,11 @@ export default function MessagesScreen() {
       {activeTab === "individual" ? (
         loadingConnections ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <ActivityIndicator size="large" color="#7c3aed" />
+            <ActivityIndicator size="large" color={C.purple} />
           </View>
         ) : filteredConnections.length === 0 ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: s(32) }}>
-            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: fs(15), textAlign: "center" }}>
+            <Text style={{ color: C.textMuted, fontSize: fs(15), textAlign: "center" }}>
               No connections yet.{"\n"}Connect with talent in the Discover tab!
             </Text>
           </View>
@@ -267,7 +287,7 @@ export default function MessagesScreen() {
               return (
                 <Pressable
                   onPress={() => router.push({ pathname: "/(app)/chat/dm/[id]", params: { id: item.id } })}
-                  style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)", backgroundColor: unread ? "rgba(168, 85, 247, 0.1)" : "transparent" }}
+                  style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: C.borderSubtle, backgroundColor: unread ? "rgba(192,133,82,0.12)" : "transparent" }}
                 >
                   <AvatarCircle
                     url={item.otherUserAvatarUrl}
@@ -278,7 +298,7 @@ export default function MessagesScreen() {
                     <Text style={{ color: unread ? C.white : C.textMuted, fontFamily: unread ? FONT.bold : FONT.regular, fontSize: fs(14), marginBottom: vs(2) }}>
                       {item.otherUserName}
                     </Text>
-                    <Text style={{ color: unread ? "rgba(255,255,255,0.88)" : C.textFaint, fontFamily: unread ? FONT.semiBold : FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
+                    <Text style={{ color: unread ? C.white : C.textFaint, fontFamily: unread ? FONT.semiBold : FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
                       {item.lastMessage ?? "Start a conversation"}
                     </Text>
                   </View>
@@ -292,11 +312,11 @@ export default function MessagesScreen() {
         )
       ) : loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color="#7c3aed" />
+          <ActivityIndicator size="large" color={C.purple} />
         </View>
       ) : filteredGroup.length === 0 ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
-          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 15, textAlign: "center" }}>
+          <Text style={{ color: C.textMuted, fontSize: 15, textAlign: "center" }}>
             No group chats yet.{"\n"}Join a project to start collaborating!
           </Text>
         </View>
@@ -314,14 +334,14 @@ export default function MessagesScreen() {
             return (
               <Pressable
                 onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: item.id } })}
-                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)", backgroundColor: unread ? "rgba(168, 85, 247, 0.1)" : "transparent" }}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: C.borderSubtle, backgroundColor: unread ? "rgba(192,133,82,0.12)" : "transparent" }}
               >
-                <AvatarCircle initials={getInitials(item.title)} hasUnread={unread} />
+                <AvatarCircle url={item.chat_icon_url} initials={getInitials(item.title)} hasUnread={unread} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: unread ? C.white : C.textMuted, fontFamily: unread ? FONT.bold : FONT.regular, fontSize: fs(14), marginBottom: vs(2) }} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  <Text style={{ color: unread ? "rgba(255,255,255,0.88)" : C.textFaint, fontFamily: unread ? FONT.semiBold : FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
+                  <Text style={{ color: unread ? C.white : C.textFaint, fontFamily: unread ? FONT.semiBold : FONT.regular, fontSize: fs(13) }} numberOfLines={1}>
                     {item.lastMessage ?? "Tap to open group chat"}
                   </Text>
                 </View>

@@ -15,14 +15,19 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, Send } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
-import { C, FONT } from "@/utils/theme";
+import { ProfileCardMessage } from "@/components/ProfileCardMessage";
+import { FONT } from "@/utils/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import type { ProfileCardMetadata } from "@/types/database";
 
 type DM = {
   id: string;
   sender_id: string;
   content: string;
   created_at: string;
+  type?: string;
+  metadata?: Record<string, unknown> | null;
 };
 
 type ConnectionRow = {
@@ -33,6 +38,7 @@ type ConnectionRow = {
 };
 
 export function DirectChat({ connectionId }: { connectionId: string }) {
+  const { tokens: { C } } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const [messages, setMessages] = useState<DM[]>([]);
@@ -55,7 +61,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
           .single(),
         supabase
           .from("direct_messages")
-          .select("id, sender_id, content, created_at")
+          .select("id, sender_id, content, created_at, type, metadata")
           .eq("connection_id", connectionId)
           .order("created_at", { ascending: true }),
       ]);
@@ -196,6 +202,17 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
             }
             renderItem={({ item }) => {
               const isOwn = item.sender_id === user?.id;
+              if (item.type === "profile_card" && item.metadata) {
+                const meta = item.metadata as unknown as ProfileCardMetadata;
+                return (
+                  <View style={{ alignItems: isOwn ? "flex-end" : "flex-start", marginBottom: vs(10), marginHorizontal: s(16) }}>
+                    <ProfileCardMessage
+                      metadata={meta}
+                      onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: meta.userId } } as any)}
+                    />
+                  </View>
+                );
+              }
               return (
                 <View style={{ alignItems: isOwn ? "flex-end" : "flex-start", marginBottom: vs(10) }}>
                   <View style={{
@@ -227,7 +244,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
           flexDirection: "row", alignItems: "flex-end",
           paddingHorizontal: s(16), paddingVertical: vs(12),
           borderTopWidth: 1, borderTopColor: C.border,
-          backgroundColor: "rgba(10,1,32,0.95)",
+          backgroundColor: C.inputBg,
         }}>
           <TextInput
             style={{
@@ -249,7 +266,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
             disabled={!inputText.trim() || sending}
             style={{
               width: s(44), height: s(44), borderRadius: s(22),
-              backgroundColor: inputText.trim() ? C.purple : "rgba(255,255,255,0.08)",
+              backgroundColor: inputText.trim() ? C.purple : C.fieldBg,
               alignItems: "center", justifyContent: "center",
             }}
           >
