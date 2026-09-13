@@ -54,7 +54,7 @@ export async function fetchNeeds(
 ): Promise<QueryResult<NeedsItem>> {
   let query = supabase
     .from("projects")
-    .select("id, title, description, looking_for, tags, university_scope, commitment_hours, project_members(count)")
+    .select("id, title, description, looking_for, role_requirements, tags, university_scope, commitment_hours, project_members(count)")
     .eq("status", "recruiting")
     .neq("owner_id", viewerId)
     .order("created_at", { ascending: false })
@@ -67,17 +67,26 @@ export async function fetchNeeds(
   const { data, error } = await query;
   if (error) return { data: [], error: "Couldn't load matched projects." };
 
-  const rows: NeedsItem[] = (data ?? []).map((p: any) => ({
-    id: p.id,
-    title: p.title,
-    description: p.description,
-    looking_for: p.looking_for ?? [],
-    tags: p.tags ?? [],
-    university_scope: p.university_scope,
-    commitment_hours: p.commitment_hours,
-    member_count: p.project_members?.[0]?.count ?? 0,
-    matched_roles: matchedRoles(p.looking_for ?? [], viewerSkills),
-  }));
+  const rows: NeedsItem[] = (data ?? []).map((p: any) => {
+    // Create Project writes roles to role_requirements ({ role, description }[]).
+    // looking_for is the older string[] and is empty on every row written by the
+    // current form, so prefer role_requirements and fall back for legacy rows.
+    const roles: string[] =
+      (p.role_requirements ?? []).map((r: any) => r?.role).filter(Boolean);
+    const lookingFor = roles.length > 0 ? roles : (p.looking_for ?? []);
+
+    return {
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      looking_for: lookingFor,
+      tags: p.tags ?? [],
+      university_scope: p.university_scope,
+      commitment_hours: p.commitment_hours,
+      member_count: p.project_members?.[0]?.count ?? 0,
+      matched_roles: matchedRoles(lookingFor, viewerSkills),
+    };
+  });
   return { data: rows, error: null };
 }
 

@@ -41,6 +41,7 @@ export function NeedsYourSkills({ items }: { items: NeedsItem[] }) {
               borderWidth: 1, borderColor: GLASS.card.borderColor,
             }}
           >
+            {item.matched_roles.length > 0 && (
             <View style={{
               alignSelf: "flex-start", flexDirection: "row", alignItems: "center",
               backgroundColor: "rgba(192,133,82,0.20)", borderWidth: 1,
@@ -51,6 +52,7 @@ export function NeedsYourSkills({ items }: { items: NeedsItem[] }) {
                 {calloutText(item.matched_roles)}
               </Text>
             </View>
+            )}
 
             <Text style={{
               color: C.white, fontFamily: FONT.extraBold, fontSize: fs(15.5),

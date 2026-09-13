@@ -40,7 +40,7 @@ export default function DiscoverScreen() {
       });
   }, [user?.id]);
 
-  const { pulse, needs, active, people, refreshing, refresh, retry } =
+  const { pulse, needs, needsMode, active, people, refreshing, refresh, retry } =
     useDiscoverData(skills, department);
 
   // Refetch on focus without clearing what is already on screen.
@@ -119,7 +119,7 @@ export default function DiscoverScreen() {
             </SectionFrame>
           ) : (
             <SectionFrame
-              title="Needs your skills"
+              title={needsMode === "matched" ? "Needs your skills" : "New projects"}
               visible={sectionVisible("needs", needs.data.length)}
               loading={needs.loading && needs.data.length === 0}
               error={needs.error}

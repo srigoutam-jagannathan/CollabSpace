@@ -41,7 +41,9 @@ export interface Project {
   title: string;
   description: string;
   status: ProjectStatus;
-  looking_for: string[];         // Roles the project still needs, e.g. ["Backend Dev", "Legal Advisor"]
+  looking_for: string[];         // Legacy role list. Empty on rows written by the
+                                 // current Create Project form — prefer role_requirements.
+  role_requirements: { role: string; description: string }[]; // Roles the project needs
   tags: string[];
   university_scope: University | "both";
   project_health: number | null; // 0–100, derived from collaboration_events

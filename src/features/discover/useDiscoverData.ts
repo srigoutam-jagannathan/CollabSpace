@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
-import { rankActive, rankNeeds, rankPeople } from "./ranking";
+import { rankActive, rankPeople, selectNeeds, type NeedsMode } from "./ranking";
 import {
   fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchPulse,
 } from "./queries";
@@ -13,6 +13,8 @@ function initial<T>(): SectionState<T> {
 export interface DiscoverData {
   pulse: SectionState<PulseItem>;
   needs: SectionState<NeedsItem>;
+  /** Whether the hero is showing skill matches or the recent-projects fallback. */
+  needsMode: NeedsMode;
   active: SectionState<ActiveItem>;
   people: SectionState<PersonItem>;
   refreshing: boolean;
@@ -43,6 +45,7 @@ export function useDiscoverData(
   const [needs, setNeeds] = useState<SectionState<NeedsItem>>(initial);
   const [active, setActive] = useState<SectionState<ActiveItem>>(initial);
   const [people, setPeople] = useState<SectionState<PersonItem>>(initial);
+  const [needsMode, setNeedsMode] = useState<NeedsMode>("matched");
   const [refreshing, setRefreshing] = useState(false);
 
   // Guards against setting state after unmount during a slow refetch. Reset
@@ -69,11 +72,13 @@ export function useDiscoverData(
     const memberIds = await fetchMemberProjectIds(viewerId);
     const { data, error } = await fetchNeeds(viewerId, viewerSkills, memberIds);
     if (!alive.current) return;
-    setNeeds(prev => ({
-      data: error ? prev.data : rankNeeds(data),
-      loading: false,
-      error,
-    }));
+    if (!error) {
+      const { items, mode } = selectNeeds(data);
+      setNeedsMode(mode);
+      setNeeds({ data: items, loading: false, error: null });
+    } else {
+      setNeeds(prev => ({ data: prev.data, loading: false, error }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- viewerSkillsKey is the stable proxy for viewerSkills
   }, [viewerId, viewerSkillsKey]);
 
@@ -111,5 +116,5 @@ export function useDiscoverData(
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { pulse, needs, active, people, refreshing, refresh, retry };
+  return { pulse, needs, needsMode, active, people, refreshing, refresh, retry };
 }
