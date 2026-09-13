@@ -6,6 +6,7 @@ import { Bell } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
 import { ProgressLine } from "@/components/ProgressLine";
+import { fetchPendingCount } from "@/features/notifications/pending";
 import { useAuth } from "@/features/auth/AuthContext";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -20,12 +21,13 @@ import { PeopleToKnow } from "./sections/PeopleToKnow";
 import { AddSkillsPrompt } from "./sections/AddSkillsPrompt";
 
 export default function DiscoverScreen() {
-  const { tokens: { C } } = useTheme();
+  const { tokens: { C, GRADIENT } } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
 
   const [skills, setSkills] = useState<string[]>([]);
   const [department, setDepartment] = useState<string | null>(null);
+  const [pending, setPending] = useState(0);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -48,7 +50,12 @@ export default function DiscoverScreen() {
 
   // Refetch on focus without clearing what is already on screen. revalidate()
   // rather than refresh() so this does not drive the pull-to-refresh spinner.
-  useFocusEffect(useCallback(() => { revalidate(); }, [revalidate]));
+  // The bell recounts here too, so acting on a notification and coming back
+  // clears the dot.
+  useFocusEffect(useCallback(() => {
+    revalidate();
+    if (user?.id) fetchPendingCount(user.id).then(setPending);
+  }, [revalidate, user?.id]));
 
   const allFailed =
     !!pulse.error && !!needs.error && !!active.error && !!people.error;
@@ -71,10 +78,28 @@ export default function DiscoverScreen() {
         <Btn
           onPress={() => router.push("/(app)/notifications")}
           hitSlop={12}
-          accessibilityLabel="Notifications"
+          accessibilityLabel={
+            pending > 0
+              ? `Notifications, ${pending} waiting for you`
+              : "Notifications"
+          }
           style={{ padding: s(4) }}
         >
           <Bell size={s(22)} color={C.white} />
+          {pending > 0 && (
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+              style={{
+                position: "absolute", top: 0, right: 0,
+                width: s(8), height: s(8), borderRadius: s(4),
+                backgroundColor: C.purpleL,
+                // Ringed in the page background so the dot reads as a separate
+                // mark rather than a smudge on the bell.
+                borderWidth: 1.5, borderColor: GRADIENT.bg[0],
+              }}
+            />
+          )}
         </Btn>
       </View>
 
