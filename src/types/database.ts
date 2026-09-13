@@ -8,7 +8,7 @@ export type University = "qub" | "ulster";
 
 export type ProjectStatus = "active" | "completed" | "paused" | "recruiting";
 
-export type CollaborationEventType = "join" | "chat" | "milestone" | "commit" | "design_sync" | "mou_signed";
+export type CollaborationEventType = "join" | "chat" | "milestone" | "commit" | "design_sync" | "mou_signed" | "member_quit";
 
 // ─────────────────────────────────────────────
 // Table row types
@@ -28,6 +28,9 @@ export interface Profile {
   pvs_score: number;             // Project Velocity Score — 0–100, updated by telemetry
   badges: string[];              // e.g. ["Reliable Collaborator", "Great Communicator"]
   portfolio_links: { title: string; url: string }[]; // External portfolio URLs
+  deleted_at: string | null;
+  display_name_at_deletion: string | null;
+  expo_push_token: string | null;
 }
 
 export interface Project {
@@ -44,6 +47,7 @@ export interface Project {
   project_health: number | null; // 0–100, derived from collaboration_events
   github_repo_url: string | null;
   figma_url: string | null;
+  chat_icon_url: string | null;
 }
 
 export interface ProjectMember {
@@ -71,9 +75,30 @@ export interface ChatMessage {
   id: string;
   created_at: string;
   project_id: string;
-  sender_id: string;             // FK → profiles.id
+  sender_id: string;
   content: string;
-  read_by: string[];             // Array of user_ids who have read it
+  read_by: string[];
+  type: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface DirectMessage {
+  id: string;
+  created_at: string;
+  connection_id: string;
+  sender_id: string;
+  content: string;
+  type: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface ProfileCardMetadata {
+  userId: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  university: string | null;
+  department: string | null;
+  skills: string[];
 }
 
 // ─────────────────────────────────────────────
@@ -87,4 +112,34 @@ export interface ProjectWithOwner extends Project {
 
 export interface ProjectMemberWithProfile extends ProjectMember {
   profile: Pick<Profile, "id" | "full_name" | "avatar_url" | "university" | "pvs_score">;
+}
+
+// ─────────────────────────────────────────────
+// Collab Invitations
+// ─────────────────────────────────────────────
+
+export type InvitationStatus = "pending" | "accepted" | "declined";
+
+export interface CollabInvitation {
+  id: string;
+  created_at: string;
+  project_id: string;
+  sender_id: string;
+  recipient_id: string;
+  role: string;
+  message: string;
+  status: InvitationStatus;
+}
+
+export interface CollabInvitationNotif {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  projectType: string | null;
+  projectTags: string[];
+  senderName: string;
+  senderAvatarUrl: string | null;
+  role: string;
+  message: string;
+  createdAt: string;
 }
