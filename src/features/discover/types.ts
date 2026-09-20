@@ -1,6 +1,6 @@
 import type { University } from "@/types/database";
 
-export type SectionKey = "pulse" | "needs" | "active" | "people";
+export type SectionKey = "pulse" | "needs" | "active" | "people" | "shipped";
 
 export interface PulseItem {
   id: string;
@@ -41,6 +41,16 @@ export interface PersonItem {
   department: string | null;
   university: University | null;
   pvs_score: number;
+}
+
+/** A completed project, as the Shipped rail needs it. */
+export interface ShippedItem {
+  id: string;
+  title: string;
+  /** Delivery time. Taken from updated_at until a completed_at column exists. */
+  delivered_at: string;
+  /** Avatar urls for the stacked faces, already capped. */
+  faces: { id: string; avatar_url: string | null; full_name: string | null }[];
 }
 
 /** Per-section fetch state. Sections fail and retry independently. */

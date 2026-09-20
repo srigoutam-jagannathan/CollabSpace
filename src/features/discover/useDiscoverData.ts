@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { rankActive, rankPeople, selectNeeds, type NeedsMode } from "./ranking";
 import {
-  fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchPulse,
+  fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchPulse, fetchShipped,
 } from "./queries";
-import type { ActiveItem, NeedsItem, PersonItem, PulseItem, SectionState } from "./types";
+import type { ActiveItem, NeedsItem, PersonItem, PulseItem, SectionState, ShippedItem } from "./types";
 
 function initial<T>(): SectionState<T> {
   return { data: [], loading: true, error: null };
@@ -17,6 +17,7 @@ export interface DiscoverData {
   needsMode: NeedsMode;
   active: SectionState<ActiveItem>;
   people: SectionState<PersonItem>;
+  shipped: SectionState<ShippedItem>;
   /** A user-initiated pull is in flight — drives RefreshControl only. */
   refreshing: boolean;
   /**
@@ -37,7 +38,7 @@ export interface DiscoverData {
   /** Refetch every section in the background, without the pull spinner. */
   revalidate: () => Promise<void>;
   /** Refetch one section, for its inline Retry. */
-  retry: (key: "pulse" | "needs" | "active" | "people") => Promise<void>;
+  retry: (key: "pulse" | "needs" | "active" | "people" | "shipped") => Promise<void>;
 }
 
 export function useDiscoverData(
@@ -61,6 +62,7 @@ export function useDiscoverData(
   const [needs, setNeeds] = useState<SectionState<NeedsItem>>(initial);
   const [active, setActive] = useState<SectionState<ActiveItem>>(initial);
   const [people, setPeople] = useState<SectionState<PersonItem>>(initial);
+  const [shipped, setShipped] = useState<SectionState<ShippedItem>>(initial);
   const [needsMode, setNeedsMode] = useState<NeedsMode>("matched");
   const [refreshing, setRefreshing] = useState(false);
   const [revalidating, setRevalidating] = useState(false);
@@ -120,9 +122,15 @@ export function useDiscoverData(
     }));
   }, [viewerId, viewerDepartment]);
 
+  const loadShipped = useCallback(async () => {
+    const { data, error } = await fetchShipped();
+    if (!alive.current) return;
+    setShipped(prev => ({ data: error ? prev.data : data, loading: false, error }));
+  }, []);
+
   const loadAll = useCallback(async () => {
-    await Promise.all([loadPulse(), loadNeeds(), loadActive(), loadPeople()]);
-  }, [loadPulse, loadNeeds, loadActive, loadPeople]);
+    await Promise.all([loadPulse(), loadNeeds(), loadActive(), loadPeople(), loadShipped()]);
+  }, [loadPulse, loadNeeds, loadActive, loadPeople, loadShipped]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -136,10 +144,13 @@ export function useDiscoverData(
     if (alive.current) setRevalidating(false);
   }, [loadAll]);
 
-  const retry = useCallback(async (key: "pulse" | "needs" | "active" | "people") => {
-    const runner = { pulse: loadPulse, needs: loadNeeds, active: loadActive, people: loadPeople }[key];
+  const retry = useCallback(async (key: "pulse" | "needs" | "active" | "people" | "shipped") => {
+    const runner = {
+      pulse: loadPulse, needs: loadNeeds, active: loadActive,
+      people: loadPeople, shipped: loadShipped,
+    }[key];
     await runner();
-  }, [loadPulse, loadNeeds, loadActive, loadPeople]);
+  }, [loadPulse, loadNeeds, loadActive, loadPeople, loadShipped]);
 
   useEffect(() => { revalidate(); }, [revalidate]);
 
@@ -149,10 +160,11 @@ export function useDiscoverData(
     (!!pulse.error && pulse.data.length > 0) ||
     (!!needs.error && needs.data.length > 0) ||
     (!!active.error && active.data.length > 0) ||
-    (!!people.error && people.data.length > 0);
+    (!!people.error && people.data.length > 0) ||
+    (!!shipped.error && shipped.data.length > 0);
 
   return {
-    pulse, needs, needsMode, active, people,
+    pulse, needs, needsMode, active, people, shipped,
     refreshing, revalidating, stale, refresh, revalidate, retry,
   };
 }

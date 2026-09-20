@@ -6,6 +6,7 @@ export const LIMITS: Record<SectionKey, number> = {
   needs: 3,
   active: 10,
   people: 10,
+  shipped: 6,
 };
 
 /** Minimum item count for a section to render at all. */
@@ -13,7 +14,11 @@ const MIN_ITEMS: Record<SectionKey, number> = {
   pulse: 1,
   needs: 1,
   active: 2,
+  // The archive is a credibility surface, and one showing a single item
+  // damages the credibility it exists to build. Below five completed
+  // projects the rail — and the doorway into the deck — stays hidden.
   people: 1,
+  shipped: 5,
 };
 
 /**

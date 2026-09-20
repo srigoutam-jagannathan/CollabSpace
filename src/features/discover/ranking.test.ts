@@ -169,3 +169,20 @@ describe("selectNeeds", () => {
     expect(mode).toBe("recent");
   });
 });
+
+describe("sectionVisible — shipped gate", () => {
+  test("hides the rail below five completed projects", () => {
+    // A credibility surface showing one item damages the credibility it
+    // exists to build, so the doorway to the Archive stays shut until there
+    // is enough behind it.
+    for (const n of [0, 1, 2, 3, 4]) {
+      expect(sectionVisible("shipped", n)).toBe(false);
+    }
+  });
+
+  test("opens at five and stays open", () => {
+    expect(sectionVisible("shipped", 5)).toBe(true);
+    expect(sectionVisible("shipped", 6)).toBe(true);
+    expect(sectionVisible("shipped", 40)).toBe(true);
+  });
+});

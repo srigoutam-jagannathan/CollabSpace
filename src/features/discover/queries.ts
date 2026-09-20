@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { matchedRoles } from "./ranking";
-import type { ActiveItem, NeedsItem, PersonItem, PulseItem } from "./types";
+import type { ActiveItem, NeedsItem, PersonItem, PulseItem, ShippedItem } from "./types";
 
 export interface QueryResult<T> {
   data: T[];
@@ -22,7 +22,7 @@ const ACTIVE_WINDOW_DAYS = 7;
  * calling .range() — a .range() page would be ordered by the wrong key.
  */
 export const WINDOW = {
-  section: { needs: 50, active: 30, people: 40 },
+  section: { needs: 50, active: 30, people: 40, shipped: 6 },
   seeAll: { needs: 200, active: 200, people: 200 },
   /** Supporting reads that only ever describe the viewer. */
   viewerMemberships: 200,
@@ -211,4 +211,44 @@ export async function fetchMemberProjectIds(viewerId: string): Promise<string[]>
     .eq("user_id", viewerId)
     .limit(WINDOW.viewerMemberships);
   return (data ?? []).map((m: any) => m.project_id);
+}
+
+/** Faces shown per tile before the rest are dropped. */
+const RAIL_FACES = 4;
+
+/**
+ * Completed projects for the Shipped rail — the doorway into the Archive.
+ *
+ * Queried here rather than imported from src/features/archive so the two
+ * features stay independent, per the repo's no-cross-feature-imports rule.
+ * The rail needs far less than the deck does: no description, no proof links.
+ */
+export async function fetchShipped(
+  limit: number = WINDOW.section.shipped
+): Promise<QueryResult<ShippedItem>> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, title, updated_at, project_members(user_id, profiles!user_id(id, full_name, avatar_url))")
+    .eq("status", "completed")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) return { data: [], error: "Couldn't load shipped projects." };
+
+  const rows: ShippedItem[] = (data ?? []).map((p: any) => ({
+    id: p.id,
+    title: p.title,
+    delivered_at: p.updated_at,
+    faces: ((p.project_members ?? []) as any[])
+      .map(m => m.profiles)
+      .filter(Boolean)
+      .slice(0, RAIL_FACES)
+      .map((profile: any) => ({
+        id: profile.id,
+        full_name: profile.full_name ?? null,
+        avatar_url: profile.avatar_url ?? null,
+      })),
+  }));
+
+  return { data: rows, error: null };
 }

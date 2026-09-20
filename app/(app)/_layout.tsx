@@ -89,6 +89,9 @@ function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress }: Coll
           // Stacks reached from a tab keep that tab lit — see audit finding 19.
           const OWNED_BY: Record<string, string> = {
             "discover/[section]": "index",
+            // The folder has no _layout.tsx, so the registered route name is
+            // "archive/index", not "archive" — same shape as discover above.
+            "archive/index": "index",
             projects: "index",
             notifications: "index",
             "users/[id]": "index",
@@ -277,6 +280,7 @@ export default function AppLayout() {
       <Tabs.Screen name="users/[id]" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="discover/[section]" options={{ href: null }} />
+      <Tabs.Screen name="archive/index" options={{ href: null }} />
     </Tabs>
   );
 }

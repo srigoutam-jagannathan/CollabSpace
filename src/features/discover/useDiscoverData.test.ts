@@ -25,6 +25,7 @@ function stubAll() {
   mocked.fetchNeeds.mockResolvedValue({ data: [], error: null });
   mocked.fetchActive.mockResolvedValue({ data: [], error: null });
   mocked.fetchPeople.mockResolvedValue({ data: [], error: null });
+  mocked.fetchShipped.mockResolvedValue({ data: [], error: null });
 }
 
 beforeEach(() => {

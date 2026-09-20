@@ -18,6 +18,7 @@ import { PulseStrip } from "./sections/PulseStrip";
 import { NeedsYourSkills } from "./sections/NeedsYourSkills";
 import { ActiveNow } from "./sections/ActiveNow";
 import { PeopleToKnow } from "./sections/PeopleToKnow";
+import { ShippedRail } from "./sections/ShippedRail";
 import { AddSkillsPrompt } from "./sections/AddSkillsPrompt";
 
 export default function DiscoverScreen() {
@@ -44,7 +45,7 @@ export default function DiscoverScreen() {
   }, [user?.id]);
 
   const {
-    pulse, needs, needsMode, active, people,
+    pulse, needs, needsMode, active, people, shipped,
     refreshing, revalidating, stale, refresh, revalidate, retry,
   } = useDiscoverData(skills, department);
 
@@ -58,11 +59,12 @@ export default function DiscoverScreen() {
   }, [revalidate, user?.id]));
 
   const allFailed =
-    !!pulse.error && !!needs.error && !!active.error && !!people.error;
+    !!pulse.error && !!needs.error && !!active.error && !!people.error && !!shipped.error;
 
   const hasContent =
     pulse.data.length > 0 || needs.data.length > 0 ||
-    active.data.length > 0 || people.data.length > 0;
+    active.data.length > 0 || people.data.length > 0 ||
+    shipped.data.length > 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
@@ -221,6 +223,21 @@ export default function DiscoverScreen() {
             onSeeAll={() => router.push({ pathname: "/(app)/discover/[section]", params: { section: "people" } })}
           >
             <PeopleToKnow items={people.data} />
+          </SectionFrame>
+
+          {/* Last, and gated: sectionVisible hides it below five completed
+              projects. Its chevron opens the Archive rather than a see-all,
+              because the Archive is its see-all. */}
+          <SectionFrame
+            title="Shipped from Belfast"
+            skeleton="rail"
+            visible={sectionVisible("shipped", shipped.data.length)}
+            loading={shipped.loading && shipped.data.length === 0}
+            error={shipped.error}
+            onRetry={() => retry("shipped")}
+            onSeeAll={() => router.push("/(app)/archive")}
+          >
+            <ShippedRail items={shipped.data} />
           </SectionFrame>
         </ScrollView>
       )}
