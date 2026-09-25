@@ -2,7 +2,7 @@ import { View, Text, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Btn } from "@/components/Btn";
 import { Avatar } from "@/components/Avatar";
-import { GeneratedBackdrop } from "@/components/GeneratedBackdrop";
+import { ProjectBackdrop } from "@/components/ProjectBackdrop";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs, ts } from "@/utils/scale";
@@ -48,7 +48,7 @@ export function ShippedRail({ items }: { items: ShippedItem[] }) {
             justifyContent: "flex-end", padding: s(9),
           }}
         >
-          <GeneratedBackdrop projectId={item.id} veil="tile" />
+          <ProjectBackdrop projectId={item.id} coverUrl={item.cover_url} veil="tile" />
 
           <Text style={{
             color: C.white, fontFamily: FONT.extraBold, fontSize: fs(13), letterSpacing: -0.2,

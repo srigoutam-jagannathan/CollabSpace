@@ -22,7 +22,7 @@ export async function fetchCompleted(limit: number = LIMITS.deck): Promise<Archi
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, title, description, updated_at, github_repo_url, figma_url, tags, " +
+      "id, title, description, updated_at, github_repo_url, figma_url, tags, cover_url, " +
       "project_members(user_id, profiles!user_id(id, full_name, avatar_url))"
     )
     .eq("status", "completed")
@@ -51,6 +51,7 @@ export async function fetchCompleted(limit: number = LIMITS.deck): Promise<Archi
       github_repo_url: p.github_repo_url,
       figma_url: p.figma_url,
       tags: p.tags ?? [],
+      cover_url: p.cover_url ?? null,
       team,
       team_count: members.length,
     };

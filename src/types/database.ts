@@ -50,6 +50,13 @@ export interface Project {
   github_repo_url: string | null;
   figma_url: string | null;
   chat_icon_url: string | null;
+  /**
+   * Full public URL of the project's cover image, in the project-media
+   * bucket. Null on almost every project — uploading artwork is optional —
+   * in which case generateIdentity() renders a deterministic stand-in.
+   * Images only: there is no video player in the app.
+   */
+  cover_url: string | null;
 }
 
 export interface ProjectMember {

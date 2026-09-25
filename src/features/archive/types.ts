@@ -22,6 +22,8 @@ export interface ArchiveItem {
   github_repo_url: string | null;
   figma_url: string | null;
   tags: string[];
+  /** Full public URL of the cover image, or null to use generated art. */
+  cover_url: string | null;
   /** Avatars shown on the card, capped. */
   team: ArchiveMember[];
   /** Full team size, which may exceed team.length. */

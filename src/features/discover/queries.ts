@@ -228,7 +228,7 @@ export async function fetchShipped(
 ): Promise<QueryResult<ShippedItem>> {
   const { data, error } = await supabase
     .from("projects")
-    .select("id, title, updated_at, project_members(user_id, profiles!user_id(id, full_name, avatar_url))")
+    .select("id, title, updated_at, cover_url, project_members(user_id, profiles!user_id(id, full_name, avatar_url))")
     .eq("status", "completed")
     .order("updated_at", { ascending: false })
     .limit(limit);
@@ -239,6 +239,7 @@ export async function fetchShipped(
     id: p.id,
     title: p.title,
     delivered_at: p.updated_at,
+    cover_url: p.cover_url ?? null,
     faces: ((p.project_members ?? []) as any[])
       .map(m => m.profiles)
       .filter(Boolean)

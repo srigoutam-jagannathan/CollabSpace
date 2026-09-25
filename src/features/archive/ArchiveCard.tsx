@@ -3,7 +3,7 @@ import { Avatar } from "@/components/Avatar";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
-import { GeneratedBackdrop } from "@/components/GeneratedBackdrop";
+import { ProjectBackdrop } from "@/components/ProjectBackdrop";
 import { deliveredLabel, teamLabel } from "./format";
 import { FACES_SHOWN } from "./queries";
 import type { ArchiveItem } from "./types";
@@ -44,7 +44,7 @@ export function ArchiveCard({ item }: { item: ArchiveItem }) {
         justifyContent: "flex-end", padding: s(17),
       }}
     >
-      <GeneratedBackdrop projectId={item.id} />
+      <ProjectBackdrop projectId={item.id} coverUrl={item.cover_url} />
 
       <View style={{
         alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: s(5),

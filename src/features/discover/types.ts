@@ -49,6 +49,8 @@ export interface ShippedItem {
   title: string;
   /** Delivery time. Taken from updated_at until a completed_at column exists. */
   delivered_at: string;
+  /** Full public URL of the cover image, or null to use generated art. */
+  cover_url: string | null;
   /** Avatar urls for the stacked faces, already capped. */
   faces: { id: string; avatar_url: string | null; full_name: string | null }[];
 }
