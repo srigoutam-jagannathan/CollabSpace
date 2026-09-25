@@ -21,10 +21,15 @@ const LIMITS = { ownedProjects: 200, events: 500 } as const;
 export async function fetchPendingCount(viewerId: string): Promise<number> {
   try {
     const [connections, invitations, owned] = await Promise.all([
+      // connections stores the pair canonically (requester_id < recipient_id),
+      // so "addressed to me" is NOT recipient_id = me -- that depends purely
+      // on how the two uuids sort. initiated_by is who actually asked, which
+      // is what the notifications screen filters on, so match it here.
       supabase
         .from("connections")
         .select("id", { count: "exact", head: true })
-        .eq("recipient_id", viewerId)
+        .or(`requester_id.eq.${viewerId},recipient_id.eq.${viewerId}`)
+        .neq("initiated_by", viewerId)
         .eq("status", "pending"),
       supabase
         .from("collab_invitations")
