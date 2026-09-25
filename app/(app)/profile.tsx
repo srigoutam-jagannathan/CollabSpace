@@ -393,8 +393,11 @@ export default function ProfileScreen() {
         {/* ── Portfolio ──────────────────────────────────────────────────── */}
         <Section title="Portfolio" action={{ label: "See all", onPress: () => {} }}>
           <View style={{ gap: vs(10) }}>
-            {portfolioLinks.map((item) => (
-              <View key={item.title} style={{
+            {portfolioLinks.map((item, i) => (
+              // Keyed on url plus index, not title: a title is free text, so
+              // two links can legitimately share one, and a malformed row
+              // (missing title) makes every key undefined at once.
+              <View key={`${item.url ?? ""}-${i}`} style={{
                 backgroundColor: "rgba(75,46,43,0.08)", borderRadius: s(14),
                 borderWidth: 1, borderColor: "rgba(192,133,82,0.15)",
                 flexDirection: "row", alignItems: "center",
