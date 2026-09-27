@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Redirect, Tabs, router, usePathname } from "expo-router";
 import { View, Text, AppState, type AppStateStatus } from "react-native";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+// Not re-exported at expo-router's top level, so it comes from its
+// vendored copy -- the one whose shape <Tabs> actually passes.
+import type { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs";
 import { LinearGradient } from "expo-linear-gradient";
 import { Btn } from "@/components/Btn";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -267,8 +269,10 @@ export default function AppLayout() {
           }}
         />
       )}
-      sceneContainerStyle={{ backgroundColor: "transparent" }}
-      screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" } }}
+      // SDK 57 / React Navigation 7: the navigator-level sceneContainerStyle
+      // and the old contentStyle screen option are both gone, replaced by the
+      // sceneStyle screen option.
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: "transparent" } }}
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="search" />

@@ -3,8 +3,10 @@ import { useEffect } from "react";
 import { Text, View, Platform } from "react-native";
 import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ThemeProvider as NavigationThemeProvider, DarkTheme } from "@react-navigation/native";
-import { DefaultTheme } from "@react-navigation/native";
+// expo-router 57 vendors React Navigation and re-exports these; importing
+// from @react-navigation/native gives a second, structurally incompatible
+// copy of the same types.
+import { ThemeProvider as NavigationThemeProvider, DarkTheme, DefaultTheme } from "expo-router";
 import { useFonts, Lato_400Regular, Lato_700Bold, Lato_900Black } from "@expo-google-fonts/lato";
 import * as Device from "expo-device";
 import Constants from "expo-constants";

@@ -7,7 +7,7 @@ export default function AuthLayout() {
   // If auth state changes to authenticated while inside the (auth) group
   // (e.g. dev bypass or successful OAuth callback), navigate to the app.
   if (status === "authenticated") {
-    return <Redirect href="/(app)/" />;
+    return <Redirect href="/(app)" />;
   }
 
   return (
