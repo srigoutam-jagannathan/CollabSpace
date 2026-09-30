@@ -16,6 +16,7 @@ import { ArrowLeft, Send } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { ProfileCardMessage } from "@/components/ProfileCardMessage";
+import { Btn } from "@/components/Btn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
@@ -43,6 +44,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<DM[]>([]);
   const [otherName, setOtherName] = useState("Chat");
+  const [otherId, setOtherId] = useState<string | null>(null);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -82,6 +84,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
         const isRequester = c.requester_id === user.id;
         const other = isRequester ? c.recipient : c.requester;
         setOtherName(other?.full_name ?? "Chat");
+        setOtherId(isRequester ? c.recipient_id : c.requester_id);
       }
       setMessages((msgs as DM[]) ?? []);
       setLoading(false);
@@ -163,12 +166,22 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
           <Pressable onPress={() => router.back()} hitSlop={12} style={{ marginRight: s(12) }}>
             <ArrowLeft size={s(22)} color={C.white} />
           </Pressable>
-          <View style={{ width: s(36), height: s(36), borderRadius: s(18), backgroundColor: C.purple, alignItems: "center", justifyContent: "center", marginRight: s(10) }}>
-            <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(13) }}>{avatarInitials}</Text>
-          </View>
-          <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(16), flex: 1 }} numberOfLines={1}>
-            {otherName}
-          </Text>
+          <Btn
+            onPress={() => {
+              if (otherId) router.push({ pathname: "/(app)/users/[id]", params: { id: otherId } });
+            }}
+            disabled={!otherId}
+            pressScale={1}
+            accessibilityLabel={`View ${otherName}'s profile`}
+            style={{ flex: 1, flexDirection: "row", alignItems: "center", minHeight: 44 }}
+          >
+            <View style={{ width: s(36), height: s(36), borderRadius: s(18), backgroundColor: C.purple, alignItems: "center", justifyContent: "center", marginRight: s(10) }}>
+              <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(13) }}>{avatarInitials}</Text>
+            </View>
+            <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(16), flex: 1 }} numberOfLines={1}>
+              {otherName}
+            </Text>
+          </Btn>
         </View>
 
         {/* Messages */}
