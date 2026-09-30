@@ -174,6 +174,8 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
 
   const hasCommitted = membership?.mou_accepted === true;
   const isOwner = !!user && project?.owner_id === user.id;
+  // Owners have no project_members row, so membership alone is not enough.
+  const canPost = isOwner || !!membership;
 
   // ── Initial data load ───────────────────────────────────────────────────────
 
@@ -260,7 +262,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
   // ── Send message ────────────────────────────────────────────────────────────
 
   const sendMessage = async () => {
-    if (!inputText.trim() || !user || !projectId || sending) return;
+    if (!inputText.trim() || !user || !projectId || sending || !canPost) return;
 
     const text = inputText.trim();
     setInputText("");
@@ -526,30 +528,38 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
             />
           )}
 
-          {/* Input bar */}
-          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.borderSubtle, backgroundColor: C.inputBg }}>
-            <TextInput
-              style={{ flex: 1, backgroundColor: "transparent", borderWidth: 1, borderColor: C.borderSubtle, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, color: C.white, fontSize: 14 }}
-              placeholder="Message…"
-              placeholderTextColor={C.textFaint}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={1000}
-              returnKeyType="default"
-            />
-            <Pressable
-              onPress={sendMessage}
-              disabled={!inputText.trim() || sending}
-              style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: inputText.trim() ? C.purple : C.borderSubtle }}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color={C.white} />
-              ) : (
-                <Send size={16} color={inputText.trim() ? C.white : C.textFaint} />
-              )}
-            </Pressable>
-          </View>
+          {/* Input bar — hidden once you are no longer a member */}
+          {canPost ? (
+            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.borderSubtle, backgroundColor: C.inputBg }}>
+              <TextInput
+                style={{ flex: 1, backgroundColor: "transparent", borderWidth: 1, borderColor: C.borderSubtle, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, color: C.white, fontSize: 14 }}
+                placeholder="Message…"
+                placeholderTextColor={C.textFaint}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={1000}
+                returnKeyType="default"
+              />
+              <Pressable
+                onPress={sendMessage}
+                disabled={!inputText.trim() || sending}
+                style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: inputText.trim() ? C.purple : C.borderSubtle }}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color={C.white} />
+                ) : (
+                  <Send size={16} color={inputText.trim() ? C.white : C.textFaint} />
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderTopColor: C.borderSubtle, backgroundColor: C.inputBg }}>
+              <Text style={{ color: C.textFaint, fontSize: fs(13), textAlign: "center" }}>
+                You left this project. Rejoin to send messages.
+              </Text>
+            </View>
+          )}
         </KeyboardAvoidingView>
       )}
 
