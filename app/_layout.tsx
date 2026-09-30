@@ -1,6 +1,6 @@
 import "../global.css";
 import { useEffect } from "react";
-import { Text, View, Platform } from "react-native";
+import { Text, View, Platform, LogBox } from "react-native";
 import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 // expo-router 57 vendors React Navigation and re-exports these; importing
@@ -64,6 +64,17 @@ function PushTokenRegistrar() {
   }, [status, user]);
 
   return null;
+}
+
+// @supabase/auth-js logs this with a bare console.error inside
+// _recoverAndRefresh, then removes the dead session itself. It fires whenever a
+// persisted session outlives its refresh token -- reinstalling, switching
+// environments, or just leaving the app closed long enough -- and there is
+// nothing for anyone to act on: the user lands on the sign-in screen, which is
+// correct. Scoped to the exact message so real AuthApiErrors still surface, and
+// dev-only, because LogBox is the only place it is ever shown as an error.
+if (__DEV__) {
+  LogBox.ignoreLogs([/Invalid Refresh Token: Refresh Token Not Found/]);
 }
 
 // Apply Lato as default font for every <Text> in the app

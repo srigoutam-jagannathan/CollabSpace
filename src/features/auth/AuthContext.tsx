@@ -111,9 +111,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Bootstrap: restore session on mount ─────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      validateAndApplySession(data.session);
-    });
+    // The catch matters: status starts at "loading" and only ever leaves it
+    // through validateAndApplySession. If this rejects -- AsyncStorage
+    // unavailable, storage quota, a corrupt persisted session -- an unhandled
+    // rejection would leave the app on its spinner forever with no way out.
+    // Treat any bootstrap failure as "not signed in" and let the user log in.
+    supabase.auth
+      .getSession()
+      .then(({ data }) => validateAndApplySession(data.session))
+      .catch(() => validateAndApplySession(null));
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       validateAndApplySession(newSession);
