@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   View, Text, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
-} from "react-native";
+  KeyboardAvoidingView, Platform, Alert, } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ChevronLeft, X, Plus, Globe, Type } from "lucide-react-native";
@@ -13,6 +12,7 @@ import { GradientBtn } from "@/components/GradientBtn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 type PortfolioLink = { title: string; url: string };
 
@@ -73,9 +73,7 @@ export default function PortfolioLinksScreen() {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.pink} />
-        </View>
+        <ScreenLoader />
       </SafeAreaView>
     );
   }

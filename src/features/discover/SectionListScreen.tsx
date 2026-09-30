@@ -15,6 +15,7 @@ import { rankActive, rankNeeds, rankPeople } from "./ranking";
 import { NeedsYourSkills } from "./sections/NeedsYourSkills";
 import { ActiveNow } from "./sections/ActiveNow";
 import { PeopleToKnow } from "./sections/PeopleToKnow";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 /**
  * Rows revealed per page. The whole ranked window is fetched once and paged
@@ -100,9 +101,7 @@ export function SectionListScreen({ section }: { section: string }) {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.purpleL} />
-        </View>
+        <ScreenLoader />
       ) : error ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: s(24) }}>
           <Text style={{

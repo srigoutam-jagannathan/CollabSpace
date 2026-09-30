@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -18,6 +17,7 @@ import { InviteSheet } from "@/features/projects/InviteSheet";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 type PublicProfile = {
   id: string;
@@ -116,11 +116,8 @@ export default function UserProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" }}
-        edges={["top"]}
-      >
-        <ActivityIndicator size="large" color={C.pink} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
+        <ScreenLoader />
       </SafeAreaView>
     );
   }

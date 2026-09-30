@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   View, Text, TextInput, ScrollView, Image,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Pressable,
+  KeyboardAvoidingView, Platform, Alert, Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -15,6 +15,7 @@ import { GradientBtn } from "@/components/GradientBtn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 type FormState = {
   full_name: string;
@@ -166,9 +167,7 @@ export default function EditProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.pink} />
-        </View>
+        <ScreenLoader />
       </SafeAreaView>
     );
   }

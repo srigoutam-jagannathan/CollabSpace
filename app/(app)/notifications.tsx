@@ -17,6 +17,7 @@ import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { CollabInvitationNotif } from "@/types/database";
 import { s, vs, fs } from "@/utils/scale";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -430,9 +431,7 @@ export default function NotificationsScreen() {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.pink} />
-        </View>
+        <ScreenLoader />
       ) : !hasContent ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <User size={s(40)} color={C.textFaint} strokeWidth={1.5} />

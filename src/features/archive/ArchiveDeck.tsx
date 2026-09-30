@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { View, Text, ActivityIndicator, type NativeSyntheticEvent, type NativeScrollEvent } from "react-native";
+import { View, Text, type NativeSyntheticEvent, type NativeScrollEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
@@ -13,6 +13,7 @@ import { fetchCompleted } from "./queries";
 import { ArchiveCard } from "./ArchiveCard";
 import { ConnectTeamSheet } from "./ConnectTeamSheet";
 import type { ArchiveItem } from "./types";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 /** Appended after the last project so the deck ends deliberately. */
 const END = "__end__";
@@ -82,9 +83,7 @@ export default function ArchiveDeck() {
 
       <View style={{ flex: 1 }} onLayout={e => setPageHeight(e.nativeEvent.layout.height)}>
         {loading ? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <ActivityIndicator size="large" color={C.purpleL} />
-          </View>
+          <ScreenLoader />
         ) : error ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: s(24) }}>
             <Text style={{

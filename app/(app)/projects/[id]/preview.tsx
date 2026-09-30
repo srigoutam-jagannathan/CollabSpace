@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -11,6 +11,7 @@ import { QuitProjectSheet } from "@/components/QuitProjectSheet";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 export default function ProjectPreviewScreen() {
   const { tokens: { C, GRADIENT, GLASS } } = useTheme();
@@ -50,9 +51,7 @@ export default function ProjectPreviewScreen() {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.pink} />
-        </View>
+        <ScreenLoader />
       </SafeAreaView>
     );
   }

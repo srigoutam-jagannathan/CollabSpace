@@ -5,7 +5,6 @@ import {
   TextInput,
   Pressable,
   ScrollView,
-  ActivityIndicator,
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +17,7 @@ import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Profile } from "@/types/database";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -344,9 +344,7 @@ export default function SearchScreen() {
 
       {/* ── Results list ───────────────────────────────────── */}
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.pink} />
-        </View>
+        <ScreenLoader />
       ) : (
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: s(16), paddingBottom: vs(24) }}

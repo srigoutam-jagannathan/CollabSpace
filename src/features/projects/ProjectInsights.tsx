@@ -10,6 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -261,9 +262,7 @@ export default function ProjectInsights({ projectId }: { projectId: string }) {
       </View>
 
       {loadingProject ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.purple} />
-        </View>
+        <ScreenLoader />
       ) : (
         <ScrollView
           style={{ flex: 1 }}

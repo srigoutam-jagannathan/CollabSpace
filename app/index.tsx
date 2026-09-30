@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
-import { View, ActivityIndicator } from "react-native";
 import { useAuth } from "@/features/auth/AuthContext";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 /**
  * Entry point — routes by auth status.
@@ -10,11 +10,7 @@ export default function Index() {
   const { status } = useAuth();
 
   if (status === "loading") {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" color="#c08552" />
-      </View>
-    );
+    return <ScreenLoader />;
   }
 
   if (status === "authenticated") {

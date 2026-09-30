@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#1a0e0c"
     },
     "scheme": "collabspace",
     "assetBundlePatterns": [
@@ -22,7 +22,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f172a"
+        "backgroundColor": "#1a0e0c"
       },
       "package": "com.collabspace.app"
     },

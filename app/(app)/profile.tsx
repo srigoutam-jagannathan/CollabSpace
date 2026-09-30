@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 type ProfileData = {
   full_name: string | null;
@@ -201,9 +202,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.pink} />
-        </View>
+        <ScreenLoader />
       </SafeAreaView>
     );
   }

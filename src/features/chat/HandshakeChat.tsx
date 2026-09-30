@@ -24,6 +24,7 @@ import { s, vs, fs } from "@/utils/scale";
 import { ProfileCardMessage } from "@/components/ProfileCardMessage";
 import { QuitProjectSheet } from "@/components/QuitProjectSheet";
 import type { ChatMessage, Project, ProjectMember, Profile, ProfileCardMetadata } from "@/types/database";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -478,9 +479,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.purple} />
-        </View>
+        <ScreenLoader />
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}

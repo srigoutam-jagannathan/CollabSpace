@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, Pressable, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { useRouter } from "expo-router";
@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Project } from "@/types/database";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 function ProjectRow({ project, onPress }: { project: Project; onPress: () => void }) {
   const statusColor =
@@ -86,9 +87,7 @@ export default function MyProjectsScreen() {
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#3b82f6" />
-        </View>
+        <ScreenLoader />
       ) : projects.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <FolderKanban size={48} color="#334155" />

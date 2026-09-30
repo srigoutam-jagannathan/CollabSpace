@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,6 +20,7 @@ import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { ProfileCardMetadata } from "@/types/database";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 type DM = {
   id: string;
@@ -186,9 +186,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
 
         {/* Messages */}
         {loading ? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <ActivityIndicator size="large" color={C.pink} />
-          </View>
+          <ScreenLoader />
         ) : (
           <FlatList
             ref={flatListRef}

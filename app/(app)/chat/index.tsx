@@ -6,7 +6,6 @@ import {
   Pressable,
   FlatList,
   TextInput,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -19,6 +18,7 @@ import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
+import { ScreenLoader } from "@/components/ScreenLoader";
 
 type ConnectionConvo = {
   id: string;          // connection id
@@ -264,9 +264,7 @@ export default function MessagesScreen() {
       {/* Content */}
       {activeTab === "individual" ? (
         loadingConnections ? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <ActivityIndicator size="large" color={C.purple} />
-          </View>
+          <ScreenLoader />
         ) : filteredConnections.length === 0 ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: s(32) }}>
             <Text style={{ color: C.textMuted, fontSize: fs(15), textAlign: "center" }}>
@@ -311,9 +309,7 @@ export default function MessagesScreen() {
           />
         )
       ) : loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={C.purple} />
-        </View>
+        <ScreenLoader />
       ) : filteredGroup.length === 0 ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
           <Text style={{ color: C.textMuted, fontSize: 15, textAlign: "center" }}>
