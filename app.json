@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/collabspace-logo.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1a0e0c"
-    },
     "scheme": "collabspace",
     "assetBundlePatterns": [
       "**/*"
@@ -35,7 +30,18 @@
       "expo-router",
       "expo-web-browser",
       "expo-font",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1a0e0c",
+          "dark": {
+            "backgroundColor": "#1a0e0c"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

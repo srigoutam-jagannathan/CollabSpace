@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Modal,
-  Pressable,
   TextInput,
   ScrollView,
   Animated,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 import { X, ChevronDown } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
+import { SheetBackdrop, SheetSurface } from "@/components/SheetBackdrop";
 import { useAuth } from "@/features/auth/AuthContext";
 import { GradientBtn } from "@/components/GradientBtn";
 import { Btn } from "@/components/Btn";
@@ -118,16 +118,14 @@ export function InviteSheet({ visible, talent, onClose, onSent }: Props) {
   const displayName = talent?.full_name ?? "this talent";
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}
+           statusBarTranslucent navigationBarTranslucent>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Backdrop */}
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)" }}
-          onPress={onClose}
-        />
+        <SheetBackdrop onPress={onClose} />
 
         <Animated.View
           style={{
@@ -136,14 +134,11 @@ export function InviteSheet({ visible, talent, onClose, onSent }: Props) {
             left: 0,
             right: 0,
             transform: [{ translateY: slideAnim }],
-            backgroundColor: C.bgDeep,
-            borderTopLeftRadius: s(24),
-            borderTopRightRadius: s(24),
-            borderTopWidth: 1,
-            borderColor: C.border,
             maxHeight: H * 0.88,
           }}
         >
+          {/* Padding is zeroed: this sheet's sections carry their own. */}
+          <SheetSurface contentStyle={{ paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }}>
           {/* Drag handle */}
           <View style={{ alignItems: "center", paddingTop: vs(12), paddingBottom: vs(4) }}>
             <View style={{ width: s(36), height: vs(4), borderRadius: s(2), backgroundColor: C.borderSubtle }} />
@@ -282,6 +277,7 @@ export function InviteSheet({ visible, talent, onClose, onSent }: Props) {
               disabled={!canSend || loading}
             />
           </ScrollView>
+          </SheetSurface>
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>

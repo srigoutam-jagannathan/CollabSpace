@@ -59,24 +59,24 @@ function SystemPillCard({ message }: { message: MessageWithSender }) {
 
   return (
     <View style={{ flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginVertical: 10, gap: 10 }}>
-      <View style={{ flex: 1, height: 1, backgroundColor: "rgba(200,180,232,0.10)" }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: C.borderSubtle }} />
       <View style={{
         flexDirection: "row", alignItems: "center", gap: 7,
-        backgroundColor: "rgba(200,180,232,0.07)",
-        borderWidth: 1, borderColor: "rgba(200,180,232,0.14)",
+        backgroundColor: C.fieldBg,
+        borderWidth: 1, borderColor: C.border,
         borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5,
       }}>
         <View style={{
           width: 14, height: 14, borderRadius: 7,
-          backgroundColor: "rgba(100,80,140,0.30)",
-          borderWidth: 1, borderColor: "rgba(200,180,232,0.20)",
+          backgroundColor: C.avatarBg,
+          borderWidth: 1, borderColor: C.border,
           alignItems: "center", justifyContent: "center",
         }}>
-          <UserX size={8} color="rgba(200,180,232,0.6)" strokeWidth={2} />
+          <UserX size={8} color={C.textMuted} strokeWidth={2} />
         </View>
         <Text style={{ fontSize: 11, color: C.textMuted, letterSpacing: 0.2 }}>{label}</Text>
       </View>
-      <View style={{ flex: 1, height: 1, backgroundColor: "rgba(200,180,232,0.10)" }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: C.borderSubtle }} />
     </View>
   );
 }
@@ -107,8 +107,8 @@ function MessageBubble({
         <View style={{ width: 28, alignItems: "center", justifyContent: "flex-end" }}>
           {showSenderInfo ? (
             isDeleted ? (
-              <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: "rgba(200,180,232,0.18)", backgroundColor: "rgba(100,80,140,0.20)", alignItems: "center", justifyContent: "center" }}>
-                <UserX size={12} color="rgba(200,180,232,0.5)" strokeWidth={2} />
+              <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.avatarBg, alignItems: "center", justifyContent: "center" }}>
+                <UserX size={12} color={C.textMuted} strokeWidth={2} />
               </View>
             ) : (
               <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: C.avatarBg, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
@@ -128,7 +128,7 @@ function MessageBubble({
       {/* Bubble + name + timestamp */}
       <View style={{ maxWidth: "75%", alignItems: isOwn ? "flex-end" : "flex-start" }}>
         {!isOwn && showSenderInfo && (
-          <Text style={{ color: isDeleted ? "rgba(200,180,232,0.45)" : C.textFaint, fontSize: 11, marginBottom: 3, marginLeft: 4 }}>
+          <Text style={{ color: isDeleted ? C.textFaint : C.textFaint, fontSize: 11, marginBottom: 3, marginLeft: 4 }}>
             {senderName}
           </Text>
         )}
@@ -140,9 +140,9 @@ function MessageBubble({
           borderBottomLeftRadius: isOwn ? 20 : 4,
           backgroundColor: isOwn ? C.purple : (isDeleted ? "rgba(42,32,64,0.55)" : C.chatBubbleOther),
           borderWidth: isOwn ? 0 : 1,
-          borderColor: isDeleted ? "rgba(200,180,232,0.10)" : C.borderSubtle,
+          borderColor: isDeleted ? C.borderSubtle : C.borderSubtle,
         }}>
-          <Text style={{ color: isDeleted ? "rgba(200,180,232,0.58)" : C.white, fontSize: 14, lineHeight: 20 }}>
+          <Text style={{ color: isDeleted ? C.textMuted : C.white, fontSize: 14, lineHeight: 20 }}>
             {message.content}
           </Text>
         </View>

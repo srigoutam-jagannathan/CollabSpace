@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Modal,
-  Pressable,
   ScrollView,
   Animated,
   ActivityIndicator,
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 import { X, Link2, MessageSquare, ChevronLeft, Check } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
+import { SheetBackdrop, SheetSurface } from "@/components/SheetBackdrop";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Btn } from "@/components/Btn";
 import { FONT } from "@/utils/theme";
@@ -196,11 +196,9 @@ export function ShareProfileSheet({
   const groupItems = conversations.filter((c) => c.kind === "group") as Extract<ConvItem, { kind: "group" }>[];
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)" }}
-        onPress={onClose}
-      />
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}
+           statusBarTranslucent navigationBarTranslucent>
+      <SheetBackdrop onPress={onClose} />
       <Animated.View
         style={{
           position: "absolute",
@@ -208,14 +206,11 @@ export function ShareProfileSheet({
           left: 0,
           right: 0,
           transform: [{ translateY: slideAnim }],
-          backgroundColor: C.bgDeep,
-          borderTopLeftRadius: s(24),
-          borderTopRightRadius: s(24),
-          borderTopWidth: 1,
-          borderColor: C.border,
           maxHeight: H * 0.80,
         }}
       >
+        {/* Padding is zeroed: this sheet's sections carry their own. */}
+        <SheetSurface contentStyle={{ paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }}>
         {/* Drag handle */}
         <View style={{ alignItems: "center", paddingTop: vs(12), paddingBottom: vs(4) }}>
           <View style={{ width: s(36), height: vs(4), borderRadius: s(2), backgroundColor: C.borderSubtle }} />
@@ -406,6 +401,7 @@ export function ShareProfileSheet({
             </View>
           </Animated.View>
         )}
+        </SheetSurface>
       </Animated.View>
     </Modal>
   );

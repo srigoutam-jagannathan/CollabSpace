@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { View, Text, Modal, Pressable, Animated, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, Modal, Animated, ScrollView, ActivityIndicator } from "react-native";
 import { supabase } from "@/lib/supabaseClient";
+import { SheetBackdrop, SheetSurface } from "@/components/SheetBackdrop";
 import { Avatar } from "@/components/Avatar";
 import { Btn } from "@/components/Btn";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -33,7 +34,7 @@ export function ConnectTeamSheet({
   projectTitle: string;
   onClose: () => void;
 }) {
-  const { tokens: { C, GLASS } } = useTheme();
+  const { tokens: { C } } = useTheme();
   const { user } = useAuth();
   const reducedMotion = useReducedMotion();
   const slideAnim = useRef(new Animated.Value(H)).current;
@@ -103,23 +104,19 @@ export function ConnectTeamSheet({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Pressable
-        accessibilityLabel="Close"
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)" }}
-        onPress={onClose}
-      />
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}
+           statusBarTranslucent navigationBarTranslucent>
+      <SheetBackdrop onPress={onClose} />
 
       <Animated.View
         style={{
           transform: [{ translateY: slideAnim }],
           maxHeight: H * 0.7,
-          backgroundColor: GLASS.card.backgroundColor,
-          borderTopWidth: 1, borderTopColor: GLASS.card.borderColor,
-          borderTopLeftRadius: s(24), borderTopRightRadius: s(24),
-          paddingHorizontal: s(20), paddingTop: vs(18), paddingBottom: vs(34),
         }}
       >
+        <SheetSurface
+          contentStyle={{ paddingHorizontal: s(20), paddingTop: vs(18), paddingBottom: vs(34) }}
+        >
         <Text accessibilityRole="header" style={{
           color: C.white, fontFamily: FONT.extraBold, fontSize: fs(17), marginBottom: vs(3),
         }}>
@@ -184,6 +181,7 @@ export function ConnectTeamSheet({
             })}
           </ScrollView>
         )}
+        </SheetSurface>
       </Animated.View>
     </Modal>
   );
