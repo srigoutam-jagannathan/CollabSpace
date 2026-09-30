@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Send, Check, Info, Camera, DoorOpen, UserX } from "lucide-react-native";
+import { ChevronLeft, Send, Check, Info, Camera, DoorOpen, UserX, UserMinus } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -23,6 +23,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import { ProfileCardMessage } from "@/components/ProfileCardMessage";
 import { QuitProjectSheet } from "@/components/QuitProjectSheet";
+import { Btn } from "@/components/Btn";
 import type { ChatMessage, Project, ProjectMember, Profile, ProfileCardMetadata } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
 
@@ -43,14 +44,17 @@ type MemberInfo = {
   isOwner: boolean;
 };
 
-// ─── System pill card (account_deleted / member_left) ────────────────────────
+// ─── System pill card (account_deleted / member_left / member_removed) ───────
+
+const SYSTEM_MESSAGE_TYPES = ["account_deleted", "member_left", "member_removed"];
 
 function SystemPillCard({ message }: { message: MessageWithSender }) {
   const { tokens: { C } } = useTheme();
   const time = new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const userName = (message.metadata as Record<string, string> | null)?.userName ?? "A user";
-  const label = message.type === "account_deleted"
-    ? `${userName} left CollabSpace · ${time}`
+  const label =
+    message.type === "account_deleted" ? `${userName} left CollabSpace · ${time}`
+    : message.type === "member_removed" ? `${userName} was removed from the project · ${time}`
     : `${userName} left the project · ${time}`;
 
   return (
@@ -172,6 +176,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const hasCommitted = membership?.mou_accepted === true;
   const isOwner = !!user && project?.owner_id === user.id;
@@ -375,13 +380,73 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
     }
   };
 
+  // ── Remove a member (owner only) ───────────────────────────────────────────
+
+  const confirmRemoveMember = (member: MemberInfo) => {
+    const name = member.fullName ?? "this member";
+    Alert.alert(
+      `Remove ${name}?`,
+      `They will lose access to this chat and the project. They can ask to join again.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Remove", style: "destructive", onPress: () => removeMember(member) },
+      ]
+    );
+  };
+
+  const removeMember = async (member: MemberInfo) => {
+    if (!isOwner || !projectId || member.isOwner) return;
+    setRemovingId(member.userId);
+    try {
+      const { data: removed, error } = await supabase
+        .from("project_members")
+        .delete()
+        .eq("project_id", projectId)
+        .eq("user_id", member.userId)
+        .select("id");
+      if (error) throw error;
+      // A delete RLS refuses comes back 200 with zero rows, not an error.
+      if (!removed || removed.length === 0) {
+        throw new Error("Member was not removed.");
+      }
+
+      // Audit log first -- it is the record that matters if the rest fails.
+      await supabase.from("collaboration_events").insert({
+        project_id: projectId, user_id: member.userId, event_type: "member_removed",
+      });
+
+      await supabase.from("chat_messages").insert({
+        project_id: projectId,
+        sender_id: user?.id,
+        type: "member_removed",
+        content: "",
+        metadata: { userName: member.fullName ?? "A member" },
+        read_by: [],
+      });
+
+      setMembers((prev) => prev.filter((x) => x.userId !== member.userId));
+    } catch {
+      Alert.alert("Error", `Could not remove ${member.fullName ?? "this member"}. Please try again.`);
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
   // ── Quit project ───────────────────────────────────────────────────────────
 
   const handleQuit = async () => {
     if (!user || !projectId || !project) return;
     try {
-      await supabase.from("project_members").delete()
-        .eq("project_id", projectId).eq("user_id", user.id);
+      // .select() so we can tell a real delete from one RLS silently dropped:
+      // with no matching policy PostgREST still answers 200, affecting 0 rows.
+      const { data: removed, error: leaveErr } = await supabase
+        .from("project_members").delete()
+        .eq("project_id", projectId).eq("user_id", user.id)
+        .select("id");
+      if (leaveErr) throw leaveErr;
+      if (!removed || removed.length === 0) {
+        throw new Error("Membership was not removed.");
+      }
 
       await supabase.from("collaboration_events").insert({
         project_id: projectId, user_id: user.id, event_type: "member_quit",
@@ -498,12 +563,12 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
               ref={flatListRef}
               data={messages}
               renderItem={({ item, index }) => {
-                if (item.type === "account_deleted" || item.type === "member_left") {
+                if (SYSTEM_MESSAGE_TYPES.includes(item.type ?? "")) {
                   return <SystemPillCard message={item} />;
                 }
                 const isOwn = item.sender_id === user?.id;
                 const prevMsg = messages[index - 1];
-                const prevIsRegular = prevMsg && prevMsg.type !== "account_deleted" && prevMsg.type !== "member_left";
+                const prevIsRegular = prevMsg && !SYSTEM_MESSAGE_TYPES.includes(prevMsg.type ?? "");
                 const showSenderInfo = !isOwn && (!prevIsRegular || prevMsg.sender_id !== item.sender_id);
                 if (item.type === "profile_card" && item.metadata) {
                   const meta = item.metadata as unknown as ProfileCardMetadata;
@@ -643,6 +708,25 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
                         )}
                       </View>
                     </View>
+
+                    {/* Remove — owners only, and never against themselves */}
+                    {isOwner && !m.isOwner && (
+                      <Btn
+                        onPress={() => confirmRemoveMember(m)}
+                        disabled={removingId === m.userId}
+                        accessibilityLabel={`Remove ${name} from the project`}
+                        style={{
+                          minWidth: 44, minHeight: 44,
+                          alignItems: "center", justifyContent: "center",
+                        }}
+                      >
+                        {removingId === m.userId ? (
+                          <ActivityIndicator size="small" color={C.danger} />
+                        ) : (
+                          <UserMinus size={s(18)} color={C.danger} strokeWidth={1.8} />
+                        )}
+                      </Btn>
+                    )}
                   </View>
                 );
               })}

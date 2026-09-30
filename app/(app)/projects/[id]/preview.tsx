@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -68,25 +68,38 @@ export default function ProjectPreviewScreen() {
 
   async function handleQuit() {
     if (!user || !project) return;
-    await supabase.from("project_members").delete()
-      .eq("project_id", id).eq("user_id", user.id);
-    await supabase.from("collaboration_events").insert({
-      project_id: id, user_id: user.id, event_type: "member_quit",
-    });
-    await supabase.from("chat_messages").insert({
-      project_id: id, sender_id: user.id,
-      type: "member_left", content: "",
-      metadata: { userName: myFullName || "A user" },
-      read_by: [],
-    });
-    await supabase.functions.invoke("notify-owner", {
-      body: {
-        projectId: id,
-        title: `${myFullName || "A member"} left ${project.title}`,
-        body: `${myFullName || "A member"} has left the project.`,
-      },
-    });
-    router.replace("/(app)/projects" as any);
+    try {
+      // .select() so we can tell a real delete from one RLS silently dropped:
+      // with no matching policy PostgREST still answers 200, affecting 0 rows.
+      const { data: removed, error } = await supabase
+        .from("project_members").delete()
+        .eq("project_id", id).eq("user_id", user.id)
+        .select("id");
+      if (error) throw error;
+      if (!removed || removed.length === 0) {
+        throw new Error("Membership was not removed.");
+      }
+
+      await supabase.from("collaboration_events").insert({
+        project_id: id, user_id: user.id, event_type: "member_quit",
+      });
+      await supabase.from("chat_messages").insert({
+        project_id: id, sender_id: user.id,
+        type: "member_left", content: "",
+        metadata: { userName: myFullName || "A user" },
+        read_by: [],
+      });
+      await supabase.functions.invoke("notify-owner", {
+        body: {
+          projectId: id,
+          title: `${myFullName || "A member"} left ${project.title}`,
+          body: `${myFullName || "A member"} has left the project.`,
+        },
+      });
+      router.replace("/(app)/projects" as any);
+    } catch {
+      Alert.alert("Error", "Could not leave the project. Please try again.");
+    }
   }
 
   return (
