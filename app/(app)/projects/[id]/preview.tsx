@@ -13,11 +13,13 @@ import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
 import { useBackToOrigin } from "@/utils/originLink";
+import { DangerBtn } from "@/components/DangerBtn";
 
 export default function ProjectPreviewScreen() {
   const { tokens: { C, GRADIENT, GLASS } } = useTheme();
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const router = useRouter();
+  const [footerHeight, setFooterHeight] = useState(0);
   // Reached by a cross-tab push from Search, Discover, Profile or Settings, so
   // the projects stack underneath holds an unrelated project -- see originLink.
   const goBack = useBackToOrigin(from, "/(app)/projects");
@@ -118,7 +120,13 @@ export default function ProjectPreviewScreen() {
         <View style={{ width: s(60) }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s(20), paddingBottom: vs(120) }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        // The action bar is absolutely positioned over the scroll view, and its
+        // height depends on whether it holds one button or two. Measure it
+        // rather than reserving a fixed gap that only fits one of those cases.
+        contentContainerStyle={{ padding: s(20), paddingBottom: footerHeight + vs(24) }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Project card — glass with gradient strip */}
         <View style={{ backgroundColor: GLASS.card.backgroundColor, borderWidth: 1, borderColor: GLASS.card.borderColor, borderRadius: s(20), overflow: "hidden", marginBottom: vs(20) }}>
           <LinearGradient
@@ -210,9 +218,11 @@ export default function ProjectPreviewScreen() {
       </ScrollView>
 
       {/* Action buttons */}
-      <View style={{
+      <View
+        onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
+        style={{
         position: "absolute", bottom: 0, left: 0, right: 0,
-        padding: s(20), paddingBottom: vs(32), gap: vs(10),
+        padding: s(20), paddingBottom: vs(20), gap: vs(12),
         backgroundColor: C.modalBg,
         borderTopWidth: 1, borderTopColor: C.border,
       }}>
@@ -227,21 +237,7 @@ export default function ProjectPreviewScreen() {
               onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id } })}
               label="Open Chat"
             />
-            <Pressable
-              onPress={() => setQuitSheetVisible(true)}
-              style={({ pressed }) => ({
-                borderWidth: 1,
-                borderColor: pressed ? C.danger : "rgba(248,113,113,0.35)",
-                borderRadius: s(14),
-                paddingVertical: vs(14),
-                alignItems: "center",
-                backgroundColor: pressed ? "rgba(248,113,113,0.08)" : "transparent",
-              })}
-            >
-              <Text style={{ color: C.danger, fontSize: fs(14), fontWeight: "500" }}>
-                Leave Project
-              </Text>
-            </Pressable>
+            <DangerBtn onPress={() => setQuitSheetVisible(true)} label="Leave Project" />
             <QuitProjectSheet
               visible={quitSheetVisible}
               projectTitle={project.title}
