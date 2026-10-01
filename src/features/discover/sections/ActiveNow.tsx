@@ -1,9 +1,9 @@
 import { View, Text, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
 import { Btn } from "@/components/Btn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs, ts } from "@/utils/scale";
+import { useOpenProjectPreview } from "@/utils/originLink";
 import type { ActiveItem } from "../types";
 
 interface ActiveNowProps {
@@ -20,7 +20,7 @@ interface ActiveNowProps {
 
 export function ActiveNow({ items, variant = "rail" }: ActiveNowProps) {
   const { tokens: { C, GLASS } } = useTheme();
-  const router = useRouter();
+  const openPreview = useOpenProjectPreview();
 
   if (variant === "row") {
     return (
@@ -30,7 +30,7 @@ export function ActiveNow({ items, variant = "rail" }: ActiveNowProps) {
           return (
             <Btn
               key={item.id}
-              onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: item.id } })}
+              onPress={() => openPreview(item.id)}
               accessibilityLabel={`${item.title}. ${events}.`}
               pressScale={0.98}
               style={{
@@ -71,7 +71,7 @@ export function ActiveNow({ items, variant = "rail" }: ActiveNowProps) {
         return (
           <Btn
             key={item.id}
-            onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: item.id } })}
+            onPress={() => openPreview(item.id)}
             accessibilityLabel={`${item.title}. ${events}.`}
             pressScale={0.97}
             style={{

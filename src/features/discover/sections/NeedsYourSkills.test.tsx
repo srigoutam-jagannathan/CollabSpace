@@ -11,7 +11,12 @@ const item: NeedsItem = {
 };
 
 const mockPush = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush }),
+  // Links to the href:null tab screens stamp the current pathname onto the
+  // route so the destination's back button can return here -- see originLink.
+  usePathname: () => "/discover",
+}));
 
 beforeEach(() => mockPush.mockClear());
 
@@ -70,6 +75,6 @@ test("tapping the card body opens the project preview", () => {
   fireEvent.press(getByLabelText(/^Aurora\./));
   expect(mockPush).toHaveBeenCalledWith({
     pathname: "/(app)/projects/[id]/preview",
-    params: { id: "p1" },
+    params: { id: "p1", from: "/discover" },
   });
 });

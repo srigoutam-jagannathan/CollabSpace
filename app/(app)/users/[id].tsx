@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ChevronLeft, MapPin, BookOpen, Share2 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "@/lib/supabaseClient";
@@ -18,6 +18,7 @@ import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import { ScreenLoader } from "@/components/ScreenLoader";
+import { useBackToOrigin } from "@/utils/originLink";
 
 type PublicProfile = {
   id: string;
@@ -43,22 +44,9 @@ function getInitials(name: string | null): string {
 export default function UserProfileScreen() {
   const { tokens: { C, GRADIENT } } = useTheme();
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
-
-  const router = useRouter();
   // This screen is a tab, not a pushed screen, so router.back() cannot return
-  // to the screen that opened it -- see useOpenProfile for why. The opener
-  // stamps its own pathname on the route; go there instead when we have it.
-  const goBack = useCallback(() => {
-    if (from) {
-      router.navigate(from as never);
-      return;
-    }
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.navigate("/(app)");
-  }, [from, router]);
+  // to whatever opened it -- see originLink for why.
+  const goBack = useBackToOrigin(from);
   const { user } = useAuth();
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);

@@ -4,7 +4,7 @@ import { Avatar } from "@/components/Avatar";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs, ts } from "@/utils/scale";
-import { useOpenProfile } from "@/utils/useOpenProfile";
+import { useOpenProfile } from "@/utils/originLink";
 import type { PersonItem } from "../types";
 
 function initials(name: string | null): string {

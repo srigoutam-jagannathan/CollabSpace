@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
 import { Search, SlidersHorizontal, ChevronDown, Check, X, ArrowUpDown } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { Btn } from "@/components/Btn";
@@ -18,6 +17,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Profile } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
+import { useOpenProjectPreview } from "@/utils/originLink";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -106,7 +106,7 @@ const SORT_OPTIONS: { key: SortOrder; label: string; sub: string }[] = [
 
 export default function SearchScreen() {
   const { tokens: { C, GLASS, GRADIENT } } = useTheme();
-  const router = useRouter();
+  const openPreview = useOpenProjectPreview();
   const [query, setQuery] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [activeCategory, setActiveCategory] = useState(FILTER_CATEGORIES[0].key);
@@ -391,7 +391,7 @@ export default function SearchScreen() {
                 </Text>
                 <View style={{ alignItems: "flex-end" }}>
                   <Btn
-                    onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: project.id } })}
+                    onPress={() => openPreview(project.id)}
                     style={{ backgroundColor: C.purple, paddingHorizontal: s(18), paddingVertical: vs(8), borderRadius: s(20) }}
                     pressScale={0.94}
                   >

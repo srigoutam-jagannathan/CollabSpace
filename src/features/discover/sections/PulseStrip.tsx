@@ -1,10 +1,10 @@
 import { Text, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
 import { Btn } from "@/components/Btn";
 import { Avatar } from "@/components/Avatar";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { useOpenProjectPreview } from "@/utils/originLink";
 import type { PulseItem } from "../types";
 
 function initials(name: string | null): string {
@@ -18,7 +18,7 @@ function verb(eventType: PulseItem["event_type"]): string {
 
 export function PulseStrip({ items }: { items: PulseItem[] }) {
   const { tokens: { C } } = useTheme();
-  const router = useRouter();
+  const openPreview = useOpenProjectPreview();
 
   return (
     <ScrollView
@@ -33,7 +33,7 @@ export function PulseStrip({ items }: { items: PulseItem[] }) {
       {items.map(item => (
         <Btn
           key={item.id}
-          onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: item.project_id } })}
+          onPress={() => openPreview(item.project_id)}
           accessibilityLabel={`${item.actor_name ?? "Someone"} ${verb(item.event_type)} ${item.project_title}`}
           // The strip is deliberately thin — roughly 24pt of content — so the
           // 44pt minimum target is reached with hitSlop rather than by making

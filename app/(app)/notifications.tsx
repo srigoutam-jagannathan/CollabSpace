@@ -18,7 +18,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import type { CollabInvitationNotif } from "@/types/database";
 import { s, vs, fs } from "@/utils/scale";
 import { ScreenLoader } from "@/components/ScreenLoader";
-import { useOpenProfile } from "@/utils/useOpenProfile";
+import { useOpenProfile } from "@/utils/originLink";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 

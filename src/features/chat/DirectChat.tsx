@@ -22,7 +22,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { ProfileCardMetadata } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
-import { useOpenProfile } from "@/utils/useOpenProfile";
+import { useOpenProfile } from "@/utils/originLink";
 
 type DM = {
   id: string;

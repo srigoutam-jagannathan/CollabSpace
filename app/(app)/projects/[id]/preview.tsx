@@ -12,11 +12,15 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
+import { useBackToOrigin } from "@/utils/originLink";
 
 export default function ProjectPreviewScreen() {
   const { tokens: { C, GRADIENT, GLASS } } = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const router = useRouter();
+  // Reached by a cross-tab push from Search, Discover, Profile or Settings, so
+  // the projects stack underneath holds an unrelated project -- see originLink.
+  const goBack = useBackToOrigin(from, "/(app)/projects");
   const { user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +110,7 @@ export default function ProjectPreviewScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: s(20), paddingVertical: vs(12) }}>
-        <Pressable onPress={() => router.back()} style={{ flexDirection: "row", alignItems: "center" }} hitSlop={12}>
+        <Pressable onPress={goBack} style={{ flexDirection: "row", alignItems: "center" }} hitSlop={12}>
           <ChevronLeft size={s(18)} color={C.textMuted} />
           <Text style={{ color: C.textMuted, fontSize: fs(14) }}>Back</Text>
         </Pressable>

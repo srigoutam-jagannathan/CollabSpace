@@ -5,6 +5,7 @@ import { Btn } from "@/components/Btn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { useOpenProjectPreview } from "@/utils/originLink";
 import { roleMeter, projectPills } from "../cardMeta";
 import type { NeedsItem } from "../types";
 
@@ -16,6 +17,7 @@ function calloutText(matched: string[]): string {
 export function NeedsYourSkills({ items }: { items: NeedsItem[] }) {
   const { tokens: { C, GLASS, GRADIENT } } = useTheme();
   const router = useRouter();
+  const openPreview = useOpenProjectPreview();
 
   return (
     <View style={{ paddingHorizontal: s(20) }}>
@@ -31,7 +33,7 @@ export function NeedsYourSkills({ items }: { items: NeedsItem[] }) {
         return (
           <Btn
             key={item.id}
-            onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: item.id } })}
+            onPress={() => openPreview(item.id)}
             accessibilityLabel={`${label} Opens the project.`}
             pressScale={0.98}
             style={{

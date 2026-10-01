@@ -26,7 +26,7 @@ import { QuitProjectSheet } from "@/components/QuitProjectSheet";
 import { Btn } from "@/components/Btn";
 import type { ChatMessage, Project, ProjectMember, Profile, ProfileCardMetadata } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
-import { useOpenProfile } from "@/utils/useOpenProfile";
+import { useOpenProfile } from "@/utils/originLink";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
