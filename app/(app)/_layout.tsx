@@ -282,12 +282,13 @@ export default function AppLayout() {
       // and the old contentStyle screen option are both gone, replaced by the
       // sceneStyle screen option.
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: "transparent" } }}
-      // users/[id], notifications, settings and friends are registered here as
-      // href:null tabs rather than screens inside each stack, so reaching one
-      // is a tab switch. With the default backBehavior of "firstRoute", going
-      // back from any of them pops to the first tab -- Discover -- no matter
-      // where you came from. "history" returns to the tab you were actually on,
-      // so a profile opened from a DM goes back to that DM.
+      // Default is "firstRoute", which sends every back press to the first tab
+      // regardless of where you were. "history" returns to the tab you came
+      // from -- but only for switches the TabRouter itself handled, which means
+      // tab bar presses. A cross-tab push (opening a profile from a DM) builds
+      // its own state, never reaches changeIndex, and so leaves this history
+      // empty; GO_BACK then returns null and bubbles to the root. Those screens
+      // carry their origin in a route param instead -- see useOpenProfile.
       backBehavior="history"
     >
       <Tabs.Screen name="index" />

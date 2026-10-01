@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -42,8 +42,23 @@ function getInitials(name: string | null): string {
 
 export default function UserProfileScreen() {
   const { tokens: { C, GRADIENT } } = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+
   const router = useRouter();
+  // This screen is a tab, not a pushed screen, so router.back() cannot return
+  // to the screen that opened it -- see useOpenProfile for why. The opener
+  // stamps its own pathname on the route; go there instead when we have it.
+  const goBack = useCallback(() => {
+    if (from) {
+      router.navigate(from as never);
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.navigate("/(app)");
+  }, [from, router]);
   const { user } = useAuth();
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -130,7 +145,7 @@ export default function UserProfileScreen() {
       >
         <View style={{ paddingHorizontal: s(20), paddingTop: vs(16) }}>
           <Btn
-            onPress={() => router.back()}
+            onPress={goBack}
             pressScale={0.88}
             hitSlop={12}
             style={{ flexDirection: "row", alignItems: "center", gap: s(6), alignSelf: "flex-start" }}
@@ -179,7 +194,7 @@ export default function UserProfileScreen() {
         {/* Back button + share */}
         <View style={{ paddingHorizontal: s(20), paddingTop: vs(16), flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Btn
-            onPress={() => router.back()}
+            onPress={goBack}
             pressScale={0.88}
             hitSlop={12}
             style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}

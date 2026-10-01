@@ -18,6 +18,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import type { CollabInvitationNotif } from "@/types/database";
 import { s, vs, fs } from "@/utils/scale";
 import { ScreenLoader } from "@/components/ScreenLoader";
+import { useOpenProfile } from "@/utils/useOpenProfile";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,7 @@ function getInitials(name: string): string {
 export default function NotificationsScreen() {
   const { tokens: { C } } = useTheme();
   const router = useRouter();
+  const openProfile = useOpenProfile();
   const { user } = useAuth();
 
   const [requests, setRequests] = useState<JoinRequest[]>([]);
@@ -810,7 +812,7 @@ export default function NotificationsScreen() {
                     {/* Top row */}
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                       <Btn
-                        onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: req.actorId } })}
+                        onPress={() => openProfile(req.actorId)}
                         pressScale={0.92}
                       >
                         <View style={{ width: s(44), height: s(44), borderRadius: s(22), backgroundColor: C.purple, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
@@ -830,7 +832,7 @@ export default function NotificationsScreen() {
                       ) : (
                         <View style={{ flexDirection: "row", gap: s(8) }}>
                           <Btn
-                            onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: req.actorId } })}
+                            onPress={() => openProfile(req.actorId)}
                             pressScale={0.92}
                           >
                             <View style={{ borderWidth: 1, borderColor: C.pink, borderRadius: s(14), paddingHorizontal: s(12), paddingVertical: vs(6) }}>
