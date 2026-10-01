@@ -139,7 +139,16 @@ function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress }: Coll
                   if (tab.name === "chat") onChatTabPress();
                   if (route) {
                     const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-                    if (!event.defaultPrevented) navigation.navigate(route.name);
+                    if (event.defaultPrevented) return;
+                    // The chat tab owns a Stack, so a plain navigate restores
+                    // whatever conversation was left on top of it. Pressing the
+                    // tab should land on the conversation list, the way tapping
+                    // an active tab pops to root everywhere else.
+                    if (tab.name === "chat") {
+                      navigation.navigate(route.name, { screen: "index" });
+                    } else {
+                      navigation.navigate(route.name);
+                    }
                   }
                 }}
                 style={{ alignItems: "center", paddingVertical: vs(4), paddingHorizontal: s(12) }}
@@ -273,6 +282,13 @@ export default function AppLayout() {
       // and the old contentStyle screen option are both gone, replaced by the
       // sceneStyle screen option.
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: "transparent" } }}
+      // users/[id], notifications, settings and friends are registered here as
+      // href:null tabs rather than screens inside each stack, so reaching one
+      // is a tab switch. With the default backBehavior of "firstRoute", going
+      // back from any of them pops to the first tab -- Discover -- no matter
+      // where you came from. "history" returns to the tab you were actually on,
+      // so a profile opened from a DM goes back to that DM.
+      backBehavior="history"
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="search" />

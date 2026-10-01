@@ -15,6 +15,7 @@ import { ArrowLeft, Send } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { ProfileCardMessage } from "@/components/ProfileCardMessage";
+import { Avatar } from "@/components/Avatar";
 import { Btn } from "@/components/Btn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -34,8 +35,8 @@ type DM = {
 type ConnectionRow = {
   requester_id: string;
   recipient_id: string;
-  requester: { full_name: string | null } | null;
-  recipient: { full_name: string | null } | null;
+  requester: { full_name: string | null; avatar_url: string | null } | null;
+  recipient: { full_name: string | null; avatar_url: string | null } | null;
 };
 
 export function DirectChat({ connectionId }: { connectionId: string }) {
@@ -45,6 +46,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
   const [messages, setMessages] = useState<DM[]>([]);
   const [otherName, setOtherName] = useState("Chat");
   const [otherId, setOtherId] = useState<string | null>(null);
+  const [otherAvatar, setOtherAvatar] = useState<string | null>(null);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -58,7 +60,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
       const [{ data: conn, error: connErr }, { data: msgs, error: msgsErr }] = await Promise.all([
         supabase
           .from("connections")
-          .select("requester_id, recipient_id, requester:profiles!requester_id(full_name), recipient:profiles!recipient_id(full_name)")
+          .select("requester_id, recipient_id, requester:profiles!requester_id(full_name, avatar_url), recipient:profiles!recipient_id(full_name, avatar_url)")
           .eq("id", connectionId)
           .single(),
         supabase
@@ -85,6 +87,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
         const other = isRequester ? c.recipient : c.requester;
         setOtherName(other?.full_name ?? "Chat");
         setOtherId(isRequester ? c.recipient_id : c.requester_id);
+        setOtherAvatar(other?.avatar_url ?? null);
       }
       setMessages((msgs as DM[]) ?? []);
       setLoading(false);
@@ -175,8 +178,8 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
             accessibilityLabel={`View ${otherName}'s profile`}
             style={{ flex: 1, flexDirection: "row", alignItems: "center", minHeight: 44 }}
           >
-            <View style={{ width: s(36), height: s(36), borderRadius: s(18), backgroundColor: C.purple, alignItems: "center", justifyContent: "center", marginRight: s(10) }}>
-              <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(13) }}>{avatarInitials}</Text>
+            <View style={{ marginRight: s(10) }}>
+              <Avatar url={otherAvatar} initials={avatarInitials} size={s(36)} bgColor={C.purple} />
             </View>
             <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(16), flex: 1 }} numberOfLines={1}>
               {otherName}
