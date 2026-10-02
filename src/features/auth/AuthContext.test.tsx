@@ -111,6 +111,23 @@ test("a non-university session arriving via the auth listener is revoked", async
   expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
 });
 
+test("a different session arriving mid-validation is still checked", async () => {
+  signedInAs("ana@qub.ac.uk");
+  const eve = { access_token: "token-eve", user: { id: "u2", email: "eve@gmail.com", user_metadata: {} } };
+  let fired = false;
+  db.respond((call) => {
+    if (call.table === "profiles" && call.op === "upsert" && !fired) {
+      fired = true;
+      // Lands while the qub session is still awaiting its profile upsert.
+      void supabase.auth.onAuthStateChange.mock.calls[0][0]("SIGNED_IN", eve);
+    }
+    return undefined;
+  });
+  const screen = renderProbe();
+  expect(await screen.findByText("access_restricted|-|eve@gmail.com")).toBeTruthy();
+  expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+});
+
 test("sign-up refuses a non-university address before contacting Supabase", async () => {
   const auth = await renderAndCapture();
   await expect(auth.signUp("ana@gmail.com", "pw", "Ana")).rejects.toThrow(

@@ -48,8 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [university, setUniversity] = useState<University | null>(null);
   const [restrictedEmail, setRestrictedEmail] = useState<string | null>(null);
 
-  // Prevent double-validation on rapid session changes
-  const validating = useRef(false);
+  // Token of the session currently being validated. Skips only an exact
+  // duplicate -- getSession() and the INITIAL_SESSION event both deliver the
+  // same session at startup. A *different* session arriving mid-validation
+  // must still be checked: a plain boolean here dropped it, so a
+  // non-university session that landed during the profile upsert was never
+  // revoked.
+  const validatingToken = useRef<string | null>(null);
 
   // ── Belfast Lock ────────────────────────────────────────────────────────────
   /**
@@ -65,8 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (validating.current) return;
-    validating.current = true;
+    if (validatingToken.current === incoming.access_token) return;
+    validatingToken.current = incoming.access_token;
 
     try {
       const email = incoming.user.email ?? "";
@@ -105,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         { onConflict: "id" }
       );
     } finally {
-      validating.current = false;
+      if (validatingToken.current === incoming.access_token) validatingToken.current = null;
     }
   }, []);
 
