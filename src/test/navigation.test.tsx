@@ -8,6 +8,8 @@
  */
 import { useEffect } from "react";
 import { Text } from "react-native";
+import * as fs from "fs";
+import * as path from "path";
 import { act } from "@testing-library/react-native";
 import { renderRouter, screen } from "expo-router/testing-library";
 import { router, useLocalSearchParams } from "expo-router";
@@ -64,6 +66,16 @@ function countTabsRoutes(state: NavState): number {
     (n, r) => n + (r.name === "(tabs)" ? 1 : 0) + countTabsRoutes(r.state),
     0
   );
+}
+
+/** The state of the first (tabs) route, at any depth. */
+function findTabsState(state: NavState): NavState {
+  for (const r of state?.routes ?? []) {
+    if (r.name === "(tabs)" && r.state) return r.state;
+    const inner = findTabsState(r.state);
+    if (inner) return inner;
+  }
+  return undefined;
 }
 
 const ROUTES = {
@@ -143,4 +155,31 @@ test("a deep link to a profile still has the tabs to go back to", async () => {
   expect(router.canGoBack()).toBe(true);
   act(() => router.back());
   expect(await screen.findByText("Discover screen")).toBeTruthy();
+});
+
+const FIVE_TABS = ["chat", "fab", "index", "profile", "search"];
+
+test("only the five tabs live in (tabs)", async () => {
+  const dir = path.join(__dirname, "../../app/(app)/(tabs)");
+  const files = fs
+    .readdirSync(dir)
+    .map((f) => f.replace(/\.tsx?$/, ""))
+    .filter((f) => f !== "_layout")
+    .sort();
+  expect(files).toEqual(FIVE_TABS);
+
+  const app = renderRouter(ROUTES, { initialUrl: "/search" });
+  expect(await screen.findByText("Search screen")).toBeTruthy();
+  const tabsState = findTabsState(app.getRouterState() as NavState);
+  expect(tabsState?.routes.map((r) => r.name).sort()).toEqual(FIVE_TABS);
+});
+
+test("back from a profile opened from Settings lands on Settings", async () => {
+  renderRouter(ROUTES, { initialUrl: "/settings" });
+  expect(await screen.findByText("Settings screen")).toBeTruthy();
+
+  act(() => router.push({ pathname: "/(app)/users/[id]", params: { id: "u2" } }));
+  expect(await screen.findByText("User u2")).toBeTruthy();
+  act(() => router.back());
+  expect(await screen.findByText("Settings screen")).toBeTruthy();
 });
