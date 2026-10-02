@@ -1,0 +1,37 @@
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  app:
+    name: Types and Jest
+    runs-on: ubuntu-latest
+    env:
+      # Read at import time by src/lib/supabaseClient.ts. Tests mock the
+      # client, but a module that imports it unmocked would otherwise throw.
+      EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check
+      # --coverage enforces the thresholds in jest.config.js.
+      - run: npm run test:ci
+
+  database:
+    name: RLS policies (pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.75.0
+      - run: supabase db start
+      - run: supabase test db
