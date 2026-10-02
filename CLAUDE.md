@@ -62,7 +62,9 @@ The `projects` and `chat` tabs each have a **nested Stack layout** so `create`, 
 3. If invalid → calls `supabase.auth.signOut()` immediately to revoke the token server-side, sets `status = "access_restricted"`
 4. If valid → upserts the `profiles` row and sets `status = "authenticated"`
 
-**To add a new university in Phase 5:** add the domain to `ALLOWED_DOMAINS` and `DOMAIN_TO_UNIVERSITY` in `constants.ts` only — no other changes needed.
+The lock is also enforced in the database (`supabase/migrations/20261002150000_server_side_belfast_lock.sql`): a trigger on `auth.users` refuses non-university sign-ups and email changes, and a restrictive `belfast lock` policy on every public table requires the caller's `auth.users` email to be a university address. The client check gives the friendly error; the database check is the one that holds.
+
+**To add a new university in Phase 5:** add the domain to `ALLOWED_DOMAINS` and `DOMAIN_TO_UNIVERSITY` in `constants.ts`, add a `when` branch to `public.university_for_email()` in a new migration, and add the value to `university_enum`.
 
 ### Supabase
 
