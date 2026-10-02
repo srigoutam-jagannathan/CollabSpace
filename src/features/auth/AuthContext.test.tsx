@@ -98,6 +98,19 @@ test("a sign-out reported by the auth listener returns to unauthenticated", asyn
   expect(await screen.findByText("unauthenticated|-|-")).toBeTruthy();
 });
 
+test("a non-university session arriving via the auth listener is revoked", async () => {
+  signedInAs("ana@qub.ac.uk");
+  const screen = renderProbe();
+  await screen.findByText("authenticated|qub|-");
+  const listener = supabase.auth.onAuthStateChange.mock.calls[0][0];
+  const eve = { access_token: "token-eve", user: { id: "u2", email: "eve@gmail.com", user_metadata: {} } };
+  await act(async () => {
+    await listener("SIGNED_IN", eve);
+  });
+  expect(await screen.findByText("access_restricted|-|eve@gmail.com")).toBeTruthy();
+  expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+});
+
 test("sign-up refuses a non-university address before contacting Supabase", async () => {
   const auth = await renderAndCapture();
   await expect(auth.signUp("ana@gmail.com", "pw", "Ana")).rejects.toThrow(
@@ -151,6 +164,10 @@ test("sign-out calls Supabase", async () => {
 });
 
 test("useAuth outside the provider fails loudly", () => {
-  jest.spyOn(console, "error").mockImplementation(() => {});
-  expect(() => render(<Probe />)).toThrow("useAuth must be used within <AuthProvider>");
+  const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    expect(() => render(<Probe />)).toThrow("useAuth must be used within <AuthProvider>");
+  } finally {
+    spy.mockRestore();
+  }
 });

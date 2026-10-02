@@ -6,6 +6,7 @@ describe("resolveUniversity -- the Belfast Lock", () => {
     ["ana@ulster.ac.uk", "ulster"],
     ["ANA@QUB.AC.UK", "qub"],
     ["  ana@qub.ac.uk  ", "qub"],
+    ["ana+tag@qub.ac.uk", "qub"],
   ])("accepts %s as %s", (email, uni) => {
     expect(resolveUniversity(email)).toBe(uni);
   });
