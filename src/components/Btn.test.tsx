@@ -43,14 +43,30 @@ test("debounces repeated presses within the window", () => {
   expect(onPress).toHaveBeenCalledTimes(1);
 });
 
-test("keeps a caller's accessibilityState, with disabled always taken from the prop", () => {
-  const { getByRole, rerender } = renderWithProviders(
+test("keeps a caller's accessibilityState", () => {
+  const { getByRole } = renderWithProviders(
     <Btn onPress={() => {}} accessibilityState={{ selected: true }}><Text>go</Text></Btn>
   );
   expect(getByRole("button")).toBeSelected();
   expect(getByRole("button")).not.toBeDisabled();
+});
 
-  rerender(
+test("disabled comes from the prop, never from a caller's accessibilityState", () => {
+  // Without a disabled prop, Pressable leaves accessibilityState alone, so
+  // only Btn's merge order decides this. Reversing that spread makes the
+  // button announce itself disabled while still accepting presses.
+  const onPress = jest.fn();
+  const { getByRole } = renderWithProviders(
+    <Btn onPress={onPress} accessibilityState={{ selected: true, disabled: true }}><Text>go</Text></Btn>
+  );
+  expect(getByRole("button")).toBeSelected();
+  expect(getByRole("button")).not.toBeDisabled();
+  fireEvent.press(getByRole("button"));
+  expect(onPress).toHaveBeenCalledTimes(1);
+});
+
+test("the disabled prop disables, whatever accessibilityState says", () => {
+  const { getByRole } = renderWithProviders(
     <Btn onPress={() => {}} disabled accessibilityState={{ selected: true, disabled: false }}><Text>go</Text></Btn>
   );
   expect(getByRole("button")).toBeSelected();
