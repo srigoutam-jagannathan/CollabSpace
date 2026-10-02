@@ -12,9 +12,10 @@
 -- 2. A trigger on auth.users refuses non-university sign-ups and email
 --    changes, including accounts with no email at all.
 -- 3. handle_new_user records the university on the new profile.
--- 4. A restrictive policy on every public table requires the caller's
---    auth.users email to be a university address. It reads auth.users, not
---    profiles.university, because users can update their own profile row.
+-- 4. A restrictive policy on every public table, and on writes to Storage,
+--    requires the caller's auth.users email to be a university address. It
+--    reads auth.users, not profiles.university, because users can update
+--    their own profile row. Storage reads stay open: avatar URLs are public.
 -- ============================================================
 
 create or replace function public.university_for_email(email text)
@@ -113,3 +114,12 @@ create policy "belfast lock" on public.project_members      as restrictive for a
   using ((select public.is_university_user())) with check ((select public.is_university_user()));
 create policy "belfast lock" on public.projects             as restrictive for all to public
   using ((select public.is_university_user())) with check ((select public.is_university_user()));
+
+-- Storage: writes only. Public SELECT stays open because avatar URLs are
+-- public. Restrictive, so these AND with any path-scoped permissive policies.
+create policy "belfast lock: insert" on storage.objects as restrictive for insert to public
+  with check ((select public.is_university_user()));
+create policy "belfast lock: update" on storage.objects as restrictive for update to public
+  using ((select public.is_university_user())) with check ((select public.is_university_user()));
+create policy "belfast lock: delete" on storage.objects as restrictive for delete to public
+  using ((select public.is_university_user()));

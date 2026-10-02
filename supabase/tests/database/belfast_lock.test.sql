@@ -9,7 +9,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(16);
+select plan(17);
 
 create schema tests;
 grant usage on schema tests to authenticated, anon;
@@ -67,12 +67,23 @@ select throws_ok(
 insert into public.projects (id, owner_id, title) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
 
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true)
+  on conflict (id) do nothing;
+
+-- A legacy account: a gmail.com address created before this migration, when
+-- nothing refused it. Replica mode skips the belfast_lock trigger for this
+-- insert (and trg_new_user, so it has no profiles row).
+set local session_replication_role = replica;
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000d9', 'legacy@gmail.com');
+set local session_replication_role = origin;
+
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
 select is((select count(*)::int from public.projects), 1,
   'a university user reads projects');
 
--- A valid JWT for an account that is not a university account: one created
--- before this migration, say. Modelled by a uid with no auth.users row.
+-- The legacy account still holds a valid JWT, but its auth.users email is
+-- not a university address.
 select tests.act_as('00000000-0000-0000-0000-0000000000d9');
 select is((select count(*)::int from public.projects), 0,
   'a non-university account reads no projects');
@@ -82,6 +93,10 @@ select throws_ok(
   $$ insert into public.projects (owner_id, title)
      values ('00000000-0000-0000-0000-0000000000d9', 'spam') $$,
   '42501', null, 'a non-university account cannot create projects');
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name)
+     values ('avatars', '00000000-0000-0000-0000-0000000000d9.jpg') $$,
+  '42501', null, 'a non-university account cannot upload to Storage');
 
 reset role;
 select set_config('request.jwt.claims', '', true);
