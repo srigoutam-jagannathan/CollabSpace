@@ -95,3 +95,12 @@ test("returns 0 instead of throwing when the network fails", async () => {
   });
   expect(await fetchPendingCount(ME)).toBe(0);
 });
+
+test("only projects you own are considered, and events are scoped to them", async () => {
+  world({ owned: ["p1"] });
+  await fetchPendingCount(ME);
+  expect(has(db.callsTo("projects")[0], "eq", "owner_id", ME)).toBe(true);
+  const events = db.callsTo("collaboration_events");
+  expect(events).toHaveLength(2);
+  for (const c of events) expect(has(c, "in", "project_id", ["p1"])).toBe(true);
+});
