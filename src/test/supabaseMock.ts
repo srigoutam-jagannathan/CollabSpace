@@ -71,6 +71,7 @@ export type QueryChain = PromiseLike<FullResult> &
 let resolver: Resolver = () => undefined;
 let strict = false;
 const unanswered: string[] = [];
+const calls: QueryCall[] = [];
 
 const REJECT = Symbol("rejectWith");
 
@@ -78,7 +79,6 @@ const REJECT = Symbol("rejectWith");
 export function rejectWith(error: unknown): QueryResult {
   return { [REJECT]: error } as unknown as QueryResult;
 }
-const calls: QueryCall[] = [];
 
 /**
  * What single()/maybeSingle() do to an array of rows. Non-array data is
@@ -159,10 +159,10 @@ function query(table: string): QueryChain {
       } catch (e) {
         // postgrest-js catches fetch failures and resolves with this shape;
         // it only rejects when throwOnError() is used, which the app never does.
-        const err = e as Error;
+        const err = e as Error | null;
         answer = {
           data: null,
-          error: { message: `${err.name ?? "FetchError"}: ${err.message}`, details: err.stack ?? "", hint: "", code: "" },
+          error: { message: `${err?.name ?? "FetchError"}: ${err?.message}`, details: err?.stack ?? "", hint: "", code: "" },
         };
       }
       if (answer && REJECT in answer) throw (answer as unknown as Record<symbol, unknown>)[REJECT];
@@ -242,8 +242,9 @@ export const db = {
   respond(fn: Resolver) {
     resolver = fn;
   },
-  /** From now until reset(): a query the resolver returns undefined for rejects, naming it. */
+  /** Strict-mode queries nothing answered, recorded even if the code caught the rejection. */
   unanswered,
+  /** From now until reset(): a query the resolver returns undefined for rejects, naming it. */
   strict() {
     strict = true;
   },

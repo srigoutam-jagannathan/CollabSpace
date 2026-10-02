@@ -45,6 +45,13 @@ test("a resolver that throws answers with an error, like postgrest-js on a netwo
   expect(result.error).toMatchObject({ message: "TypeError: offline", code: "" });
 });
 
+test("a resolver that throws null still answers with an error", async () => {
+  db.respond(() => {
+    throw null;
+  });
+  expect(await supabase.from("t").select("*")).toMatchObject({ data: null, error: { message: "FetchError: undefined" } });
+});
+
 test("strict mode rejects a query nothing answered, naming it", async () => {
   db.strict();
   db.respond((c) => (c.table === "projects" ? { data: [] } : undefined));
