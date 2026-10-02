@@ -69,6 +69,7 @@ The `projects` and `chat` tabs each have a **nested Stack layout** so `create`, 
 - Single client instance: `src/lib/supabaseClient.ts` — always import `supabase` from here, never call `createClient()` in feature code.
 - Auth provider configured in Supabase dashboard as **Azure** (Microsoft Entra ID). The `prompt: "select_account"` query param forces account selection to prevent silent sign-in with personal Microsoft accounts.
 - DB types are hand-authored in `src/types/database.ts`. After schema changes, regenerate with the `supabase gen types` command above.
+- Migration history was baselined on 2026-10-02: `supabase/migrations/*_remote_schema.sql` is the live schema, and the earlier files live in `supabase/migrations_archive/` (never applied). `supabase db reset` rebuilds a local copy; `npm run test:db` runs the RLS tests against it. `supabase db diff --linked` should show only Supabase's own `protect_bucket_control_*` storage triggers, which the baseline leaves out.
 
 ### Database schema (key design decisions)
 
