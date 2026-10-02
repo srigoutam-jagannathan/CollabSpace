@@ -9,7 +9,7 @@ jest.mock("@/features/auth/AuthContext", () => ({ useAuth: () => mockAuth }));
 // Route files live under app/. Tests may not: Expo Router would register them as routes.
 import ProjectPreviewScreen from "../../../app/(app)/projects/[id]/preview";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { db, supabase } from "@/test/supabaseMock";
+import { db, has, supabase } from "@/test/supabaseMock";
 import { mockRouter, routerState } from "@/test/routerMock";
 
 function world({ member, leave = "removes" }: { member: boolean; leave?: "removes" | "silently-refused" }) {
@@ -70,6 +70,8 @@ test("leaving removes the membership, logs it, tells the owner, and moves on", a
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(app)/projects"));
   const del = db.callsTo("project_members").find((c) => c.op === "delete")!;
   expect(del.columns).toBe("id");
+  expect(has(del, "eq", "project_id", "p1")).toBe(true);
+  expect(has(del, "eq", "user_id", "me")).toBe(true);
   expect(db.callsTo("collaboration_events").find((c) => c.op === "insert")!.payload).toMatchObject({
     event_type: "member_quit",
   });
@@ -89,4 +91,7 @@ test("a leave the database silently refuses is reported, and nothing else happen
   );
   expect(mockRouter.replace).not.toHaveBeenCalled();
   expect(db.callsTo("collaboration_events").filter((c) => c.op === "insert")).toHaveLength(0);
+
+  expect(supabase.functions.invoke).not.toHaveBeenCalled();
+  expect(db.callsTo("chat_messages").filter((c) => c.op === "insert")).toHaveLength(0);
 });

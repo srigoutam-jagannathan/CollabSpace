@@ -34,8 +34,10 @@ function world({ owner, members, removal = "removes" }: {
       return { data: removal === "removes" ? [{ id: "row" }] : [] };
     }
     if (c.table === "project_members" && c.single) {
-      const me = mockAuth.user.id;
-      return { data: members.includes(me) ? { id: "m-me", project_id: P, user_id: me, mou_accepted: false } : null };
+      // Answer for whoever the query actually asked about, so a membership
+      // load that isn't scoped to the current user can't pass by accident.
+      const me = members.find((id) => has(c, "eq", "user_id", id));
+      return { data: me ? { id: "m-me", project_id: P, user_id: me, mou_accepted: false } : null };
     }
     if (c.table === "project_members") {
       return {
@@ -136,6 +138,7 @@ describe("removing a member", () => {
 
     const removal = db.callsTo("project_members").find((c) => c.op === "delete")!;
     expect(has(removal, "eq", "user_id", "ana")).toBe(true);
+    expect(has(removal, "eq", "project_id", P)).toBe(true);
     // .select() is what lets the client tell a real delete from a refused one.
     expect(removal.columns).toBe("id");
 
@@ -160,5 +163,6 @@ describe("removing a member", () => {
     expect(alertSpy).toHaveBeenCalledWith("Error", "Could not remove Ana Lee. Please try again.");
     expect(screen.getByLabelText("Remove Ana Lee from the project")).toBeTruthy();
     expect(db.callsTo("collaboration_events").filter((c) => c.op === "insert")).toHaveLength(0);
+    expect(db.callsTo("chat_messages").filter((c) => c.op === "insert")).toHaveLength(0);
   });
 });
