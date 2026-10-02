@@ -1,7 +1,7 @@
 jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
 
 import { fetchPendingCount } from "./pending";
-import { db, has, type QueryCall } from "@/test/supabaseMock";
+import { db, has, rejectWith, type QueryCall } from "@/test/supabaseMock";
 
 const ME = "me";
 
@@ -89,15 +89,16 @@ test("connection requests match either side of the canonical pair, by who did no
   expect(has(connections, "eq", "recipient_id", ME)).toBe(false);
 });
 
-test("returns 0 instead of throwing when the network fails", async () => {
-  db.respond(() => {
-    throw new Error("offline");
+test("returns 0 when queries come back with a network error", async () => {
+  db.respond((c) => {
+    if (c.table === "projects") return { data: [{ id: "p1" }] };
+    throw new TypeError("offline");
   });
   expect(await fetchPendingCount(ME)).toBe(0);
 });
 
-test("returns 0 instead of throwing when a query rejects outright", async () => {
-  db.strict();
+test("a query that rejects (throwOnError or a bug) still yields 0", async () => {
+  db.respond(() => rejectWith(new Error("boom")));
   expect(await fetchPendingCount(ME)).toBe(0);
 });
 

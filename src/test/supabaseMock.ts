@@ -20,6 +20,13 @@
  * Unanswered queries resolve to { data: null, error: null } unless the test
  * calls db.strict(), which makes them reject with the query's description --
  * use it when a test must prove the code issued no query it did not expect.
+ * Code that catches errors can swallow that rejection, so each unanswered
+ * query is also recorded in db.unanswered: when the code under test catches
+ * errors, assert `expect(db.unanswered).toEqual([])`.
+ *
+ * A resolver that throws models a network failure and resolves with an error.
+ * To model a query that rejects, return rejectWith(error): real postgrest-js
+ * only rejects under throwOnError() or on a bug, so use it for that case.
  */
 
 const FILTER_METHODS = [
@@ -46,6 +53,7 @@ export type QueryCall = {
 };
 
 export type QueryResult = { data?: unknown; error?: unknown; count?: number | null };
+// status/statusText are omitted on purpose: the app never reads them.
 type FullResult = { data: unknown; error: unknown; count: number | null };
 export type Resolver = (call: QueryCall) => QueryResult | undefined;
 
@@ -62,14 +70,15 @@ export type QueryChain = PromiseLike<FullResult> &
 
 let resolver: Resolver = () => undefined;
 let strict = false;
-const calls: QueryCall[] = [];
+const unanswered: string[] = [];
 
-const PGRST116 = {
-  code: "PGRST116",
-  message: "JSON object requested, multiple (or no) rows returned",
-  details: "",
-  hint: "",
-};
+const REJECT = Symbol("rejectWith");
+
+/** Answer a query by rejecting with `error`, as postgrest-js does under throwOnError() or on a bug. */
+export function rejectWith(error: unknown): QueryResult {
+  return { [REJECT]: error } as unknown as QueryResult;
+}
+const calls: QueryCall[] = [];
 
 /**
  * What single()/maybeSingle() do to an array of rows. Non-array data is
@@ -80,7 +89,21 @@ function singleRow(call: QueryCall, result: FullResult): FullResult {
   const rows = result.data;
   if (rows.length === 1) return { ...result, data: rows[0] };
   if (rows.length === 0 && call.maybe) return { ...result, data: null };
-  return { ...result, data: null, error: PGRST116 };
+  const n = rows.length;
+  const error = call.maybe
+    ? {
+        code: "PGRST116",
+        message: "JSON object requested, multiple (or no) rows returned",
+        details: `Results contain ${n} rows, application/vnd.pgrst.object+json requires 1 row`,
+        hint: null,
+      }
+    : {
+        code: "PGRST116",
+        message: "Cannot coerce the result to a single JSON object",
+        details: `The result contains ${n} rows`,
+        hint: null,
+      };
+  return { ...result, data: null, error, count: null };
 }
 
 function query(table: string): QueryChain {
@@ -136,13 +159,17 @@ function query(table: string): QueryChain {
       } catch (e) {
         // postgrest-js catches fetch failures and resolves with this shape;
         // it only rejects when throwOnError() is used, which the app never does.
+        const err = e as Error;
         answer = {
           data: null,
-          error: { message: `TypeError: ${(e as Error).message}`, details: "", hint: "", code: "" },
+          error: { message: `${err.name ?? "FetchError"}: ${err.message}`, details: err.stack ?? "", hint: "", code: "" },
         };
       }
+      if (answer && REJECT in answer) throw (answer as unknown as Record<symbol, unknown>)[REJECT];
       if (answer === undefined && strict) {
-        throw new Error(`Unanswered query: ${call.op} ${call.table} ${JSON.stringify(call.filters)}`);
+        const description = `Unanswered query: ${call.op} ${call.table} ${JSON.stringify(call.filters)}`;
+        unanswered.push(description);
+        throw new Error(description);
       }
       result = Promise.resolve(singleRow(call, { data: null, error: null, count: null, ...answer } as FullResult));
     } catch (e) {
@@ -216,12 +243,14 @@ export const db = {
     resolver = fn;
   },
   /** From now until reset(): a query the resolver returns undefined for rejects, naming it. */
+  unanswered,
   strict() {
     strict = true;
   },
   reset() {
     resolver = () => undefined;
     strict = false;
+    unanswered.length = 0;
     calls.length = 0;
     restoreDefaults();
   },

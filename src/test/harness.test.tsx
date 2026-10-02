@@ -32,8 +32,7 @@ test("harness mocks react-native-safe-area-context so SafeAreaView and useSafeAr
 test("Redirect records where it sent the user", () => {
   routerState.reset();
   const { Redirect } = expoRouterModule;
-  const Screen = Redirect as unknown as (props: { href: string }) => null;
-  render(<Screen href="/(auth)/sign-in" />);
+  render(<Redirect href="/(auth)/sign-in" />);
   expect(Redirect).toHaveBeenCalledTimes(1);
   expect(Redirect.mock.calls[0][0]).toMatchObject({ href: "/(auth)/sign-in" });
 });

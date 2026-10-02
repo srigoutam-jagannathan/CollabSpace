@@ -1,4 +1,4 @@
-import { db, has, supabase } from "./supabaseMock";
+import { db, has, rejectWith, supabase } from "./supabaseMock";
 
 beforeEach(() => db.reset());
 
@@ -38,7 +38,7 @@ test("array arguments compare by value", async () => {
 
 test("a resolver that throws answers with an error, like postgrest-js on a network failure", async () => {
   db.respond(() => {
-    throw new Error("offline");
+    throw new TypeError("offline");
   });
   const result = await supabase.from("projects").select("id");
   expect(result.data).toBeNull();
@@ -52,6 +52,21 @@ test("strict mode rejects a query nothing answered, naming it", async () => {
   await expect(Promise.resolve(supabase.from("profiles").select("id").eq("id", "u1"))).rejects.toThrow(
     /Unanswered query: select profiles .*"eq","id","u1"/
   );
+});
+
+test("a strict rejection that the code catches is still recorded in db.unanswered", async () => {
+  db.strict();
+  await Promise.resolve(supabase.from("profiles").select("id")).catch(() => undefined);
+  expect(db.unanswered).toHaveLength(1);
+  expect(db.unanswered[0]).toMatch(/Unanswered query: select profiles/);
+  db.reset();
+  expect(db.unanswered).toEqual([]);
+});
+
+test("rejectWith makes the query reject with that error", async () => {
+  const boom = new Error("boom");
+  db.respond(() => rejectWith(boom));
+  await expect(Promise.resolve(supabase.from("t").select("*"))).rejects.toBe(boom);
 });
 
 test("reset leaves strict mode", async () => {
