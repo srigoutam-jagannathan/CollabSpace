@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Send, Check, Info, Camera, DoorOpen, UserX, UserMinus } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "@/lib/supabaseClient";
+import { uploadJpeg } from "@/lib/uploadImage";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
@@ -352,24 +353,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
 
     setUploadingIcon(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) throw new Error("No auth token");
-
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-      const fileName = `project-icons/${project.id}.jpg`;
-      const formData = new FormData();
-      formData.append("file", { uri: result.assets[0].uri, name: fileName, type: "image/jpeg" } as any);
-
-      const res = await fetch(`${supabaseUrl}/storage/v1/object/avatars/${fileName}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "x-upsert": "true" },
-        body: formData,
-      });
-      if (!res.ok) throw new Error(await res.text());
-
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
-      const iconUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      const iconUrl = await uploadJpeg("avatars", `project-icons/${project.id}.jpg`, result.assets[0].uri);
 
       await supabase.from("projects").update({ chat_icon_url: iconUrl }).eq("id", project.id);
       setProject((prev) => prev ? { ...prev, chat_icon_url: iconUrl } : prev);

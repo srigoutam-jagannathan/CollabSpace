@@ -10,6 +10,7 @@ import { ChevronLeft, Camera } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
+import { uploadJpeg } from "@/lib/uploadImage";
 import { Btn } from "@/components/Btn";
 import { GradientBtn } from "@/components/GradientBtn";
 import { FONT } from "@/utils/theme";
@@ -99,31 +100,7 @@ export default function EditProfileScreen() {
 
     if (localAvatarUri) {
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        if (!token) throw new Error("No auth token");
-
-        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-        const fileName = `${user.id}.jpg`;
-
-        const formData = new FormData();
-        formData.append("file", { uri: localAvatarUri, name: fileName, type: "image/jpeg" } as any);
-
-        const res = await fetch(
-          `${supabaseUrl}/storage/v1/object/avatars/${fileName}`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "x-upsert": "true" },
-            body: formData,
-          }
-        );
-        if (!res.ok) {
-          const body = await res.text();
-          throw new Error(`${res.status}: ${body}`);
-        }
-
-        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
-        avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+        avatarUrl = await uploadJpeg("avatars", `${user.id}.jpg`, localAvatarUri);
       } catch (e: any) {
         console.error("Avatar upload error:", e);
         Alert.alert("Photo Upload Failed", e?.message ?? "Could not upload photo. Your profile details were saved.");
