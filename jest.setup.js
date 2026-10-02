@@ -40,3 +40,11 @@ jest.mock("@/contexts/ThemeContext", () => {
     ThemeProvider: ({ children }) => children,
   };
 });
+
+// expo-blur's BlurView is a native view with no backing under Jest. Sheets
+// (SheetBackdrop / SheetSurface) wrap their content in it, so render a plain
+// View instead -- the blur is visual and nothing here asserts on it.
+jest.mock("expo-blur", () => {
+  const { View } = require("react-native");
+  return { BlurView: View };
+});
