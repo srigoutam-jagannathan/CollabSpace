@@ -61,6 +61,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // meanwhile, that session owns the state and the rejection must not touch
   // it. Null sessions do not bump it -- our own signOut() emits SIGNED_OUT
   // with null mid-rejection, and that must not cancel the rejection.
+  // A successful global revoke still clears whatever session is stored
+  // (auth-js removes the stored session), so this guard keeps the newer
+  // session's *state* from being overwritten; only on the error path does the
+  // newer session itself survive.
   const generation = useRef(0);
 
   // ── Belfast Lock ────────────────────────────────────────────────────────────

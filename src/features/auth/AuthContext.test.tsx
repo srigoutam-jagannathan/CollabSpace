@@ -205,44 +205,65 @@ test("useAuth outside the provider fails loudly", () => {
   }
 });
 
-test("a rejected session whose sign-out is slow cannot overwrite a newer valid session", async () => {
-  signedInAs("eve@gmail.com");
-  let finishSignOut!: (r: { error: unknown }) => void;
+// A signOut() the test releases by hand, to model a slow revoke.
+function holdSignOut() {
+  let release!: (r: { error: unknown }) => void;
   supabase.auth.signOut.mockImplementationOnce(
-    () => new Promise((resolve) => { finishSignOut = resolve; })
+    () => new Promise((resolve) => { release = resolve; })
   );
+  return (r: { error: unknown }) => release(r);
+}
+
+const ana = { access_token: "token-ana", user: { id: "u3", email: "ana@qub.ac.uk", user_metadata: {} } };
+const emit = (event: string, s: unknown) => supabase.auth.onAuthStateChange.mock.calls[0][0](event, s);
+
+test("a stale rejection does not show access_restricted over a newer sign-in", async () => {
+  signedInAs("eve@gmail.com");
+  const finishSignOut = holdSignOut();
   const screen = renderProbe();
   await waitFor(() => expect(supabase.auth.signOut).toHaveBeenCalledTimes(1));
 
-  const ana = { access_token: "token-ana", user: { id: "u3", email: "ana@qub.ac.uk", user_metadata: {} } };
-  await act(async () => {
-    await supabase.auth.onAuthStateChange.mock.calls[0][0]("SIGNED_IN", ana);
-  });
+  await act(async () => { await emit("SIGNED_IN", ana); });
   expect(await screen.findByText("authenticated|qub|-")).toBeTruthy();
 
+  // Real auth-js: a successful global sign-out removes whatever session is
+  // stored (now ana's) and emits SIGNED_OUT/null before resolving.
   await act(async () => {
+    await emit("SIGNED_OUT", null);
     finishSignOut({ error: null });
   });
-  expect(screen.getByText("authenticated|qub|-")).toBeTruthy();
+  expect(screen.getByText("unauthenticated|-|-")).toBeTruthy();
+  expect(screen.queryByText(/eve@gmail.com/)).toBeNull();
 });
 
 test("a stale rejection does not fall back to a local sign-out over the newer session", async () => {
   signedInAs("eve@gmail.com");
-  let finishSignOut!: (r: { error: unknown }) => void;
-  supabase.auth.signOut.mockImplementationOnce(
-    () => new Promise((resolve) => { finishSignOut = resolve; })
-  );
+  const finishSignOut = holdSignOut();
   const screen = renderProbe();
   await waitFor(() => expect(supabase.auth.signOut).toHaveBeenCalledTimes(1));
 
-  const ana = { access_token: "token-ana", user: { id: "u3", email: "ana@qub.ac.uk", user_metadata: {} } };
-  await act(async () => {
-    await supabase.auth.onAuthStateChange.mock.calls[0][0]("SIGNED_IN", ana);
-  });
-  await act(async () => {
-    finishSignOut({ error: new Error("Network request failed") });
-  });
+  await act(async () => { await emit("SIGNED_IN", ana); });
+  await act(async () => { finishSignOut({ error: new Error("Network request failed") }); });
   expect(screen.getByText("authenticated|qub|-")).toBeTruthy();
   // A local sign-out now would delete ana's stored session, not eve's.
   expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+});
+
+test("a rejection superseded during its local sign-out does not show access_restricted", async () => {
+  signedInAs("eve@gmail.com");
+  supabase.auth.signOut.mockResolvedValueOnce({ error: new Error("Network request failed") });
+  const finishLocalSignOut = holdSignOut();
+  const screen = renderProbe();
+  await waitFor(() => expect(supabase.auth.signOut).toHaveBeenCalledTimes(2));
+  expect(supabase.auth.signOut).toHaveBeenLastCalledWith({ scope: "local" });
+
+  await act(async () => { await emit("SIGNED_IN", ana); });
+  expect(await screen.findByText("authenticated|qub|-")).toBeTruthy();
+
+  await act(async () => {
+    await emit("SIGNED_OUT", null);
+    finishLocalSignOut({ error: null });
+  });
+  expect(screen.getByText("unauthenticated|-|-")).toBeTruthy();
+  expect(screen.queryByText(/eve@gmail.com/)).toBeNull();
 });
