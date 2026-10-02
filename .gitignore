@@ -28,3 +28,6 @@ expo-env.d.ts
 Plans/
 # Tool scratch
 .superpowers/
+
+# Jest coverage report
+coverage/
