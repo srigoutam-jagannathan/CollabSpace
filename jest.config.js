@@ -17,8 +17,7 @@ module.exports = {
     "!src/types/**",
     "!src/**/types.ts",
   ],
-  // Ratchet. Each phase of docs/superpowers/plans/2026-10-01-test-coverage.md
-  // raises these to the floor of what it achieved. Never lower them to pass.
+  // Ratchet: raise these to the floor of what coverage reaches. Never lower them to pass.
   coverageThreshold: {
     // Floors of the Phase 1-4 results. Raise after every phase; never lower.
     // Jest excludes the per-path files below from "global", so these are floors of the rest.
