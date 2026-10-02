@@ -20,6 +20,14 @@ module.exports = {
   // Ratchet. Each phase of docs/superpowers/plans/2026-10-01-test-coverage.md
   // raises these to the floor of what it achieved. Never lower them to pass.
   coverageThreshold: {
-    global: { statements: 8, branches: 5, functions: 9, lines: 9 },
+    // Floors of the Phase 1-4 results. Raise after every phase; never lower.
+    // Jest excludes the per-path files below from "global", so these are floors of the rest.
+    global: { statements: 17, branches: 14, functions: 14, lines: 18 },
+    // What guards sign-in, membership and navigation is held near-total.
+    "./src/features/auth/constants.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./src/features/auth/AuthContext.tsx": { statements: 85, branches: 67, functions: 85, lines: 85 },
+    "./src/features/notifications/pending.ts": { statements: 95, branches: 58, functions: 100, lines: 95 },
+    "./src/utils/originLink.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./src/components/CollabTabBar.tsx": { statements: 85, branches: 75, functions: 80, lines: 85 },
   },
 };
