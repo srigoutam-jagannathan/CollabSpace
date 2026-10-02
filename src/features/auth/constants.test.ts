@@ -23,6 +23,10 @@ describe("resolveUniversity -- the Belfast Lock", () => {
     ["ana@", "no domain"],
     ["", "an empty string"],
     ["ana@qub.ac.u\u212a", "a Kelvin-sign K that lower-cases to k"],
+    // The domain must not be looked up as a plain object key.
+    ["ana@constructor", "an Object.prototype member name"],
+    ["ana@__proto__", "the __proto__ accessor"],
+    ["ana@hasownproperty", "a lower-cased prototype method name"],
   ])("rejects %s (%s)", (email) => {
     expect(resolveUniversity(email)).toBeNull();
   });

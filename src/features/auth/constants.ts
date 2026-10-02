@@ -32,6 +32,8 @@ export function extractDomain(email: string): string | null {
  */
 export function resolveUniversity(email: string): "qub" | "ulster" | null {
   const domain = extractDomain(email);
-  if (!domain) return null;
-  return DOMAIN_TO_UNIVERSITY[domain as AllowedDomain] ?? null;
+  // A membership test, not a plain object lookup: DOMAIN_TO_UNIVERSITY["constructor"]
+  // is Object, which is truthy and would pass the lock.
+  if (!domain || !(ALLOWED_DOMAINS as readonly string[]).includes(domain)) return null;
+  return DOMAIN_TO_UNIVERSITY[domain as AllowedDomain];
 }
