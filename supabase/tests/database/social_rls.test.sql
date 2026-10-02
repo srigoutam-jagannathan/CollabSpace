@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(26);
+select plan(28);
 
 create schema tests;
 grant usage on schema tests to authenticated;
@@ -99,6 +99,15 @@ select is(
   (select status from public.connections where id = '00000000-0000-0000-0000-00000000c0ab'),
   'accepted', 'the recipient can accept');
 
+-- A fresh alice-dave pair: alice initiates and stays a party, so only the
+-- status = 'pending' check can refuse this.
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select throws_ok(
+  $$ insert into public.connections (requester_id, recipient_id, initiated_by, status)
+     values ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000d4',
+             '00000000-0000-0000-0000-0000000000a1', 'accepted') $$,
+  '42501', null, 'a connection cannot be created already accepted');
+
 -- ── Direct messages ─────────────────────────────────────────────────────
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
 select lives_ok(
@@ -116,6 +125,9 @@ select throws_ok(
      values ('00000000-0000-0000-0000-00000000c0ac', '00000000-0000-0000-0000-0000000000a1', 'too soon') $$,
   '42501', null, 'no DMs until the request is accepted');
 
+-- Defence in depth: connections_select already hides c0ab from carol, so
+-- these two pass even without dm_insert/dm_select's party checks. They pin
+-- the combined effect, not dm_insert/dm_select on their own.
 select tests.act_as('00000000-0000-0000-0000-0000000000c3');
 select throws_ok(
   $$ insert into public.direct_messages (connection_id, sender_id, content)
@@ -191,6 +203,15 @@ reset role;
 select is(
   (select status from public.collab_invitations where id = '00000000-0000-0000-0000-00000000a001'),
   'accepted', 'the invitee can accept');
+
+-- A fresh invitee (dave) on alice's own project: alice is the sender and the
+-- owner, so only the status = 'pending' check can refuse this.
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select throws_ok(
+  $$ insert into public.collab_invitations (project_id, sender_id, recipient_id, status)
+     values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1',
+             '00000000-0000-0000-0000-0000000000d4', 'accepted') $$,
+  '42501', null, 'an invitation cannot be created already accepted');
 
 select * from finish();
 rollback;
