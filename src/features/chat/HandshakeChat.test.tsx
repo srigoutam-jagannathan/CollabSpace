@@ -80,3 +80,85 @@ describe("the composer", () => {
     expect(screen.queryByPlaceholderText("Message…")).toBeNull();
   });
 });
+
+describe("removing a member", () => {
+  let alertSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  });
+  afterEach(() => alertSpy.mockRestore());
+
+  /** The destructive button's handler from the alert titled `title`. */
+  function destructiveAction(title: string) {
+    const call = alertSpy.mock.calls.find(([t]) => t === title);
+    const button = (call?.[2] as { style?: string; onPress?: () => unknown }[] | undefined)?.find(
+      (b) => b.style === "destructive"
+    );
+    if (!button?.onPress) throw new Error(`No destructive button on alert "${title}"`);
+    return button.onPress;
+  }
+
+  async function openMembers(screen: ReturnType<typeof renderChat>) {
+    fireEvent.press(await screen.findByText("Lumen"));
+    await screen.findByText("Members · 2");
+  }
+
+  test("the owner gets a remove control for each member, but not for themselves", async () => {
+    mockAuth.user = { id: "owner" };
+    world({ owner: "owner", members: ["ana"] });
+    const screen = renderChat();
+    await openMembers(screen);
+    expect(screen.getByLabelText("Remove Ana Lee from the project")).toBeTruthy();
+    expect(screen.queryByLabelText("Remove Olive Owner from the project")).toBeNull();
+  });
+
+  test("a member gets no remove controls at all", async () => {
+    world({ owner: "owner", members: ["me"] });
+    const screen = renderChat();
+    fireEvent.press(await screen.findByText("Lumen"));
+    await screen.findByText("Members · 2");
+    expect(screen.queryAllByLabelText(/^Remove /)).toHaveLength(0);
+  });
+
+  test("confirming removes them, logs it against them, and tells the chat", async () => {
+    mockAuth.user = { id: "owner" };
+    world({ owner: "owner", members: ["ana"] });
+    const screen = renderChat();
+    await openMembers(screen);
+
+    fireEvent.press(screen.getByLabelText("Remove Ana Lee from the project"));
+    await act(async () => {
+      await destructiveAction("Remove Ana Lee?")();
+    });
+
+    await waitFor(() => expect(screen.queryByLabelText("Remove Ana Lee from the project")).toBeNull());
+
+    const removal = db.callsTo("project_members").find((c) => c.op === "delete")!;
+    expect(has(removal, "eq", "user_id", "ana")).toBe(true);
+    // .select() is what lets the client tell a real delete from a refused one.
+    expect(removal.columns).toBe("id");
+
+    const event = db.callsTo("collaboration_events").find((c) => c.op === "insert")!;
+    expect(event.payload).toMatchObject({ user_id: "ana", event_type: "member_removed" });
+
+    const notice = db.callsTo("chat_messages").find((c) => c.op === "insert")!;
+    expect(notice.payload).toMatchObject({ type: "member_removed", metadata: { userName: "Ana Lee" } });
+  });
+
+  test("a delete the database silently refuses is reported, not treated as success", async () => {
+    mockAuth.user = { id: "owner" };
+    world({ owner: "owner", members: ["ana"], removal: "silently-refused" });
+    const screen = renderChat();
+    await openMembers(screen);
+
+    fireEvent.press(screen.getByLabelText("Remove Ana Lee from the project"));
+    await act(async () => {
+      await destructiveAction("Remove Ana Lee?")();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("Error", "Could not remove Ana Lee. Please try again.");
+    expect(screen.getByLabelText("Remove Ana Lee from the project")).toBeTruthy();
+    expect(db.callsTo("collaboration_events").filter((c) => c.op === "insert")).toHaveLength(0);
+  });
+});
