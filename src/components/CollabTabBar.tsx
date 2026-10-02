@@ -21,6 +21,11 @@ import { s, vs } from "@/utils/scale";
 
 type TabItem = {
   name: string;
+  /**
+   * What VoiceOver and TalkBack announce. The tabs are icon-only, so without
+   * this they are five unnamed buttons.
+   */
+  label: string;
   icon: (active: boolean, C: CTokens) => React.ReactNode;
   isFab?: boolean;
 };
@@ -28,23 +33,28 @@ type TabItem = {
 const TABS: TabItem[] = [
   {
     name: "index",
+    label: "Discover",
     icon: (active, C) => <Home size={s(22)} color={active ? C.white : C.textMuted} strokeWidth={active ? 2.5 : 1.8} />,
   },
   {
     name: "search",
+    label: "Search",
     icon: (active, C) => <Search size={s(22)} color={active ? C.white : C.textMuted} strokeWidth={active ? 2.5 : 1.8} />,
   },
   {
     name: "fab",
+    label: "Create project",
     isFab: true,
     icon: (_active, C) => <Plus size={s(24)} color={C.white} strokeWidth={2.5} />,
   },
   {
     name: "chat",
+    label: "Chats",
     icon: (active, C) => <MessageCircle size={s(22)} color={active ? C.pink : C.textMuted} strokeWidth={active ? 2.5 : 1.8} />,
   },
   {
     name: "profile",
+    label: "Profile",
     icon: (active, C) => <User size={s(22)} color={active ? C.pink : C.textMuted} strokeWidth={active ? 2.5 : 1.8} />,
   },
 ];
@@ -113,6 +123,7 @@ export function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress 
                     fabGuardRef.current = true;
                     router.navigate("/(app)/projects/create" as any);
                   }}
+                  accessibilityLabel={tab.label}
                   style={{ borderRadius: s(26), overflow: "hidden" }}
                   hitSlop={8}
                   pressScale={0.92}
@@ -153,6 +164,10 @@ export function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress 
                     }
                   }
                 }}
+                accessibilityLabel={
+                  tab.name === "chat" && hasChatUnread ? `${tab.label}, unread messages` : tab.label
+                }
+                accessibilityState={{ selected: focused }}
                 style={{ alignItems: "center", paddingVertical: vs(4), paddingHorizontal: s(12) }}
                 hitSlop={8}
                 pressScale={0.88}
