@@ -17,7 +17,9 @@ export const DOMAIN_TO_UNIVERSITY: Record<AllowedDomain, "qub" | "ulster"> = {
  */
 export function extractDomain(email: string): string | null {
   const parts = email.toLowerCase().trim().split("@");
-  return parts.length === 2 ? parts[1] : null;
+  // Exactly one "@", with something on both sides of it.
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  return parts[1];
 }
 
 /**
