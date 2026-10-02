@@ -20,7 +20,7 @@ export function StepProgressBar({ step, totalSteps = 2 }: Props) {
       bounciness: 4,
       useNativeDriver: false,
     }).start();
-  }, [step, totalSteps, width]);
+  }, [step, totalSteps, width, fillAnim]);
 
   return (
     <View

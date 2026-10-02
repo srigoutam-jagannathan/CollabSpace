@@ -345,13 +345,13 @@ function SignUpSection({
   const [strengthWidth] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.timing(strengthWidth, { toValue: strength.pct, duration: 250, easing: Easing.out(Easing.quad), useNativeDriver: false }).start();
-  }, [strength.pct]);
+  }, [strength.pct, strengthWidth]);
 
   const allValid = fullName.trim().length > 0 && email.trim().length > 0 && password.length >= 8 && confirmPassword.length > 0 && agreed;
   const [ctaOpacity] = useState(() => new Animated.Value(0.45));
   useEffect(() => {
     Animated.timing(ctaOpacity, { toValue: allValid ? 1 : 0.45, duration: 200, useNativeDriver: true }).start();
-  }, [allValid]);
+  }, [allValid, ctaOpacity]);
 
   function toggleAgreed() {
     haptic.light();
@@ -493,7 +493,7 @@ function SkillsSection({
     const hasAny = selected.size > 0;
     Animated.timing(badgeOpacity, { toValue: hasAny ? 1 : 0, duration: 200, useNativeDriver: true }).start();
     Animated.timing(ctaOpacity, { toValue: hasAny ? 1 : 0.45, duration: 200, useNativeDriver: true }).start();
-  }, [selected.size]);
+  }, [selected.size, badgeOpacity, ctaOpacity]);
 
   useEffect(() => {
     if (!active || loaded.current || !user) return;
@@ -661,7 +661,7 @@ export default function OnboardingFlow() {
         Animated.timing(breathAnim, { toValue: 0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
-  }, []);
+  }, [breathAnim]);
   const breathOpacity = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.22] });
 
   // ── Welcome parallax (native-driven, zero JS overhead) ─────────────────────

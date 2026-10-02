@@ -29,7 +29,7 @@ export function useEntrance(count: number, delayMs = 80, active = true) {
         ])
       )
     ).start();
-  }, [active]);
+  }, [active, opacities, translates]); // delayMs deliberately omitted so a changed delay doesn't replay the entrance
 
   return opacities.map((op, i) => ({
     opacity: op,

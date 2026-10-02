@@ -85,7 +85,7 @@ export function ShareProfileSheet({
       setConversations([]);
       setSendingTo(null);
     }
-  }, [visible]);
+  }, [visible, slideAnim]);
 
   const fetchConversations = useCallback(async () => {
     if (!user) return;

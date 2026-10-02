@@ -38,7 +38,7 @@ export function QuitProjectSheet({ visible, projectTitle, onClose, onQuit }: Pro
         useNativeDriver: true,
       }).start();
     }
-  }, [visible]);
+  }, [visible, slideAnim]);
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}

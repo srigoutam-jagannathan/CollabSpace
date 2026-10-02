@@ -89,7 +89,7 @@ export function InviteSheet({ visible, talent, onClose, onSent }: Props) {
       setMessage("");
       setOwnedProjects([]);
     }
-  }, [visible]);
+  }, [visible, slideAnim]);
 
   async function handleSend() {
     if (!user || !talent || !selectedProjectId || !role.trim()) return;

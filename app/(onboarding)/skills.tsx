@@ -88,7 +88,7 @@ export default function SkillsScreen() {
     const hasAny = selected.size > 0;
     Animated.timing(badgeOpacity, { toValue: hasAny ? 1 : 0, duration: 200, useNativeDriver: true }).start();
     Animated.timing(ctaOpacity, { toValue: hasAny ? 1 : 0.45, duration: 200, useNativeDriver: true }).start();
-  }, [selected.size]);
+  }, [selected.size, badgeOpacity, ctaOpacity]);
 
   // Pre-load existing skills when editing from settings
   useEffect(() => {

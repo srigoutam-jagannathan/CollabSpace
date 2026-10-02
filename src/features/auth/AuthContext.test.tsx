@@ -32,6 +32,7 @@ const renderProbe = () => render(<AuthProvider><Probe /></AuthProvider>);
 
 async function renderAndCapture() {
   const capturedRef: { current?: ReturnType<typeof useAuth> } = {};
+  // React Compiler lint rules reject assigning to an outer object during render, but accept assigning through a callback.
   const store = (v: ReturnType<typeof useAuth>) => {
     capturedRef.current = v;
   };
@@ -348,6 +349,7 @@ test("the dev bypass signs in as QUB without a session", async () => {
   const screen = renderProbe();
   await screen.findByText("unauthenticated|-|-");
   const grabbedRef: { current?: ReturnType<typeof useAuth> } = {};
+  // React Compiler lint rules reject assigning to an outer object during render, but accept assigning through a callback.
   const store = (v: ReturnType<typeof useAuth>) => {
     grabbedRef.current = v;
   };
