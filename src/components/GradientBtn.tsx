@@ -36,6 +36,7 @@ export function GradientBtn({
       onPress={onPress}
       disabled={disabled || loading}
       pressScale={0.97}
+      accessibilityLabel={label}
       // Btn owns disabled dimming — setting opacity here would be silently overridden.
       style={[{ borderRadius: s(32), overflow: "hidden" }, style]}
     >

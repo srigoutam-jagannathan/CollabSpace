@@ -28,6 +28,7 @@ export function ScreenLoader({
   return (
     <View
       style={[{ flex: 1, alignItems: "center", justifyContent: "center" }, style]}
+      accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label ?? "Loading"}
     >
