@@ -40,6 +40,7 @@ export function Btn({
   debounceMs = 500,
   accessibilityRole = "button" as AccessibilityRole,
   disabled,
+  accessibilityState,
   ...rest
 }: BtnProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -86,7 +87,9 @@ export function Btn({
       {...rest}
       disabled={disabled}
       accessibilityRole={accessibilityRole}
-      accessibilityState={{ disabled: !!disabled }}
+      // Merge rather than replace: callers such as the tab bar pass
+      // { selected }, and disabled is always derived from the prop.
+      accessibilityState={{ ...accessibilityState, disabled: !!disabled }}
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
