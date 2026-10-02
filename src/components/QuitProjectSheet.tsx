@@ -88,6 +88,8 @@ export function QuitProjectSheet({ visible, projectTitle, onClose, onQuit }: Pro
           {/* Leave button */}
           <Pressable
             onPress={onQuit}
+            accessibilityRole="button"
+            accessibilityLabel="Confirm leaving the project"
             style={({ pressed }) => ({
               backgroundColor: pressed ? "rgba(248,113,113,0.20)" : "rgba(248,113,113,0.14)",
               borderWidth: 1,
