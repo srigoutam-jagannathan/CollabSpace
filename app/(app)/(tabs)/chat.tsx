@@ -284,7 +284,7 @@ export default function MessagesScreen() {
                 (item.lastMessageAt ?? "") > chatLastOpen;
               return (
                 <Pressable
-                  onPress={() => router.push({ pathname: "/(app)/(tabs)/chat/dm/[id]", params: { id: item.id } })}
+                  onPress={() => router.push({ pathname: "/(app)/chat/dm/[id]", params: { id: item.id } })}
                   style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: C.borderSubtle, backgroundColor: unread ? "rgba(192,133,82,0.12)" : "transparent" }}
                 >
                   <AvatarCircle
@@ -329,7 +329,7 @@ export default function MessagesScreen() {
               (item.lastMessageAt ?? "") > chatLastOpen;
             return (
               <Pressable
-                onPress={() => router.push({ pathname: "/(app)/(tabs)/chat/[id]", params: { id: item.id } })}
+                onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: item.id } })}
                 style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: s(20), paddingVertical: vs(14), borderBottomWidth: 1, borderBottomColor: C.borderSubtle, backgroundColor: unread ? "rgba(192,133,82,0.12)" : "transparent" }}
               >
                 <AvatarCircle url={item.chat_icon_url} initials={getInitials(item.title)} hasUnread={unread} />

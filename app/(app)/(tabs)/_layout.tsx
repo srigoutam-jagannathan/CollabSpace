@@ -95,6 +95,10 @@ export default function TabsLayout() {
       // and the old contentStyle screen option are both gone, replaced by the
       // sceneStyle screen option.
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: "transparent" } }}
+      // Only governs Android back between tabs now: pushed screens are popped
+      // by the (app) Stack. "history" returns to the previously selected tab
+      // rather than always to the first one.
+      backBehavior="history"
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="search" />

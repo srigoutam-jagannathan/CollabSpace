@@ -132,7 +132,7 @@ export default function SkillsScreen() {
 
     if (!user) {
       await AsyncStorage.setItem(storageKey, "true");
-      router.replace("/(app)/" as any);
+      router.replace("/(app)/(tabs)");
       return;
     }
 
@@ -149,7 +149,7 @@ export default function SkillsScreen() {
       if (from === "settings") {
         router.back();
       } else {
-        router.replace("/(app)/" as any);
+        router.replace("/(app)/(tabs)");
       }
     } catch {
       haptic.error();

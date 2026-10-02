@@ -1,9 +1,9 @@
 /**
  * CollabTabBar -- the app's custom bottom tab bar.
  *
- * Lives here rather than in app/(app)/_layout.tsx so it can be tested without
- * importing the whole authenticated layout (auth guard, unread polling,
- * Supabase). The layout passes it straight to <Tabs tabBar>.
+ * Lives here rather than in app/(app)/(tabs)/_layout.tsx so it can be tested
+ * without importing the whole tabs layout (unread polling, Supabase). That
+ * layout passes it straight to <Tabs tabBar>.
  */
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
@@ -153,15 +153,7 @@ export function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress 
                   if (route) {
                     const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
                     if (event.defaultPrevented) return;
-                    // The chat tab owns a Stack, so a plain navigate restores
-                    // whatever conversation was left on top of it. Pressing the
-                    // tab should land on the conversation list, the way tapping
-                    // an active tab pops to root everywhere else.
-                    if (tab.name === "chat") {
-                      navigation.navigate(route.name, { screen: "index" });
-                    } else {
-                      navigation.navigate(route.name);
-                    }
+                    navigation.navigate(route.name);
                   }
                 }}
                 accessibilityLabel={

@@ -245,7 +245,7 @@ export default function ProjectInsights({ projectId }: { projectId: string }) {
           </Text>
         </View>
         <Btn
-          onPress={() => router.push({ pathname: "/(app)/(tabs)/chat/[id]", params: { id: projectId } })}
+          onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: projectId } })}
           pressScale={0.9}
         >
           <View style={{

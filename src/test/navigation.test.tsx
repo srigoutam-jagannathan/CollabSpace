@@ -2,13 +2,15 @@
  * Back-stack behaviour of the authenticated app, through Expo Router's real
  * navigators. The layouts are the real ones; screens are stubs.
  *
- * Both cases were bugs while (app) was a Tabs navigator with the detail
- * screens registered as href:null tabs: back went to the first tab instead.
+ * Each case was a bug while (app) was a Tabs navigator with the detail
+ * screens registered as href:null tabs, or while the chat rooms lived inside
+ * the (tabs) group.
  */
+import { useEffect } from "react";
 import { Text } from "react-native";
 import { act } from "@testing-library/react-native";
 import { renderRouter, screen } from "expo-router/testing-library";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
@@ -21,6 +23,7 @@ jest.mock("@/features/auth/AuthContext", () => ({
 // (initialRouteName) that the deep-link case depends on.
 import * as AppLayoutModule from "../../app/(app)/_layout";
 import TabsLayout from "../../app/(app)/(tabs)/_layout";
+import ProjectsLayout from "../../app/(app)/projects/_layout";
 import { db } from "@/test/supabaseMock";
 
 const stub = (label: string) => {
@@ -29,45 +32,114 @@ const stub = (label: string) => {
   return Stub;
 };
 
+/** A stub that shows its [id], so two instances of one route can be told apart. */
+const withId = (label: string) => {
+  const Stub = () => {
+    const { id } = useLocalSearchParams<{ id: string }>();
+    return <Text>{`${label} ${id}`}</Text>;
+  };
+  Stub.displayName = label;
+  return Stub;
+};
+
+// How many tab navigators are mounted. Pushing a route inside (tabs) from a
+// screen above it would mount a second one, with its own unread-badge
+// subscription.
+let tabsMounted = 0;
+function CountedTabsLayout() {
+  useEffect(() => {
+    tabsMounted += 1;
+    return () => {
+      tabsMounted -= 1;
+    };
+  }, []);
+  return <TabsLayout />;
+}
+
+type NavState = { routes: { name: string; state?: NavState }[] } | undefined;
+
+/** How many (tabs) routes the navigation state holds, at any depth. */
+function countTabsRoutes(state: NavState): number {
+  return (state?.routes ?? []).reduce(
+    (n, r) => n + (r.name === "(tabs)" ? 1 : 0) + countTabsRoutes(r.state),
+    0
+  );
+}
+
 const ROUTES = {
   "(app)/_layout": AppLayoutModule,
-  "(app)/(tabs)/_layout": TabsLayout,
+  "(app)/(tabs)/_layout": CountedTabsLayout,
   "(app)/(tabs)/index": stub("Discover screen"),
   "(app)/(tabs)/search": stub("Search screen"),
   "(app)/(tabs)/fab": stub("Fab placeholder"),
-  "(app)/(tabs)/chat/index": stub("Chat list"),
+  "(app)/(tabs)/chat": stub("Chat list"),
   "(app)/(tabs)/profile": stub("Profile screen"),
-  "(app)/projects/[id]/join": stub("Join screen"),
+  "(app)/chat/[id]": withId("Chat room"),
+  "(app)/projects/_layout": ProjectsLayout,
+  "(app)/projects/index": stub("My projects"),
+  "(app)/projects/[id]/preview": withId("Preview"),
   "(app)/settings/index": stub("Settings screen"),
-  "(app)/users/[id]": stub("User screen"),
+  "(app)/users/[id]": withId("User"),
 };
 
 beforeEach(async () => {
   db.reset();
+  tabsMounted = 0;
   await AsyncStorage.setItem("skills_set_u1", "true");
 });
 
-test("Discover → Join → back returns to Discover", async () => {
-  renderRouter(ROUTES, { initialUrl: "/" });
-  expect(await screen.findByText("Discover screen")).toBeTruthy();
-  act(() => router.push("/(app)/projects/p1/join"));
-  expect(await screen.findByText("Join screen")).toBeTruthy();
+test("back from a second preview does not reveal the first", async () => {
+  renderRouter(ROUTES, { initialUrl: "/search" });
+  expect(await screen.findByText("Search screen")).toBeTruthy();
+
+  act(() => router.push("/(app)/projects/p1/preview"));
+  expect(await screen.findByText("Preview p1")).toBeTruthy();
   act(() => router.back());
+  expect(await screen.findByText("Search screen")).toBeTruthy();
+
+  act(() => router.navigate("/"));
   expect(await screen.findByText("Discover screen")).toBeTruthy();
+  act(() => router.push("/(app)/projects/p2/preview"));
+  expect(await screen.findByText("Preview p2")).toBeTruthy();
+  act(() => router.back());
+
+  expect(await screen.findByText("Discover screen")).toBeTruthy();
+  expect(screen.queryByText("Preview p1")).toBeNull();
 });
 
-test("Profile → Settings → back returns to Profile", async () => {
-  renderRouter(ROUTES, { initialUrl: "/profile" });
-  expect(await screen.findByText("Profile screen")).toBeTruthy();
-  act(() => router.push("/(app)/settings"));
-  expect(await screen.findByText("Settings screen")).toBeTruthy();
+test("a chat room opened from a preview returns to the preview, over one tab navigator", async () => {
+  const app = renderRouter(ROUTES, { initialUrl: "/search" });
+  expect(await screen.findByText("Search screen")).toBeTruthy();
+
+  act(() => router.push("/(app)/projects/p1/preview"));
+  expect(await screen.findByText("Preview p1")).toBeTruthy();
+  act(() => router.push("/(app)/chat/p1"));
+  expect(await screen.findByText("Chat room p1")).toBeTruthy();
+  expect(tabsMounted).toBe(1);
+  expect(countTabsRoutes(app.getRouterState() as NavState)).toBe(1);
+
   act(() => router.back());
-  expect(await screen.findByText("Profile screen")).toBeTruthy();
+  expect(await screen.findByText("Preview p1")).toBeTruthy();
+  expect(app.getPathname()).toBe("/projects/p1/preview");
+  expect(tabsMounted).toBe(1);
+  expect(countTabsRoutes(app.getRouterState() as NavState)).toBe(1);
+});
+
+test("leaving a project from its chat room keeps the tabs underneath", async () => {
+  renderRouter(ROUTES, { initialUrl: "/chat/p1" });
+  expect(await screen.findByText("Chat room p1")).toBeTruthy();
+
+  act(() => router.replace("/(app)/projects"));
+  expect(await screen.findByText("My projects")).toBeTruthy();
+  expect(router.canGoBack()).toBe(true);
+
+  act(() => router.back());
+  expect(await screen.findByText("Discover screen")).toBeTruthy();
 });
 
 test("a deep link to a profile still has the tabs to go back to", async () => {
   renderRouter(ROUTES, { initialUrl: "/users/u2" });
-  expect(await screen.findByText("User screen")).toBeTruthy();
+  expect(await screen.findByText("User u2")).toBeTruthy();
   expect(router.canGoBack()).toBe(true);
   act(() => router.back());
   expect(await screen.findByText("Discover screen")).toBeTruthy();

@@ -51,11 +51,11 @@ test.each([
   expect(renderBar(route).getByLabelText(tab)).toBeSelected();
 });
 
-test("the chat tab lands on the conversation list, not the last conversation", () => {
+test("the chat tab clears the unread badge and navigates like any other tab", () => {
   const { getByLabelText, navigation, onChatTabPress } = renderBar("index");
   fireEvent.press(getByLabelText("Chats"));
   expect(onChatTabPress).toHaveBeenCalledTimes(1);
-  expect(navigation.navigate).toHaveBeenCalledWith("chat", { screen: "index" });
+  expect(navigation.navigate).toHaveBeenCalledWith("chat");
 });
 
 test("other tabs navigate plainly", () => {

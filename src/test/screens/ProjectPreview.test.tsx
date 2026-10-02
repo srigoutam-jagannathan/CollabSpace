@@ -48,11 +48,12 @@ async function leave(screen: ReturnType<typeof renderPreview>) {
   fireEvent.press(await screen.findByLabelText("Confirm leaving the project"));
 }
 
-test("back returns to where the preview was opened from", async () => {
+test("back pops back to where the preview was opened from", async () => {
   world({ member: false });
   const screen = renderPreview();
   fireEvent.press(await screen.findByText("Back"));
-  expect(mockRouter.navigate).toHaveBeenCalledWith("/search");
+  expect(mockRouter.back).toHaveBeenCalledTimes(1);
+  expect(mockRouter.navigate).not.toHaveBeenCalled();
 });
 
 test("a non-member is offered Join, not Leave", async () => {

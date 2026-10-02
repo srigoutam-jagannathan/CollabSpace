@@ -26,7 +26,15 @@ test("opening a project preview stamps the current pathname as its origin", () =
   });
 });
 
-test("back goes to the origin rather than popping a tab stack", () => {
+test("back pops the stack when it can, even with an origin", () => {
+  const { result } = renderHook(() => useBackToOrigin("/search"));
+  act(() => result.current());
+  expect(mockRouter.back).toHaveBeenCalledTimes(1);
+  expect(mockRouter.navigate).not.toHaveBeenCalled();
+});
+
+test("back with no history goes to the origin", () => {
+  mockRouter.canGoBack.mockReturnValue(false);
   const { result } = renderHook(() => useBackToOrigin("/search"));
   act(() => result.current());
   expect(mockRouter.navigate).toHaveBeenCalledWith("/search");

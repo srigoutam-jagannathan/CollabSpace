@@ -40,13 +40,13 @@ app/(app)/
   _layout.tsx            ← auth + skills guards, then <Stack> (initial route "(tabs)")
   (tabs)/
     _layout.tsx          ← <Tabs> with CollabTabBar + unread badge (moved from (app)/_layout)
-    index.tsx  search.tsx  fab.tsx  profile.tsx
-    chat/ (_layout, index, [id], dm/[id], insights/[id])
+    index.tsx  search.tsx  fab.tsx  chat.tsx  profile.tsx
+  chat/ ([id], dm/[id], insights/[id])
   projects/ settings/ users/[id].tsx notifications.tsx discover/[section].tsx archive/index.tsx
                          ← pushed over the tabs by the root Stack
 ```
 
-`(app)/_layout.tsx` is a Stack whose initial route is the `(tabs)` group. Tab screens live in `(tabs)/`; everything else is pushed over the tabs, so `router.back()` is correct by construction. Link to a non-tab screen with a plain `router.push`; no origin params are needed.
+`(app)/_layout.tsx` is a Stack whose initial route is the `(tabs)` group. Tab screens live in `(tabs)/`; everything else is pushed over the tabs, so `router.back()` is correct by construction. Link to a non-tab screen with a plain `router.push`; no origin params are needed. Chat rooms live in `(app)/chat/`, not in `(tabs)`: a route inside `(tabs)` pushed from a screen above the tabs would mount a second tab navigator. `src/utils/originLink.ts` (and the `OWNED_BY` map in `CollabTabBar`) is an interim workaround from the old Tabs layout, kept until the next task removes it.
 
 ### The Belfast Lock (auth domain validation)
 

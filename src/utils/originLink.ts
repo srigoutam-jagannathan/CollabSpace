@@ -22,11 +22,9 @@
  * pathname onto the route as `from`, and the destination's back button returns
  * there explicitly. Chaining works, because each push carries its own origin.
  *
- * This is a workaround for the route structure. The real fix is (app) becoming
- * a Stack that holds the tabs, with these screens pushed over them, so back is
- * correct by construction and this module, the OWNED_BY map in the tab bar and
- * the navigator's backBehavior can all go away. It does not fix the flash --
- * only not switching tabs can do that.
+ * (app) is now a Stack that holds the tabs, with these screens pushed over
+ * them, so back is correct by construction. This module and the OWNED_BY map in
+ * the tab bar are an interim leftover until the next task removes them.
  */
 import { useCallback } from "react";
 import { useRouter, usePathname } from "expo-router";
@@ -66,20 +64,24 @@ export function useOpenProjectPreview() {
 /**
  * Back handler for a screen reached through one of the links above.
  *
- * `from` is the pathname the opener stamped on the route. Without it -- a deep
- * link, or a screen reached some other way -- fall back to a normal back, then
- * to Discover, so the button is never dead.
+ * Now that (app) is a Stack over the tabs, a plain back is right whenever
+ * there is something to go back to; navigating to `from` instead would push a
+ * second copy of the tabs. `from` (the pathname the opener stamped on the
+ * route) is used only when there is no history, e.g. after a deep link, and
+ * Discover after that, so the button is never dead.
+ *
+ * Interim: the next task removes this hook along with the rest of the module.
  */
 export function useBackToOrigin(from: string | undefined, fallback = "/(app)") {
   const router = useRouter();
 
   return useCallback(() => {
-    if (from) {
-      router.navigate(from as never);
-      return;
-    }
     if (router.canGoBack()) {
       router.back();
+      return;
+    }
+    if (from) {
+      router.navigate(from as never);
       return;
     }
     router.navigate(fallback as never);

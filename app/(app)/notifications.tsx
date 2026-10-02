@@ -682,7 +682,7 @@ export default function NotificationsScreen() {
                       Your request to join <Text style={{ color: C.white, fontFamily: FONT.semiBold }}>{approval.projectTitle}</Text> was accepted.
                     </Text>
                     <Btn
-                      onPress={() => router.push({ pathname: "/(app)/(tabs)/chat/[id]", params: { id: approval.projectId } })}
+                      onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: approval.projectId } })}
                       pressScale={0.93}
                       style={{ marginTop: vs(10), alignSelf: "flex-start" }}
                     >

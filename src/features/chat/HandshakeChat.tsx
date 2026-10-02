@@ -530,7 +530,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
         <Pressable
           style={{ marginRight: 10 }}
           onPress={() =>
-            router.push({ pathname: "/(app)/(tabs)/chat/insights/[id]", params: { id: projectId } })
+            router.push({ pathname: "/(app)/chat/insights/[id]", params: { id: projectId } })
           }
           hitSlop={12}
         >

@@ -530,7 +530,7 @@ function SkillsSection({
     const storageKey = user ? `skills_set_${user.id}` : "skills_set";
     if (!user) {
       await AsyncStorage.setItem(storageKey, "true");
-      router.replace("/(app)/" as any);
+      router.replace("/(app)/(tabs)");
       return;
     }
     setLoading(true); haptic.medium();
@@ -542,7 +542,7 @@ function SkillsSection({
       if (error) throw error;
       haptic.success();
       await AsyncStorage.setItem(storageKey, "true");
-      router.replace("/(app)/" as any);
+      router.replace("/(app)/(tabs)");
     } catch {
       haptic.error();
       Alert.alert("Error", "Failed to save skills. Please try again.");
