@@ -8,7 +8,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(10);
+select plan(14);
 
 create schema tests;
 grant usage on schema tests to authenticated;
@@ -108,6 +108,55 @@ select is(
   (select metadata->>'v' from storage.objects
     where bucket_id = 'project-media' and name = '00000000-0000-0000-0000-0000000000f1/cover.jpg'),
   '2', 'the owner can update project media');
+
+select tests.act_as('00000000-0000-0000-0000-0000000000b2');
+update storage.objects set metadata = '{"v":"3"}'
+  where bucket_id = 'project-media' and name = '00000000-0000-0000-0000-0000000000f1/cover.jpg';
+reset role;
+select is(
+  (select metadata->>'v' from storage.objects
+    where bucket_id = 'project-media' and name = '00000000-0000-0000-0000-0000000000f1/cover.jpg'),
+  '3', 'a member can update their own project media');
+
+-- ── Updates follow the path, not the stored owner ───────────────────────
+-- Both upload sites upsert, so a re-upload is an UPDATE. Objects written
+-- by the dashboard, the service role or the old open insert policy can
+-- carry a NULL or foreign owner; the rightful path holder must still win.
+-- (As postgres, so RLS does not apply.)
+insert into storage.objects (bucket_id, name, owner) values
+  ('avatars', '00000000-0000-0000-0000-0000000000b2.jpg', null);
+
+insert into public.projects (id, owner_id, title) values
+  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000a1', 'Second fixture project');
+insert into storage.objects (bucket_id, name, owner) values
+  ('avatars', 'project-icons/00000000-0000-0000-0000-0000000000f2.jpg', '00000000-0000-0000-0000-0000000000b2');
+
+select tests.act_as('00000000-0000-0000-0000-0000000000b2');
+update storage.objects set metadata = '{"v":"mine"}'
+  where bucket_id = 'avatars' and name = '00000000-0000-0000-0000-0000000000b2.jpg';
+reset role;
+select is(
+  (select metadata->>'v' from storage.objects
+    where bucket_id = 'avatars' and name = '00000000-0000-0000-0000-0000000000b2.jpg'),
+  'mine', 'a user can update their avatar even when its owner is NULL');
+
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+update storage.objects set metadata = '{"v":"icon2"}'
+  where bucket_id = 'avatars' and name = 'project-icons/00000000-0000-0000-0000-0000000000f2.jpg';
+reset role;
+select is(
+  (select metadata->>'v' from storage.objects
+    where bucket_id = 'avatars' and name = 'project-icons/00000000-0000-0000-0000-0000000000f2.jpg'),
+  'icon2', 'the project owner can update the chat icon even when another user owns the object');
+
+select tests.act_as('00000000-0000-0000-0000-0000000000c3');
+update storage.objects set metadata = '{"v":"evil"}'
+  where bucket_id = 'avatars' and name = '00000000-0000-0000-0000-0000000000a1.jpg';
+reset role;
+select is(
+  (select metadata->>'v' from storage.objects
+    where bucket_id = 'avatars' and name = '00000000-0000-0000-0000-0000000000a1.jpg'),
+  null, 'an outsider cannot overwrite someone else''s avatar');
 
 select * from finish();
 rollback;

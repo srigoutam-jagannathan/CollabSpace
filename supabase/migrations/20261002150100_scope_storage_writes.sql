@@ -8,6 +8,17 @@
 -- project-media/<project>/<file>        project artwork, owner or members
 --
 -- Both upload sites send x-upsert, so INSERT and UPDATE share the path rule.
+--
+-- Avatar UPDATEs do not check storage.objects.owner. The path rule already
+-- means "my photo" or "my project's icon", and the stored owner can be NULL
+-- or another user (objects from the dashboard, the service role, or squatted
+-- under the old open insert policy). Checking owner would lock the rightful
+-- path holder out of re-uploading.
+--
+-- Both helpers are SECURITY INVOKER: they read public.projects and
+-- public.project_members as the caller. They depend on those tables staying
+-- readable to the uploader. If that SELECT RLS is ever tightened, the
+-- helpers will quietly return false and uploads will start failing.
 -- ============================================================
 
 create or replace function public.can_write_avatar_path(object_name text)
@@ -54,7 +65,7 @@ create policy "Users can upload own avatar"
 drop policy if exists "Users can update own avatar" on storage.objects;
 create policy "Users can update own avatar"
   on storage.objects for update to authenticated
-  using (bucket_id = 'avatars' and owner = auth.uid())
+  using (bucket_id = 'avatars' and public.can_write_avatar_path(name))
   with check (bucket_id = 'avatars' and public.can_write_avatar_path(name));
 
 drop policy if exists "project-media: authenticated write" on storage.objects;
