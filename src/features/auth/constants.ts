@@ -16,10 +16,14 @@ export const DOMAIN_TO_UNIVERSITY: Record<AllowedDomain, "qub" | "ulster"> = {
  * Returns null for malformed inputs.
  */
 export function extractDomain(email: string): string | null {
-  const parts = email.toLowerCase().trim().split("@");
+  const parts = email.trim().split("@");
   // Exactly one "@", with something on both sides of it.
   if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
-  return parts[1];
+  // ASCII only, checked before lower-casing: toLowerCase() folds some
+  // non-ASCII letters into ASCII ones (U+212A KELVIN SIGN becomes "k"), so a
+  // lookalike domain would otherwise normalise into an allowed one.
+  if (!/^[\x21-\x7e]+$/.test(parts[1])) return null;
+  return parts[1].toLowerCase();
 }
 
 /**

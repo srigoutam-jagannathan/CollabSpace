@@ -22,6 +22,7 @@ describe("resolveUniversity -- the Belfast Lock", () => {
     ["@qub.ac.uk", "no local part"],
     ["ana@", "no domain"],
     ["", "an empty string"],
+    ["ana@qub.ac.u\u212a", "a Kelvin-sign K that lower-cases to k"],
   ])("rejects %s (%s)", (email) => {
     expect(resolveUniversity(email)).toBeNull();
   });
