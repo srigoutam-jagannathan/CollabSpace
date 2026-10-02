@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, View } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
@@ -28,7 +28,7 @@ function Block({ w, h, r, o }: { w: number | string; h: number; r?: number; o: A
 export function SectionSkeleton({ shape }: { shape: SkeletonShape }) {
   const { tokens: { C, GLASS } } = useTheme();
   const reducedMotion = useReducedMotion();
-  const pulse = useRef(new Animated.Value(0.45)).current;
+  const [pulse] = useState(() => new Animated.Value(0.45));
 
   useEffect(() => {
     if (reducedMotion) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -80,9 +80,9 @@ export default function SkillsScreen() {
   const anim = useEntrance(3, 100);
 
   // Badge opacity — fades in when ≥1 skill selected
-  const badgeOpacity = useRef(new Animated.Value(0)).current;
+  const [badgeOpacity] = useState(() => new Animated.Value(0));
   // CTA opacity — 0.45 when 0 selected, 1.0 when ≥1
-  const ctaOpacity = useRef(new Animated.Value(0.45)).current;
+  const [ctaOpacity] = useState(() => new Animated.Value(0.45));
 
   useEffect(() => {
     const hasAny = selected.size > 0;

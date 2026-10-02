@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ type Props = {
 
 export function QuitProjectSheet({ visible, projectTitle, onClose, onQuit }: Props) {
   const { tokens: { C } } = useTheme();
-  const slideAnim = useRef(new Animated.Value(H)).current;
+  const [slideAnim] = useState(() => new Animated.Value(H));
 
   useEffect(() => {
     if (visible) {
@@ -81,7 +81,7 @@ export function QuitProjectSheet({ visible, projectTitle, onClose, onQuit }: Pro
               textAlign: "center",
               lineHeight: vs(20),
             }}>
-              You'll lose access to the chat and collaboration history.
+              You&apos;ll lose access to the chat and collaboration history.
             </Text>
           </View>
 

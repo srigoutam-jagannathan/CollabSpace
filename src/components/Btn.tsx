@@ -43,7 +43,7 @@ export function Btn({
   accessibilityState,
   ...rest
 }: BtnProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [scaleAnim] = useState(() => new Animated.Value(1));
   const lastPressAt = useRef(0);
   const [pressed, setPressed] = useState(false);
   // With Reduce Motion on, the press still gives feedback through opacity —

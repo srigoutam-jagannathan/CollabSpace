@@ -1,8 +1,8 @@
-import { useRef } from "react";
+import { useState } from "react";
 import { Animated } from "react-native";
 
 export function useShake() {
-  const x = useRef(new Animated.Value(0)).current;
+  const [x] = useState(() => new Animated.Value(0));
 
   function shake() {
     Animated.sequence([

@@ -101,7 +101,7 @@ function WelcomeSection({
   const { tokens: { C } } = useTheme();
   const { width, height } = useWindowDimensions();
   const anim = useEntrance(5, 90);
-  const bounceScale = useRef(new Animated.Value(1)).current;
+  const [bounceScale] = useState(() => new Animated.Value(1));
 
   function handleLogoPress() {
     Animated.sequence([
@@ -198,7 +198,7 @@ function SignInSection({
   const passwordRef = useRef<TextInput>(null);
   const anim = useEntrance(4, 75, active);
   const { x: shakeX, shake } = useShake();
-  const checkScale = useRef(new Animated.Value(1)).current;
+  const [checkScale] = useState(() => new Animated.Value(1));
 
   function toggleRemember() {
     haptic.light();
@@ -337,18 +337,18 @@ function SignUpSection({
   const confirmRef = useRef<TextInput>(null);
   const anim = useEntrance(5, 75, active);
   const { x: shakeX, shake } = useShake();
-  const checkScale = useRef(new Animated.Value(1)).current;
+  const [checkScale] = useState(() => new Animated.Value(1));
 
   const strength = getStrength(password);
   const strengthColors: Record<number, string> = { 0: "transparent", 1: C.danger, 2: "#f59e0b", 3: C.success };
   const strengthColor = strengthColors[strength.level];
-  const strengthWidth = useRef(new Animated.Value(0)).current;
+  const [strengthWidth] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.timing(strengthWidth, { toValue: strength.pct, duration: 250, easing: Easing.out(Easing.quad), useNativeDriver: false }).start();
   }, [strength.pct]);
 
   const allValid = fullName.trim().length > 0 && email.trim().length > 0 && password.length >= 8 && confirmPassword.length > 0 && agreed;
-  const ctaOpacity = useRef(new Animated.Value(0.45)).current;
+  const [ctaOpacity] = useState(() => new Animated.Value(0.45));
   useEffect(() => {
     Animated.timing(ctaOpacity, { toValue: allValid ? 1 : 0.45, duration: 200, useNativeDriver: true }).start();
   }, [allValid]);
@@ -395,7 +395,7 @@ function SignUpSection({
             Create account.
           </Text>
           <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(16), marginTop: vs(8), lineHeight: vs(24) }}>
-            Join QUB and Ulster's student network.
+            Join QUB and Ulster&apos;s student network.
           </Text>
         </Animated.View>
 
@@ -486,8 +486,8 @@ function SkillsSection({
   const loaded = useRef(false);
   const anim = useEntrance(4, 90, active);
 
-  const badgeOpacity = useRef(new Animated.Value(0)).current;
-  const ctaOpacity = useRef(new Animated.Value(0.45)).current;
+  const [badgeOpacity] = useState(() => new Animated.Value(0));
+  const [ctaOpacity] = useState(() => new Animated.Value(0.45));
 
   useEffect(() => {
     const hasAny = selected.size > 0;
@@ -648,12 +648,12 @@ export default function OnboardingFlow() {
   const [choice, setChoice] = useState<FlowChoice>(null);
   const [showSkills, setShowSkills] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [scrollY] = useState(() => new Animated.Value(0));
   const sectionYs = useRef<Partial<Record<"signin" | "signup" | "skills", number>>>({});
   const isSwitching = useRef(false);
 
   // ── Ambient breathing halo ──────────────────────────────────────────────────
-  const breathAnim = useRef(new Animated.Value(0)).current;
+  const [breathAnim] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.loop(
       Animated.sequence([

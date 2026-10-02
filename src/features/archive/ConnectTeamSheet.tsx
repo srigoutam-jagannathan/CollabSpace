@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { View, Text, Modal, Animated, ScrollView, ActivityIndicator } from "react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { SheetBackdrop, SheetSurface } from "@/components/SheetBackdrop";
@@ -37,7 +37,7 @@ export function ConnectTeamSheet({
   const { tokens: { C } } = useTheme();
   const { user } = useAuth();
   const reducedMotion = useReducedMotion();
-  const slideAnim = useRef(new Animated.Value(H)).current;
+  const [slideAnim] = useState(() => new Animated.Value(H));
 
   const [team, setTeam] = useState<ArchiveMember[]>([]);
   const [statuses, setStatuses] = useState<Record<string, Status>>({});

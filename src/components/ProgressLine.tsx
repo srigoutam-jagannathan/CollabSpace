@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, View, Easing } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
@@ -12,7 +12,7 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
 export function ProgressLine({ visible }: { visible: boolean }) {
   const { tokens: { C } } = useTheme();
   const reducedMotion = useReducedMotion();
-  const slide = useRef(new Animated.Value(0)).current;
+  const [slide] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (!visible || reducedMotion) return;

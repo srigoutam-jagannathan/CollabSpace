@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -45,8 +45,8 @@ export function ShareProfileSheet({
 }: Props) {
   const { tokens: { C, GLASS } } = useTheme();
   const { user } = useAuth();
-  const slideAnim = useRef(new Animated.Value(H)).current;
-  const toastAnim = useRef(new Animated.Value(0)).current;
+  const [slideAnim] = useState(() => new Animated.Value(H));
+  const [toastAnim] = useState(() => new Animated.Value(0));
 
   const [view, setView] = useState<"options" | "picker">("options");
   const [conversations, setConversations] = useState<ConvItem[]>([]);

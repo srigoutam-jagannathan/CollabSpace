@@ -23,7 +23,7 @@ export default function AccessRestrictedScreen() {
       </Text>
 
       <Text className="text-slate-400 text-base text-center leading-6 mb-2">
-        CollabSpace is currently exclusive to students at Queen's University Belfast
+        CollabSpace is currently exclusive to students at Queen&apos;s University Belfast
         and Ulster University.
       </Text>
 

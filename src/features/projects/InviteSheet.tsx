@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -38,7 +38,7 @@ type Props = {
 export function InviteSheet({ visible, talent, onClose, onSent }: Props) {
   const { tokens: { C, GLASS } } = useTheme();
   const { user } = useAuth();
-  const slideAnim = useRef(new Animated.Value(H)).current;
+  const [slideAnim] = useState(() => new Animated.Value(H));
 
   const [ownedProjects, setOwnedProjects] = useState<OwnedProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);

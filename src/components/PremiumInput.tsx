@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -55,10 +55,10 @@ export function PremiumInput({
   const active = focused || value.length > 0;
 
   // Floating label animation
-  const labelY = useRef(new Animated.Value(active ? vs(-10) : vs(18))).current;
-  const labelScale = useRef(new Animated.Value(active ? 0.73 : 1)).current;
+  const [labelY] = useState(() => new Animated.Value(active ? vs(-10) : vs(18)));
+  const [labelScale] = useState(() => new Animated.Value(active ? 0.73 : 1));
   // Border + glow animation (useNativeDriver:false because we animate colors/shadows)
-  const focusAnim = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const [focusAnim] = useState(() => new Animated.Value(focused ? 1 : 0));
 
   function animateActive(toActive: boolean) {
     Animated.parallel([

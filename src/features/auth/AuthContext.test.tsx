@@ -31,14 +31,17 @@ function Probe() {
 const renderProbe = () => render(<AuthProvider><Probe /></AuthProvider>);
 
 async function renderAndCapture() {
-  const captured: { current?: ReturnType<typeof useAuth> } = {};
+  const capturedRef: { current?: ReturnType<typeof useAuth> } = {};
+  const store = (v: ReturnType<typeof useAuth>) => {
+    capturedRef.current = v;
+  };
   function Capture() {
-    captured.current = useAuth();
+    store(useAuth());
     return null;
   }
   render(<AuthProvider><Capture /></AuthProvider>);
-  await waitFor(() => expect(captured.current?.status).not.toBe("loading"));
-  return captured.current!;
+  await waitFor(() => expect(capturedRef.current?.status).not.toBe("loading"));
+  return capturedRef.current!;
 }
 
 beforeEach(() => {
@@ -344,15 +347,18 @@ test("sign-up surfaces Supabase's error", async () => {
 test("the dev bypass signs in as QUB without a session", async () => {
   const screen = renderProbe();
   await screen.findByText("unauthenticated|-|-");
-  let auth!: ReturnType<typeof useAuth>;
+  const grabbedRef: { current?: ReturnType<typeof useAuth> } = {};
+  const store = (v: ReturnType<typeof useAuth>) => {
+    grabbedRef.current = v;
+  };
   function Grab() {
-    auth = useAuth();
+    store(useAuth());
     return null;
   }
   // Read devSignIn from the same provider instance as the probe.
   screen.rerender(<AuthProvider><Probe /><Grab /></AuthProvider>);
   await act(async () => {
-    auth.devSignIn!();
+    grabbedRef.current!.devSignIn!();
   });
   expect(await screen.findByText("authenticated|qub|-")).toBeTruthy();
 });

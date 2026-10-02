@@ -1,13 +1,13 @@
-import { useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Easing } from "react-native";
 
 export function useEntrance(count: number, delayMs = 80, active = true) {
-  const opacities = useRef(
+  const [opacities] = useState(() =>
     Array.from({ length: count }, () => new Animated.Value(0))
-  ).current;
-  const translates = useRef(
+  );
+  const [translates] = useState(() =>
     Array.from({ length: count }, () => new Animated.Value(16))
-  ).current;
+  );
 
   useEffect(() => {
     // When inactive: do nothing — content stays visible as panel slides away.

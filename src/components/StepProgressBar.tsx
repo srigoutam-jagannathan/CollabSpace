@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View, Animated, useWindowDimensions } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { vs } from "@/utils/scale";
@@ -11,7 +11,7 @@ type Props = {
 export function StepProgressBar({ step, totalSteps = 2 }: Props) {
   const { tokens: { C } } = useTheme();
   const { width } = useWindowDimensions();
-  const fillAnim = useRef(new Animated.Value(0)).current;
+  const [fillAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.spring(fillAnim, {

@@ -245,7 +245,7 @@ export default function ProfileScreen() {
           ) : null}
 
           <Text style={{ color: C.textFaint, fontSize: fs(13), fontStyle: "italic" }}>
-            "{profile?.bio ?? "Aspiring collaborator"}"
+            &quot;{profile?.bio ?? "Aspiring collaborator"}&quot;
           </Text>
         </View>
 

@@ -619,7 +619,7 @@ export default function NotificationsScreen() {
                       {/* Message */}
                       {inv.message ? (
                         <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12), fontStyle: "italic", lineHeight: vs(18), marginBottom: vs(12) }} numberOfLines={3}>
-                          "{inv.message}"
+                          &quot;{inv.message}&quot;
                         </Text>
                       ) : null}
 
@@ -674,7 +674,7 @@ export default function NotificationsScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14) }}>
-                      You've been approved!
+                      You&apos;ve been approved!
                     </Text>
                     <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13), marginTop: vs(3) }}>
                       Your request to join <Text style={{ color: C.white, fontFamily: FONT.semiBold }}>{approval.projectTitle}</Text> was accepted.
