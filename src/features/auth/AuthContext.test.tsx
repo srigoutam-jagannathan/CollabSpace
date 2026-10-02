@@ -1,0 +1,156 @@
+import { Text } from "react-native";
+import { act, render, waitFor } from "@testing-library/react-native";
+import * as WebBrowser from "expo-web-browser";
+
+jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
+jest.mock("expo-auth-session", () => ({ makeRedirectUri: () => "collabspace://auth/callback" }));
+jest.mock("expo-web-browser", () => ({
+  openAuthSessionAsync: jest.fn(),
+  maybeCompleteAuthSession: jest.fn(),
+}));
+
+import { AuthProvider, useAuth } from "./AuthContext";
+import { db, supabase } from "@/test/supabaseMock";
+
+function session(email: string) {
+  return {
+    access_token: "token",
+    user: { id: "u1", email, user_metadata: { full_name: "Ana Lee" } },
+  };
+}
+
+function signedInAs(email: string) {
+  supabase.auth.getSession.mockResolvedValue({ data: { session: session(email) }, error: null });
+}
+
+function Probe() {
+  const { status, university, restrictedEmail } = useAuth();
+  return <Text>{`${status}|${university ?? "-"}|${restrictedEmail ?? "-"}`}</Text>;
+}
+
+const renderProbe = () => render(<AuthProvider><Probe /></AuthProvider>);
+
+async function renderAndCapture() {
+  const captured: { current?: ReturnType<typeof useAuth> } = {};
+  function Capture() {
+    captured.current = useAuth();
+    return null;
+  }
+  render(<AuthProvider><Capture /></AuthProvider>);
+  await waitFor(() => expect(captured.current?.status).not.toBe("loading"));
+  return captured.current!;
+}
+
+beforeEach(() => db.reset());
+
+test("no stored session means unauthenticated", async () => {
+  expect(await renderProbe().findByText("unauthenticated|-|-")).toBeTruthy();
+});
+
+test("a qub.ac.uk session is accepted as QUB", async () => {
+  signedInAs("ana@qub.ac.uk");
+  expect(await renderProbe().findByText("authenticated|qub|-")).toBeTruthy();
+});
+
+test("an ulster.ac.uk session is accepted as Ulster", async () => {
+  signedInAs("ana@ulster.ac.uk");
+  expect(await renderProbe().findByText("authenticated|ulster|-")).toBeTruthy();
+});
+
+test("a non-university session is revoked server-side, not just hidden", async () => {
+  signedInAs("ana@gmail.com");
+  expect(await renderProbe().findByText("access_restricted|-|ana@gmail.com")).toBeTruthy();
+  expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+  // A rejected user must never get a profile row.
+  expect(db.callsTo("profiles")).toHaveLength(0);
+});
+
+test("a lookalike domain is treated as non-university", async () => {
+  signedInAs("ana@qub.ac.uk.evil.com");
+  expect(await renderProbe().findByText("access_restricted|-|ana@qub.ac.uk.evil.com")).toBeTruthy();
+  expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+});
+
+test("an accepted session upserts the profile without overwriting avatar_url", async () => {
+  signedInAs("ana@qub.ac.uk");
+  await renderProbe().findByText("authenticated|qub|-");
+  await waitFor(() => expect(db.callsTo("profiles")).toHaveLength(1));
+  const [call] = db.callsTo("profiles");
+  expect(call.op).toBe("upsert");
+  expect(call.payload).toMatchObject({ id: "u1", full_name: "Ana Lee", university: "qub" });
+  // avatar_url is the user's to manage in edit-profile; OAuth metadata must not clobber it.
+  expect(call.payload).not.toHaveProperty("avatar_url");
+});
+
+test("a failed session restore falls through to sign-in instead of hanging on the spinner", async () => {
+  supabase.auth.getSession.mockRejectedValue(new Error("storage unavailable"));
+  expect(await renderProbe().findByText("unauthenticated|-|-")).toBeTruthy();
+});
+
+test("a sign-out reported by the auth listener returns to unauthenticated", async () => {
+  signedInAs("ana@qub.ac.uk");
+  const screen = renderProbe();
+  await screen.findByText("authenticated|qub|-");
+  const listener = supabase.auth.onAuthStateChange.mock.calls[0][0];
+  await act(async () => {
+    await listener("SIGNED_OUT", null);
+  });
+  expect(await screen.findByText("unauthenticated|-|-")).toBeTruthy();
+});
+
+test("sign-up refuses a non-university address before contacting Supabase", async () => {
+  const auth = await renderAndCapture();
+  await expect(auth.signUp("ana@gmail.com", "pw", "Ana")).rejects.toThrow(
+    "Only @qub.ac.uk and @ulster.ac.uk email addresses are allowed."
+  );
+  expect(supabase.auth.signUp).not.toHaveBeenCalled();
+});
+
+test("sign-up passes the full name through as user metadata", async () => {
+  const auth = await renderAndCapture();
+  await auth.signUp("ana@qub.ac.uk", "pw", "Ana Lee");
+  expect(supabase.auth.signUp).toHaveBeenCalledWith({
+    email: "ana@qub.ac.uk",
+    password: "pw",
+    options: { data: { full_name: "Ana Lee" } },
+  });
+});
+
+test("password sign-in surfaces Supabase's error", async () => {
+  supabase.auth.signInWithPassword.mockResolvedValue({ data: {}, error: new Error("Invalid login credentials") });
+  const auth = await renderAndCapture();
+  await expect(auth.signInWithPassword("ana@qub.ac.uk", "wrong")).rejects.toThrow("Invalid login credentials");
+});
+
+test("Microsoft sign-in forces the account picker and opens the browser", async () => {
+  supabase.auth.signInWithOAuth.mockResolvedValue({
+    data: { url: "https://login.microsoftonline.com/authorize" },
+    error: null,
+  });
+  const auth = await renderAndCapture();
+  await auth.signInWithMicrosoft();
+  expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith(
+    expect.objectContaining({
+      provider: "azure",
+      // Without this, a personal Microsoft account can sign in silently.
+      options: expect.objectContaining({ queryParams: { prompt: "select_account" } }),
+    })
+  );
+  expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
+    "https://login.microsoftonline.com/authorize",
+    "collabspace://auth/callback"
+  );
+});
+
+test("sign-out calls Supabase", async () => {
+  const auth = await renderAndCapture();
+  await act(async () => {
+    await auth.signOut();
+  });
+  expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+});
+
+test("useAuth outside the provider fails loudly", () => {
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  expect(() => render(<Probe />)).toThrow("useAuth must be used within <AuthProvider>");
+});
