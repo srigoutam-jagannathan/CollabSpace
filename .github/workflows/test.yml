@@ -7,7 +7,7 @@ on:
 
 jobs:
   app:
-    name: Types and Jest
+    name: Types, lint and Jest
     runs-on: ubuntu-latest
     env:
       # Read at import time by src/lib/supabaseClient.ts. Tests mock the
@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run type-check
+      # Errors fail the build; warnings (React Compiler advisories) do not.
+      - run: npm run lint
       # --coverage enforces the thresholds in jest.config.js.
       - run: npm run test:ci
 
