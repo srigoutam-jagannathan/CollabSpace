@@ -12,17 +12,14 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Project } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
-import { useBackToOrigin } from "@/utils/originLink";
 import { DangerBtn } from "@/components/DangerBtn";
 
 export default function ProjectPreviewScreen() {
   const { tokens: { C, GRADIENT, GLASS } } = useTheme();
-  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [footerHeight, setFooterHeight] = useState(0);
-  // Reached by a cross-tab push from Search, Discover, Profile or Settings, so
-  // the projects stack underneath holds an unrelated project -- see originLink.
-  const goBack = useBackToOrigin(from, "/(app)/projects");
+  const goBack = () => router.back();
   const { user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);

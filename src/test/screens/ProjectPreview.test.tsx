@@ -38,7 +38,7 @@ let alertSpy: jest.SpyInstance;
 beforeEach(() => {
   db.reset();
   routerState.reset();
-  routerState.setParams({ id: "p1", from: "/search" });
+  routerState.setParams({ id: "p1" });
   alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
 });
 afterEach(() => alertSpy.mockRestore());
@@ -48,7 +48,7 @@ async function leave(screen: ReturnType<typeof renderPreview>) {
   fireEvent.press(await screen.findByLabelText("Confirm leaving the project"));
 }
 
-test("back pops back to where the preview was opened from", async () => {
+test("back pops to whatever opened the preview", async () => {
   world({ member: false });
   const screen = renderPreview();
   fireEvent.press(await screen.findByText("Back"));

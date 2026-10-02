@@ -1,10 +1,10 @@
 import { View, Text, ScrollView } from "react-native";
+import { useRouter } from "expo-router";
 import { Btn } from "@/components/Btn";
 import { Avatar } from "@/components/Avatar";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs, ts } from "@/utils/scale";
-import { useOpenProfile } from "@/utils/originLink";
 import type { PersonItem } from "../types";
 
 function initials(name: string | null): string {
@@ -31,8 +31,8 @@ interface PeopleToKnowProps {
 }
 
 export function PeopleToKnow({ items, variant = "rail" }: PeopleToKnowProps) {
+  const router = useRouter();
   const { tokens: { C, GLASS } } = useTheme();
-  const openProfile = useOpenProfile();
 
   if (variant === "row") {
     return (
@@ -43,7 +43,7 @@ export function PeopleToKnow({ items, variant = "rail" }: PeopleToKnowProps) {
           return (
             <Btn
               key={person.id}
-              onPress={() => openProfile(person.id)}
+              onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: person.id } })}
               accessibilityLabel={`${person.full_name ?? "Unknown"}${meta ? `. ${meta}` : ""}. Opens their profile.`}
               pressScale={0.98}
               style={{
@@ -85,7 +85,7 @@ export function PeopleToKnow({ items, variant = "rail" }: PeopleToKnowProps) {
         return (
           <Btn
             key={person.id}
-            onPress={() => openProfile(person.id)}
+            onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: person.id } })}
             accessibilityLabel={`${person.full_name ?? "Unknown"}${meta ? `. ${meta}` : ""}. Opens their profile.`}
             pressScale={0.97}
             style={{

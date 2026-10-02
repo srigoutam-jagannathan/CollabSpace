@@ -14,7 +14,6 @@ import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import { ScreenLoader } from "@/components/ScreenLoader";
-import { useOpenProjectPreview } from "@/utils/originLink";
 
 type ProfileData = {
   full_name: string | null;
@@ -91,7 +90,6 @@ function Section({ title, children, action }: {
 
 export default function ProfileScreen() {
   const { tokens: { C, GRADIENT, GLASS } } = useTheme();
-  const openPreview = useOpenProjectPreview();
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -290,7 +288,7 @@ export default function ProfileScreen() {
               {myProjects.map((proj) => (
                 <Btn
                   key={proj.id}
-                  onPress={() => openPreview(proj.id)}
+                  onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: proj.id } })}
                   pressScale={0.97}
                 >
                   <View style={{

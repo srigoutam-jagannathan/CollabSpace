@@ -99,20 +99,7 @@ export function CollabTabBar({ state, navigation, hasChatUnread, onChatTabPress 
       >
         {TABS.map((tab) => {
           const route = state.routes.find((r) => r.name === tab.name);
-          const activeRouteName = state.routes[state.index]?.name ?? "";
-          // Stacks reached from a tab keep that tab lit — see audit finding 19.
-          const OWNED_BY: Record<string, string> = {
-            "discover/[section]": "index",
-            // The folder has no _layout.tsx, so the registered route name is
-            // "archive/index", not "archive" — same shape as discover above.
-            "archive/index": "index",
-            projects: "index",
-            notifications: "index",
-            "users/[id]": "index",
-            settings: "profile",
-          };
-          const owner = OWNED_BY[activeRouteName] ?? activeRouteName;
-          const focused = tab.name === owner;
+          const focused = tab.name === (state.routes[state.index]?.name ?? "");
 
           if (tab.isFab) {
             return (

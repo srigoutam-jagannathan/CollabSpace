@@ -52,12 +52,12 @@ test("without a photo the header falls back to initials", async () => {
   expect(await renderDm().findByText("AL")).toBeTruthy();
 });
 
-test("tapping the header opens their profile, with this conversation as the way back", async () => {
+test("tapping the header opens their profile", async () => {
   world();
   fireEvent.press(await renderDm().findByLabelText("View Ana Lee's profile"));
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: "/(app)/users/[id]",
-    params: { id: "ana", from: "/chat/dm/c1" },
+    params: { id: "ana" },
   });
 });
 

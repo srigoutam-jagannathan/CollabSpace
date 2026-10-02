@@ -5,9 +5,7 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { CollabTabBar } from "./CollabTabBar";
 import { mockRouter, routerState } from "@/test/routerMock";
 
-const ROUTES = ["index", "search", "fab", "chat", "profile", "users/[id]", "settings", "notifications", "projects", "discover/[section]", "archive/index"].map(
-  (name) => ({ key: `${name}-key`, name })
-);
+const ROUTES = ["index", "search", "fab", "chat", "profile"].map((name) => ({ key: `${name}-key`, name }));
 
 function renderBar(active: string, { hasChatUnread = false, prevented = false } = {}) {
   const navigation = { emit: jest.fn(() => ({ defaultPrevented: prevented })), navigate: jest.fn() };
@@ -38,17 +36,6 @@ test("the active tab is marked selected", () => {
   const { getByLabelText } = renderBar("search");
   expect(getByLabelText("Search")).toBeSelected();
   expect(getByLabelText("Discover")).not.toBeSelected();
-});
-
-test.each([
-  ["users/[id]", "Discover"],
-  ["notifications", "Discover"],
-  ["settings", "Profile"],
-  ["projects", "Discover"],
-  ["discover/[section]", "Discover"],
-  ["archive/index", "Discover"],
-])("on %s, %s stays lit", (route, tab) => {
-  expect(renderBar(route).getByLabelText(tab)).toBeSelected();
 });
 
 test("the chat tab clears the unread badge and navigates like any other tab", () => {

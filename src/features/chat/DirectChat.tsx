@@ -22,7 +22,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { ProfileCardMetadata } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
-import { useOpenProfile } from "@/utils/originLink";
 
 type DM = {
   id: string;
@@ -43,7 +42,6 @@ type ConnectionRow = {
 export function DirectChat({ connectionId }: { connectionId: string }) {
   const { tokens: { C } } = useTheme();
   const router = useRouter();
-  const openProfile = useOpenProfile();
   const { user } = useAuth();
   const [messages, setMessages] = useState<DM[]>([]);
   const [otherName, setOtherName] = useState("Chat");
@@ -173,7 +171,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
           </Pressable>
           <Btn
             onPress={() => {
-              if (otherId) openProfile(otherId);
+              if (otherId) router.push({ pathname: "/(app)/users/[id]", params: { id: otherId } });
             }}
             disabled={!otherId}
             pressScale={1}
@@ -224,7 +222,7 @@ export function DirectChat({ connectionId }: { connectionId: string }) {
                   <View style={{ alignItems: isOwn ? "flex-end" : "flex-start", marginBottom: vs(10), marginHorizontal: s(16) }}>
                     <ProfileCardMessage
                       metadata={meta}
-                      onPress={() => openProfile(meta.userId)}
+                      onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: meta.userId } })}
                     />
                   </View>
                 );

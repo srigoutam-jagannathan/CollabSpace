@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "expo-router";
 import {
   View,
   Text,
@@ -17,7 +18,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import type { Profile } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
-import { useOpenProjectPreview } from "@/utils/originLink";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -105,8 +105,8 @@ const SORT_OPTIONS: { key: SortOrder; label: string; sub: string }[] = [
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SearchScreen() {
+  const router = useRouter();
   const { tokens: { C, GLASS, GRADIENT } } = useTheme();
-  const openPreview = useOpenProjectPreview();
   const [query, setQuery] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [activeCategory, setActiveCategory] = useState(FILTER_CATEGORIES[0].key);
@@ -391,7 +391,7 @@ export default function SearchScreen() {
                 </Text>
                 <View style={{ alignItems: "flex-end" }}>
                   <Btn
-                    onPress={() => openPreview(project.id)}
+                    onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: project.id } })}
                     style={{ backgroundColor: C.purple, paddingHorizontal: s(18), paddingVertical: vs(8), borderRadius: s(20) }}
                     pressScale={0.94}
                   >

@@ -23,7 +23,6 @@ import { Btn } from "@/components/Btn";
 import { FONT } from "@/utils/theme";
 import { s, vs, fs } from "@/utils/scale";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useOpenProjectPreview } from "@/utils/originLink";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -161,7 +160,6 @@ type MemberProject = { projectId: string; role: string; title: string };
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
-  const openPreview = useOpenProjectPreview();
   const { mode, setMode, tokens: { C } } = useTheme();
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(NOTIF_DEFAULTS);
   const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(PRIVACY_DEFAULTS);
@@ -464,7 +462,7 @@ export default function SettingsScreen() {
               {ownedProjects.map((p, i) => (
                 <Btn
                   key={p.id}
-                  onPress={() => openPreview(p.id)}
+                  onPress={() => router.push({ pathname: "/(app)/projects/[id]/preview", params: { id: p.id } })}
                   pressScale={0.97}
                 >
                   <View style={{

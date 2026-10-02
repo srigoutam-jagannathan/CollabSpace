@@ -26,7 +26,6 @@ import { QuitProjectSheet } from "@/components/QuitProjectSheet";
 import { Btn } from "@/components/Btn";
 import type { ChatMessage, Project, ProjectMember, Profile, ProfileCardMetadata } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
-import { useOpenProfile } from "@/utils/originLink";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -162,7 +161,6 @@ function MessageBubble({
 export default function HandshakeChat({ projectId }: { projectId: string }) {
   const { tokens: { C } } = useTheme();
   const router = useRouter();
-  const openProfile = useOpenProfile();
   const { user } = useAuth();
   const flatListRef = useRef<FlatList>(null);
 
@@ -578,7 +576,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
                     <View style={{ marginHorizontal: 16, marginBottom: 6, alignItems: isOwn ? "flex-end" : "flex-start" }}>
                       <ProfileCardMessage
                         metadata={meta}
-                        onPress={() => openProfile(meta.userId)}
+                        onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: meta.userId } })}
                       />
                     </View>
                   );
