@@ -42,3 +42,17 @@ test("debounces repeated presses within the window", () => {
   fireEvent.press(button);
   expect(onPress).toHaveBeenCalledTimes(1);
 });
+
+test("keeps a caller's accessibilityState, with disabled always taken from the prop", () => {
+  const { getByRole, rerender } = renderWithProviders(
+    <Btn onPress={() => {}} accessibilityState={{ selected: true }}><Text>go</Text></Btn>
+  );
+  expect(getByRole("button")).toBeSelected();
+  expect(getByRole("button")).not.toBeDisabled();
+
+  rerender(
+    <Btn onPress={() => {}} disabled accessibilityState={{ selected: true, disabled: false }}><Text>go</Text></Btn>
+  );
+  expect(getByRole("button")).toBeSelected();
+  expect(getByRole("button")).toBeDisabled();
+});
