@@ -14,7 +14,9 @@ export default function Index() {
   }
 
   if (status === "authenticated") {
-    return <Redirect href="/(app)" />;
+    // "/(app)" resolves to the Stack's initial route, (tabs)/index. Typed routes
+    // no longer list it because (app) has no index file of its own.
+    return <Redirect href={"/(app)" as any} />;
   }
 
   if (status === "access_restricted") {

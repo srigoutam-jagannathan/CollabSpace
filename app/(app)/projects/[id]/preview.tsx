@@ -234,7 +234,7 @@ export default function ProjectPreviewScreen() {
         ) : isMember ? (
           <>
             <GradientBtn
-              onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id } })}
+              onPress={() => router.push({ pathname: "/(app)/(tabs)/chat/[id]", params: { id } })}
               label="Open Chat"
             />
             <DangerBtn onPress={() => setQuitSheetVisible(true)} label="Leave Project" />

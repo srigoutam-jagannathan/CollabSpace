@@ -329,7 +329,7 @@ export default function ProfileScreen() {
                 return (
                   <Btn
                     key={collab.membershipId}
-                    onPress={() => router.push({ pathname: "/(app)/chat/[id]", params: { id: collab.projectId } })}
+                    onPress={() => router.push({ pathname: "/(app)/(tabs)/chat/[id]", params: { id: collab.projectId } })}
                     pressScale={0.97}
                   >
                     <View style={{

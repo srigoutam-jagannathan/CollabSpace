@@ -7,7 +7,9 @@ export default function AuthLayout() {
   // If auth state changes to authenticated while inside the (auth) group
   // (e.g. dev bypass or successful OAuth callback), navigate to the app.
   if (status === "authenticated") {
-    return <Redirect href="/(app)" />;
+    // "/(app)" resolves to the Stack's initial route, (tabs)/index. Typed routes
+    // no longer list it because (app) has no index file of its own.
+    return <Redirect href={"/(app)" as any} />;
   }
 
   return (

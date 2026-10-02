@@ -34,24 +34,19 @@ app/
 
 The `(app)/_layout.tsx` performs a **second auth check** — it redirects to sign-in if `status !== "authenticated"`, so protected screens never need to guard themselves.
 
-**Phase 1 route structure inside `(app)/`:**
+**Route structure inside `(app)/`** (route groups don't change URLs, so `/`, `/search`, `/chat/...` stay the same):
 ```
-(app)/
-  index.tsx                    ← Discover tab (renders DiscoveryFeed)
-  profile.tsx
-  projects/
-    _layout.tsx                ← Stack navigator for projects group
-    index.tsx                  ← My Projects list
-    create.tsx                 ← CreateProject form
-    [id]/
-      insights.tsx             ← ProjectInsights + BYO-AI prompts
-  chat/
-    _layout.tsx                ← Stack navigator for chat group
-    index.tsx                  ← Chat list (joined projects)
-    [id].tsx                   ← HandshakeChat per project
+app/(app)/
+  _layout.tsx            ← auth + skills guards, then <Stack> (initial route "(tabs)")
+  (tabs)/
+    _layout.tsx          ← <Tabs> with CollabTabBar + unread badge (moved from (app)/_layout)
+    index.tsx  search.tsx  fab.tsx  profile.tsx
+    chat/ (_layout, index, [id], dm/[id], insights/[id])
+  projects/ settings/ users/[id].tsx notifications.tsx discover/[section].tsx archive/index.tsx
+                         ← pushed over the tabs by the root Stack
 ```
 
-The `projects` and `chat` tabs each have a **nested Stack layout** so `create`, `[id]/insights`, and `[id]` chat can be pushed/popped without affecting the tab bar.
+`(app)/_layout.tsx` is a Stack whose initial route is the `(tabs)` group. Tab screens live in `(tabs)/`; everything else is pushed over the tabs, so `router.back()` is correct by construction. Link to a non-tab screen with a plain `router.push`; no origin params are needed.
 
 ### The Belfast Lock (auth domain validation)
 
