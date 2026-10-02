@@ -71,6 +71,16 @@ test("a non-university session is revoked server-side, not just hidden", async (
   expect(db.callsTo("profiles")).toHaveLength(0);
 });
 
+test("if the server sign-out fails, the rejected session is still dropped locally", async () => {
+  signedInAs("ana@gmail.com");
+  // supabase-js returns { error } on a network failure and keeps the session
+  // stored, so the client would go on sending the rejected user's token.
+  supabase.auth.signOut.mockResolvedValueOnce({ error: new Error("Network request failed") });
+  expect(await renderProbe().findByText("access_restricted|-|ana@gmail.com")).toBeTruthy();
+  expect(supabase.auth.signOut).toHaveBeenCalledTimes(2);
+  expect(supabase.auth.signOut).toHaveBeenLastCalledWith({ scope: "local" });
+});
+
 test("a lookalike domain is treated as non-university", async () => {
   signedInAs("ana@qub.ac.uk.evil.com");
   expect(await renderProbe().findByText("access_restricted|-|ana@qub.ac.uk.evil.com")).toBeTruthy();

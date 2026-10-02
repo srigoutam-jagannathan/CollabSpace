@@ -80,7 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!uni) {
         // ── DOMAIN NOT ALLOWED — revoke immediately ──────────────────────────
         // Sign out from Supabase so the token is invalidated server-side
-        await supabase.auth.signOut();
+        const { error } = await supabase.auth.signOut();
+        // On a network failure supabase-js keeps the session stored and goes
+        // on sending its token. A local sign-out always clears it.
+        if (error) await supabase.auth.signOut({ scope: "local" });
         // Set after signOut: its own SIGNED_OUT event resets restrictedEmail.
         setRestrictedEmail(email);
         setSession(null);
