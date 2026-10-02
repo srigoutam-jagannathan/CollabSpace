@@ -41,7 +41,10 @@ async function renderAndCapture() {
   return captured.current!;
 }
 
-beforeEach(() => db.reset());
+beforeEach(() => {
+  (WebBrowser.openAuthSessionAsync as jest.Mock).mockClear();
+  db.reset();
+});
 
 test("no stored session means unauthenticated", async () => {
   expect(await renderProbe().findByText("unauthenticated|-|-")).toBeTruthy();
@@ -266,4 +269,90 @@ test("a rejection superseded during its local sign-out does not show access_rest
   });
   expect(screen.getByText("unauthenticated|-|-")).toBeTruthy();
   expect(screen.queryByText(/eve@gmail.com/)).toBeNull();
+});
+
+test("the same session delivered twice while validating is checked once", async () => {
+  // getSession() and INITIAL_SESSION both deliver the startup session.
+  signedInAs("ana@qub.ac.uk");
+  let fired = false;
+  db.respond((call) => {
+    if (call.table === "profiles" && call.op === "upsert" && !fired) {
+      fired = true;
+      void emit("INITIAL_SESSION", session("ana@qub.ac.uk"));
+    }
+    return undefined;
+  });
+  await renderProbe().findByText("authenticated|qub|-");
+  await waitFor(() => expect(fired).toBe(true));
+  expect(db.callsTo("profiles")).toHaveLength(1);
+});
+
+test("a session with no email is refused", async () => {
+  supabase.auth.getSession.mockResolvedValue({
+    data: { session: { access_token: "t", user: { id: "u9", user_metadata: {} } } },
+    error: null,
+  });
+  expect(await renderProbe().findByText("access_restricted|-|")).toBeTruthy();
+});
+
+test("the profile name falls back to OAuth's name, then to null", async () => {
+  supabase.auth.getSession.mockResolvedValue({
+    data: { session: { access_token: "t1", user: { id: "u1", email: "ana@qub.ac.uk", user_metadata: { name: "Ana L" } } } },
+    error: null,
+  });
+  const first = renderProbe();
+  await first.findByText("authenticated|qub|-");
+  await waitFor(() => expect(db.callsTo("profiles")).toHaveLength(1));
+  expect(db.callsTo("profiles")[0].payload).toMatchObject({ full_name: "Ana L" });
+  first.unmount();
+
+  db.reset();
+  supabase.auth.getSession.mockResolvedValue({
+    data: { session: { access_token: "t2", user: { id: "u1", email: "ana@qub.ac.uk", user_metadata: {} } } },
+    error: null,
+  });
+  await renderProbe().findByText("authenticated|qub|-");
+  await waitFor(() => expect(db.callsTo("profiles")).toHaveLength(1));
+  expect(db.callsTo("profiles")[0].payload).toMatchObject({ full_name: null });
+});
+
+test("Microsoft sign-in surfaces Supabase's error and opens nothing", async () => {
+  supabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: new Error("provider disabled") });
+  const auth = await renderAndCapture();
+  await expect(auth.signInWithMicrosoft()).rejects.toThrow("provider disabled");
+  expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
+});
+
+test("Microsoft sign-in refuses to continue without an OAuth URL", async () => {
+  const auth = await renderAndCapture();
+  await expect(auth.signInWithMicrosoft()).rejects.toThrow("No OAuth URL returned from Supabase.");
+  expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
+});
+
+test("password sign-in resolves and leaves the lock to the auth listener", async () => {
+  const auth = await renderAndCapture();
+  await expect(auth.signInWithPassword("ana@qub.ac.uk", "pw")).resolves.toBeUndefined();
+  expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({ email: "ana@qub.ac.uk", password: "pw" });
+});
+
+test("sign-up surfaces Supabase's error", async () => {
+  supabase.auth.signUp.mockResolvedValue({ data: {}, error: new Error("User already registered") });
+  const auth = await renderAndCapture();
+  await expect(auth.signUp("ana@qub.ac.uk", "pw", "Ana")).rejects.toThrow("User already registered");
+});
+
+test("the dev bypass signs in as QUB without a session", async () => {
+  const screen = renderProbe();
+  await screen.findByText("unauthenticated|-|-");
+  let auth!: ReturnType<typeof useAuth>;
+  function Grab() {
+    auth = useAuth();
+    return null;
+  }
+  // Read devSignIn from the same provider instance as the probe.
+  screen.rerender(<AuthProvider><Probe /><Grab /></AuthProvider>);
+  await act(async () => {
+    auth.devSignIn!();
+  });
+  expect(await screen.findByText("authenticated|qub|-")).toBeTruthy();
 });
