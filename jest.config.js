@@ -19,9 +19,9 @@ module.exports = {
   ],
   // Ratchet: raise these to the floor of what coverage reaches. Never lower them to pass.
   coverageThreshold: {
-    // Floors of the Phase 1-4 results. Raise after every phase; never lower.
+    // Floors of the measured results. Raise whenever coverage rises; never lower.
     // Jest excludes the per-path files below from "global", so these are floors of the rest.
-    global: { statements: 17, branches: 14, functions: 14, lines: 18 },
+    global: { statements: 19, branches: 14, functions: 16, lines: 20 },
     // What guards sign-in, membership and navigation is held near-total.
     "./src/features/auth/constants.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/features/auth/AuthContext.tsx": { statements: 100, branches: 94, functions: 100, lines: 100 },
