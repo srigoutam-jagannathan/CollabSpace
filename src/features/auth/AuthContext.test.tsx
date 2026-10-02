@@ -204,3 +204,45 @@ test("useAuth outside the provider fails loudly", () => {
     spy.mockRestore();
   }
 });
+
+test("a rejected session whose sign-out is slow cannot overwrite a newer valid session", async () => {
+  signedInAs("eve@gmail.com");
+  let finishSignOut!: (r: { error: unknown }) => void;
+  supabase.auth.signOut.mockImplementationOnce(
+    () => new Promise((resolve) => { finishSignOut = resolve; })
+  );
+  const screen = renderProbe();
+  await waitFor(() => expect(supabase.auth.signOut).toHaveBeenCalledTimes(1));
+
+  const ana = { access_token: "token-ana", user: { id: "u3", email: "ana@qub.ac.uk", user_metadata: {} } };
+  await act(async () => {
+    await supabase.auth.onAuthStateChange.mock.calls[0][0]("SIGNED_IN", ana);
+  });
+  expect(await screen.findByText("authenticated|qub|-")).toBeTruthy();
+
+  await act(async () => {
+    finishSignOut({ error: null });
+  });
+  expect(screen.getByText("authenticated|qub|-")).toBeTruthy();
+});
+
+test("a stale rejection does not fall back to a local sign-out over the newer session", async () => {
+  signedInAs("eve@gmail.com");
+  let finishSignOut!: (r: { error: unknown }) => void;
+  supabase.auth.signOut.mockImplementationOnce(
+    () => new Promise((resolve) => { finishSignOut = resolve; })
+  );
+  const screen = renderProbe();
+  await waitFor(() => expect(supabase.auth.signOut).toHaveBeenCalledTimes(1));
+
+  const ana = { access_token: "token-ana", user: { id: "u3", email: "ana@qub.ac.uk", user_metadata: {} } };
+  await act(async () => {
+    await supabase.auth.onAuthStateChange.mock.calls[0][0]("SIGNED_IN", ana);
+  });
+  await act(async () => {
+    finishSignOut({ error: new Error("Network request failed") });
+  });
+  expect(screen.getByText("authenticated|qub|-")).toBeTruthy();
+  // A local sign-out now would delete ana's stored session, not eve's.
+  expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+});

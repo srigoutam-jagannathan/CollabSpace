@@ -56,6 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // revoked.
   const validatingToken = useRef<string | null>(null);
 
+  // Bumped for every non-null session that starts validating. A rejection
+  // awaiting signOut() checks it afterwards: if a newer session has arrived
+  // meanwhile, that session owns the state and the rejection must not touch
+  // it. Null sessions do not bump it -- our own signOut() emits SIGNED_OUT
+  // with null mid-rejection, and that must not cancel the rejection.
+  const generation = useRef(0);
+
   // ── Belfast Lock ────────────────────────────────────────────────────────────
   /**
    * Called every time a session is established.
@@ -72,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (validatingToken.current === incoming.access_token) return;
     validatingToken.current = incoming.access_token;
+    const gen = ++generation.current;
+    const superseded = () => gen !== generation.current;
 
     try {
       const email = incoming.user.email ?? "";
@@ -81,9 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // ── DOMAIN NOT ALLOWED — revoke immediately ──────────────────────────
         // Sign out from Supabase so the token is invalidated server-side
         const { error } = await supabase.auth.signOut();
+        if (superseded()) return;
         // On a network failure supabase-js keeps the session stored and goes
         // on sending its token. A local sign-out always clears it.
         if (error) await supabase.auth.signOut({ scope: "local" });
+        if (superseded()) return;
         // Set after signOut: its own SIGNED_OUT event resets restrictedEmail.
         setRestrictedEmail(email);
         setSession(null);
