@@ -36,11 +36,78 @@ test("array arguments compare by value", async () => {
   expect(has(db.calls[0], "in", "project_id", ["p1", "p2"])).toBe(true);
 });
 
-test("a resolver that throws rejects the query, like a network failure", async () => {
+test("a resolver that throws answers with an error, like postgrest-js on a network failure", async () => {
   db.respond(() => {
     throw new Error("offline");
   });
-  await expect(Promise.resolve(supabase.from("projects").select("id"))).rejects.toThrow("offline");
+  const result = await supabase.from("projects").select("id");
+  expect(result.data).toBeNull();
+  expect(result.error).toMatchObject({ message: "TypeError: offline", code: "" });
+});
+
+test("strict mode rejects a query nothing answered, naming it", async () => {
+  db.strict();
+  db.respond((c) => (c.table === "projects" ? { data: [] } : undefined));
+  await expect(supabase.from("projects").select("id")).resolves.toMatchObject({ data: [] });
+  await expect(Promise.resolve(supabase.from("profiles").select("id").eq("id", "u1"))).rejects.toThrow(
+    /Unanswered query: select profiles .*"eq","id","u1"/
+  );
+});
+
+test("reset leaves strict mode", async () => {
+  db.strict();
+  db.reset();
+  await expect(supabase.from("profiles").select("id")).resolves.toMatchObject({ data: null, error: null });
+});
+
+describe("single() and maybeSingle() over array data", () => {
+  const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `r${i}` }));
+
+  test("single() unwraps exactly one row", async () => {
+    db.respond(() => ({ data: rows(1) }));
+    expect(await supabase.from("t").select("*").single()).toMatchObject({ data: { id: "r0" }, error: null });
+  });
+
+  test("single() over zero rows is PGRST116", async () => {
+    db.respond(() => ({ data: rows(0) }));
+    expect(await supabase.from("t").select("*").single()).toMatchObject({ data: null, error: { code: "PGRST116" } });
+  });
+
+  test("single() over two rows is PGRST116", async () => {
+    db.respond(() => ({ data: rows(2) }));
+    expect(await supabase.from("t").select("*").single()).toMatchObject({ data: null, error: { code: "PGRST116" } });
+  });
+
+  test("maybeSingle() over zero rows is null without an error", async () => {
+    db.respond(() => ({ data: rows(0) }));
+    expect(await supabase.from("t").select("*").maybeSingle()).toEqual({ data: null, error: null, count: null });
+  });
+
+  test("maybeSingle() unwraps one row", async () => {
+    db.respond(() => ({ data: rows(1) }));
+    expect(await supabase.from("t").select("*").maybeSingle()).toMatchObject({ data: { id: "r0" } });
+  });
+
+  test("maybeSingle() over two rows is PGRST116", async () => {
+    db.respond(() => ({ data: rows(2) }));
+    expect(await supabase.from("t").select("*").maybeSingle()).toMatchObject({ data: null, error: { code: "PGRST116" } });
+  });
+
+  test("non-array data passes through as before", async () => {
+    db.respond(() => ({ data: { id: "p1" } }));
+    expect(await supabase.from("t").select("*").single()).toMatchObject({ data: { id: "p1" }, error: null });
+  });
+
+  test("the call records which one was used", async () => {
+    await supabase.from("t").select("*").single();
+    await supabase.from("t").select("*").maybeSingle();
+    expect(db.calls.map((c) => [c.single, c.maybe])).toEqual([[true, false], [true, true]]);
+  });
+});
+
+test("rpc and auth.updateUser exist with quiet defaults", async () => {
+  expect(await supabase.rpc("anything", {})).toEqual({ data: null, error: null });
+  expect(await supabase.auth.updateUser({ password: "x" })).toEqual({ data: { user: null }, error: null });
 });
 
 test("reset clears recorded calls and the resolver", async () => {

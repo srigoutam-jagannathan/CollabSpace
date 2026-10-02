@@ -16,6 +16,10 @@
  *
  * The require() inside the factory and the import resolve to the same module
  * instance, so the test and the code under test share one client.
+ *
+ * Unanswered queries resolve to { data: null, error: null } unless the test
+ * calls db.strict(), which makes them reject with the query's description --
+ * use it when a test must prove the code issued no query it did not expect.
  */
 
 const FILTER_METHODS = [
@@ -37,6 +41,8 @@ export type QueryCall = {
   filters: Filter[];
   /** single() or maybeSingle() was called. */
   single: boolean;
+  /** It was maybeSingle(): zero rows is not an error. */
+  maybe: boolean;
 };
 
 export type QueryResult = { data?: unknown; error?: unknown; count?: number | null };
@@ -55,10 +61,30 @@ export type QueryChain = PromiseLike<FullResult> &
   };
 
 let resolver: Resolver = () => undefined;
+let strict = false;
 const calls: QueryCall[] = [];
 
+const PGRST116 = {
+  code: "PGRST116",
+  message: "JSON object requested, multiple (or no) rows returned",
+  details: "",
+  hint: "",
+};
+
+/**
+ * What single()/maybeSingle() do to an array of rows. Non-array data is
+ * passed through, so tests that answer a single read with an object keep working.
+ */
+function singleRow(call: QueryCall, result: FullResult): FullResult {
+  if (!call.single || !Array.isArray(result.data) || result.error) return result;
+  const rows = result.data;
+  if (rows.length === 1) return { ...result, data: rows[0] };
+  if (rows.length === 0 && call.maybe) return { ...result, data: null };
+  return { ...result, data: null, error: PGRST116 };
+}
+
 function query(table: string): QueryChain {
-  const call: QueryCall = { table, op: "select", filters: [], single: false };
+  const call: QueryCall = { table, op: "select", filters: [], single: false, maybe: false };
   const chain = {} as QueryChain;
 
   for (const method of FILTER_METHODS) {
@@ -96,6 +122,7 @@ function query(table: string): QueryChain {
   };
   chain.maybeSingle = () => {
     call.single = true;
+    call.maybe = true;
     return chain;
   };
 
@@ -103,7 +130,21 @@ function query(table: string): QueryChain {
     calls.push(call);
     let result: Promise<FullResult>;
     try {
-      result = Promise.resolve({ data: null, error: null, count: null, ...resolver(call) } as FullResult);
+      let answer: QueryResult | undefined;
+      try {
+        answer = resolver(call);
+      } catch (e) {
+        // postgrest-js catches fetch failures and resolves with this shape;
+        // it only rejects when throwOnError() is used, which the app never does.
+        answer = {
+          data: null,
+          error: { message: `TypeError: ${(e as Error).message}`, details: "", hint: "", code: "" },
+        };
+      }
+      if (answer === undefined && strict) {
+        throw new Error(`Unanswered query: ${call.op} ${call.table} ${JSON.stringify(call.filters)}`);
+      }
+      result = Promise.resolve(singleRow(call, { data: null, error: null, count: null, ...answer } as FullResult));
     } catch (e) {
       result = Promise.reject(e);
     }
@@ -127,12 +168,14 @@ const auth = {
   signInWithPassword: jest.fn(),
   signUp: jest.fn(),
   signInWithOAuth: jest.fn(),
+  updateUser: jest.fn(),
 };
 
 export const supabase = {
   from: jest.fn((table: string) => query(table)),
   auth,
   functions: { invoke: jest.fn() },
+  rpc: jest.fn(),
   channel: jest.fn(() => channel()),
   removeChannel: jest.fn(),
   storage: {
@@ -155,6 +198,8 @@ function restoreDefaults() {
   auth.signInWithPassword.mockReset().mockResolvedValue({ data: {}, error: null });
   auth.signUp.mockReset().mockResolvedValue({ data: {}, error: null });
   auth.signInWithOAuth.mockReset().mockResolvedValue({ data: { url: null }, error: null });
+  auth.updateUser.mockReset().mockResolvedValue({ data: { user: null }, error: null });
+  supabase.rpc.mockReset().mockResolvedValue({ data: null, error: null });
   supabase.functions.invoke.mockReset().mockResolvedValue({ data: null, error: null });
   supabase.from.mockClear();
   supabase.channel.mockClear();
@@ -170,8 +215,13 @@ export const db = {
   respond(fn: Resolver) {
     resolver = fn;
   },
+  /** From now until reset(): a query the resolver returns undefined for rejects, naming it. */
+  strict() {
+    strict = true;
+  },
   reset() {
     resolver = () => undefined;
+    strict = false;
     calls.length = 0;
     restoreDefaults();
   },

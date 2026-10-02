@@ -96,6 +96,11 @@ test("returns 0 instead of throwing when the network fails", async () => {
   expect(await fetchPendingCount(ME)).toBe(0);
 });
 
+test("returns 0 instead of throwing when a query rejects outright", async () => {
+  db.strict();
+  expect(await fetchPendingCount(ME)).toBe(0);
+});
+
 test("only projects you own are considered, and events are scoped to them", async () => {
   world({ owned: ["p1"] });
   await fetchPendingCount(ME);

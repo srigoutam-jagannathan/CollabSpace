@@ -35,6 +35,7 @@ export const routerState = {
     params = {};
     for (const fn of Object.values(mockRouter)) fn.mockReset();
     mockRouter.canGoBack.mockImplementation(() => true);
+    expoRouterModule.Redirect.mockReset().mockImplementation(() => null);
   },
 };
 
@@ -46,6 +47,6 @@ export const expoRouterModule = {
   useGlobalSearchParams: () => params,
   // Behaves as if the screen gained focus once, on mount.
   useFocusEffect: (effect: () => void | (() => void)) => useEffect(effect, [effect]),
-  Redirect: () => null,
+  Redirect: jest.fn((_props: { href: unknown }) => null),
   Link: ({ children }: { children: ReactNode }) => children,
 };
