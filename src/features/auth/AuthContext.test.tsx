@@ -59,6 +59,12 @@ test("an ulster.ac.uk session is accepted as Ulster", async () => {
 
 test("a non-university session is revoked server-side, not just hidden", async () => {
   signedInAs("ana@gmail.com");
+  // Real supabase-js emits SIGNED_OUT to the listener from inside signOut();
+  // the lock must still end on access_restricted, with the address shown.
+  supabase.auth.signOut.mockImplementation(async () => {
+    await supabase.auth.onAuthStateChange.mock.calls[0][0]("SIGNED_OUT", null);
+    return { error: null };
+  });
   expect(await renderProbe().findByText("access_restricted|-|ana@gmail.com")).toBeTruthy();
   expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
   // A rejected user must never get a profile row.

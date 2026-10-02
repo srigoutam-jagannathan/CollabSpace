@@ -79,9 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!uni) {
         // ── DOMAIN NOT ALLOWED — revoke immediately ──────────────────────────
-        setRestrictedEmail(email);
         // Sign out from Supabase so the token is invalidated server-side
         await supabase.auth.signOut();
+        // Set after signOut: its own SIGNED_OUT event resets restrictedEmail.
+        setRestrictedEmail(email);
         setSession(null);
         setUniversity(null);
         setStatus("access_restricted");
