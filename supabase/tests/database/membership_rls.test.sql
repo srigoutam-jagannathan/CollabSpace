@@ -46,9 +46,10 @@ insert into public.projects (id, owner_id, title) values
 
 -- The owner deliberately has no project_members row: owning a project does
 -- not require one, and the policies must not assume it.
-insert into public.project_members (project_id, user_id, role) values
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'Designer'),
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'Marketing');
+-- Both are approved members (20261003100200: only approved members reach the chat).
+insert into public.project_members (project_id, user_id, role, status) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'Designer', 'approved'),
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'Marketing', 'approved');
 
 insert into public.chat_messages (project_id, sender_id, content) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'members only');

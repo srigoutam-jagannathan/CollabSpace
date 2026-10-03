@@ -41,8 +41,9 @@ insert into auth.users (id, email) values
 
 insert into public.projects (id, owner_id, title) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
-insert into public.project_members (project_id, user_id, role) values
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'Designer');
+-- An approved member (20261003100200: only approved members write project media).
+insert into public.project_members (project_id, user_id, role, status) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'Designer', 'approved');
 
 -- ── Avatars ─────────────────────────────────────────────────────────────
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
