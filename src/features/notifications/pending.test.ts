@@ -52,6 +52,16 @@ test("counts join requests on your projects that you have not approved", async (
   expect(await fetchPendingCount(ME)).toBe(1);
 });
 
+test("your own join on a project you created is not a request to approve", async () => {
+  // Creating a project adds the owner as a member, and the on_member_join
+  // trigger logs a join event for them. QA saw "approve yourself" (2026-10-03).
+  world({
+    owned: ["p1"],
+    joins: [{ project_id: "p1", user_id: ME }, { project_id: "p1", user_id: "ana" }],
+  });
+  expect(await fetchPendingCount(ME)).toBe(1);
+});
+
 test("approving someone on one project does not clear their request on another", async () => {
   world({
     owned: ["p1", "p2"],

@@ -70,8 +70,9 @@ export async function fetchPendingCount(viewerId: string): Promise<number> {
         .map((e: any) => `${e.project_id}:${e.metadata.approved_for}`)
     );
 
+    // The owner's own join (logged when they create the project) is not a request.
     total += (joins.data ?? []).filter(
-      (e: any) => !approved.has(`${e.project_id}:${e.user_id}`)
+      (e: any) => e.user_id !== viewerId && !approved.has(`${e.project_id}:${e.user_id}`)
     ).length;
 
     return total;

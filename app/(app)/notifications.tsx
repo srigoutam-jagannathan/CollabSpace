@@ -132,7 +132,8 @@ export default function NotificationsScreen() {
         });
       });
 
-      const result: JoinRequest[] = (events as any[] ?? []).map((e) => {
+      // The owner's own join (logged when they create the project) is not a request.
+      const result: JoinRequest[] = (events as any[] ?? []).filter((e) => e.user_id !== user.id).map((e) => {
         const actor = e.actor ?? {};
         const key = `${e.project_id}:${e.user_id}`;
         const memberData = introMap.get(key);
