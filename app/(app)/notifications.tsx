@@ -20,24 +20,9 @@ import { s, vs, fs } from "@/utils/scale";
 import { ScreenLoader } from "@/components/ScreenLoader";
 import { formatRelativeTime, getInitials } from "@/utils/text";
 import { visibleApprovals, type ApprovedMembershipRow, type MyApproval } from "@/features/notifications/approvals";
+import { buildJoinRequests, type JoinEventRow, type JoinRequest, type MemberRow } from "@/features/notifications/joinRequests";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-
-type JoinRequest = {
-  eventId: string;
-  projectId: string;
-  projectTitle: string;
-  actorId: string;
-  actorName: string;
-  actorAvatarUrl: string | null;
-  actorDepartment: string | null;
-  actorUniversity: string | null;
-  actorSkills: string[];
-  introMessage: string | null;
-  role: string | null;
-  createdAt: string;
-  isApproved: boolean;
-};
 
 type ConnectionRequest = {
   id: string;
@@ -92,7 +77,7 @@ export default function NotificationsScreen() {
         ownedProjects.map((p: { id: string; title: string }) => [p.id, p.title])
       );
 
-      const [{ data: events }, { data: members }, { data: approvedEvents }] = await Promise.all([
+      const [{ data: events }, { data: members }] = await Promise.all([
         supabase
           .from("collaboration_events")
           .select(`id, created_at, project_id, user_id, actor:profiles!user_id(id, full_name, avatar_url, department, university, skills)`)
@@ -101,52 +86,17 @@ export default function NotificationsScreen() {
           .order("created_at", { ascending: false }),
         supabase
           .from("project_members")
-          .select("project_id, user_id, intro_message, role")
+          .select("project_id, user_id, intro_message, role, status")
           .in("project_id", ownedIds),
-        supabase
-          .from("collaboration_events")
-          .select("project_id, metadata")
-          .in("project_id", ownedIds)
-          .eq("event_type", "mou_signed")
-          .eq("user_id", user.id),
       ]);
 
-      // Source of truth: mou_signed events written by the owner (user.id) with approved_for in metadata.
-      const approvedSet = new Set<string>(
-        (approvedEvents ?? [])
-          .filter((e: any) => e.metadata?.approved_for)
-          .map((e: any) => `${e.project_id}:${e.metadata.approved_for}`)
+      // Approval and presence come from the membership row, not from events.
+      const result = buildJoinRequests(
+        (events ?? []) as unknown as JoinEventRow[],
+        (members ?? []) as MemberRow[],
+        ownedMap,
+        user.id
       );
-
-      const introMap = new Map<string, { intro: string | null; role: string | null }>();
-      (members ?? []).forEach((m: any) => {
-        introMap.set(`${m.project_id}:${m.user_id}`, {
-          intro: m.intro_message ?? null,
-          role: m.role ?? null,
-        });
-      });
-
-      // The owner's own join (logged when they create the project) is not a request.
-      const result: JoinRequest[] = (events as any[] ?? []).filter((e) => e.user_id !== user.id).map((e) => {
-        const actor = e.actor ?? {};
-        const key = `${e.project_id}:${e.user_id}`;
-        const memberData = introMap.get(key);
-        return {
-          eventId: e.id,
-          projectId: e.project_id,
-          projectTitle: ownedMap.get(e.project_id) ?? "Unknown Project",
-          actorId: e.user_id,
-          actorName: actor.full_name ?? "Unknown",
-          actorAvatarUrl: actor.avatar_url ?? null,
-          actorDepartment: actor.department ?? null,
-          actorUniversity: actor.university ?? null,
-          actorSkills: actor.skills ?? [],
-          introMessage: memberData?.intro ?? null,
-          role: memberData?.role ?? null,
-          createdAt: e.created_at,
-          isApproved: approvedSet.has(key),
-        };
-      });
 
       setRequests(result);
     } else {

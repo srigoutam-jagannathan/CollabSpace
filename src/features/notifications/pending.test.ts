@@ -5,30 +5,38 @@ import { db, has, rejectWith, type QueryCall } from "@/test/supabaseMock";
 
 const ME = "me";
 
-type Join = { project_id: string; user_id: string };
-type Approval = { project_id: string; metadata: Record<string, string> };
+type Member = { project_id: string; user_id: string; status: "pending" | "approved" };
+
+/** Applies the eq / neq / in filters the query used, the way the database would. */
+function matching(rows: Member[], c: QueryCall): Member[] {
+  return rows.filter((r) =>
+    c.filters.every(([method, column, value]) => {
+      const field = (r as Record<string, unknown>)[column as string];
+      if (method === "eq") return field === value;
+      if (method === "neq") return field !== value;
+      if (method === "in") return (value as unknown[]).includes(field);
+      return true;
+    })
+  );
+}
 
 function world({
   connections = 0,
   invitations = 0,
   owned = [] as string[],
-  joins = [] as Join[],
-  approvals = [] as Approval[],
+  members = [] as Member[],
 } = {}) {
   db.respond((c: QueryCall) => {
     if (c.table === "connections") return { count: connections };
     if (c.table === "collab_invitations") return { count: invitations };
     if (c.table === "projects") return { data: owned.map((id) => ({ id })) };
-    if (c.table === "collaboration_events" && has(c, "eq", "event_type", "join")) return { data: joins };
-    if (c.table === "collaboration_events" && has(c, "eq", "event_type", "mou_signed")) return { data: approvals };
+    if (c.table === "project_members") return { data: matching(members, c) };
     return undefined;
   });
 }
 
-const approved = (project_id: string, approved_for: string): Approval => ({
-  project_id,
-  metadata: { approved_for },
-});
+const pending = (project_id: string, user_id: string): Member => ({ project_id, user_id, status: "pending" });
+const approved = (project_id: string, user_id: string): Member => ({ project_id, user_id, status: "approved" });
 
 beforeEach(() => db.reset());
 
@@ -37,54 +45,40 @@ test("sums pending connection requests and invitations", async () => {
   expect(await fetchPendingCount(ME)).toBe(3);
 });
 
-test("does not query events at all when you own no projects", async () => {
+test("does not query memberships at all when you own no projects", async () => {
   world({ connections: 1 });
   await fetchPendingCount(ME);
-  expect(db.callsTo("collaboration_events")).toHaveLength(0);
+  expect(db.callsTo("project_members")).toHaveLength(0);
 });
 
-test("counts join requests on your projects that you have not approved", async () => {
-  world({
-    owned: ["p1"],
-    joins: [{ project_id: "p1", user_id: "ana" }, { project_id: "p1", user_id: "ben" }],
-    approvals: [approved("p1", "ana")],
-  });
+test("counts pending join requests on your projects, not approved members", async () => {
+  world({ owned: ["p1"], members: [approved("p1", "ana"), pending("p1", "ben")] });
   expect(await fetchPendingCount(ME)).toBe(1);
 });
 
-test("your own join on a project you created is not a request to approve", async () => {
-  // Creating a project adds the owner as a member, and the on_member_join
-  // trigger logs a join event for them. QA saw "approve yourself" (2026-10-03).
-  world({
-    owned: ["p1"],
-    joins: [{ project_id: "p1", user_id: ME }, { project_id: "p1", user_id: "ana" }],
-  });
+test("an invitee who accepted is already approved, so is not a request", async () => {
+  // accept_invitation inserts the row approved and logs no mou_signed event,
+  // so the old event-based rule counted them forever.
+  world({ owned: ["p1"], members: [approved("p1", "ivy")] });
+  expect(await fetchPendingCount(ME)).toBe(0);
+});
+
+test("someone who asked to join and then left is not a request", async () => {
+  // Their join event stays in the audit log, but their membership row is gone.
+  world({ owned: ["p1"], members: [] });
+  expect(await fetchPendingCount(ME)).toBe(0);
+});
+
+test("your own membership on a project you created is not a request to approve", async () => {
+  // QA saw "approve yourself" (2026-10-03). The owner's row is inserted
+  // approved, but it is excluded outright rather than relying on that.
+  world({ owned: ["p1"], members: [pending("p1", ME), pending("p1", "ana")] });
   expect(await fetchPendingCount(ME)).toBe(1);
 });
 
 test("approving someone on one project does not clear their request on another", async () => {
-  world({
-    owned: ["p1", "p2"],
-    joins: [{ project_id: "p1", user_id: "ana" }, { project_id: "p2", user_id: "ana" }],
-    approvals: [approved("p1", "ana")],
-  });
+  world({ owned: ["p1", "p2"], members: [approved("p1", "ana"), pending("p2", "ana")] });
   expect(await fetchPendingCount(ME)).toBe(1);
-});
-
-test("an approval event with no approved_for clears nothing", async () => {
-  world({
-    owned: ["p1"],
-    joins: [{ project_id: "p1", user_id: "ana" }],
-    approvals: [{ project_id: "p1", metadata: {} }],
-  });
-  expect(await fetchPendingCount(ME)).toBe(1);
-});
-
-test("only your own approvals count", async () => {
-  world({ owned: ["p1"] });
-  await fetchPendingCount(ME);
-  const approvalsQuery = db.callsTo("collaboration_events").find((c) => has(c, "eq", "event_type", "mou_signed"))!;
-  expect(has(approvalsQuery, "eq", "user_id", ME)).toBe(true);
 });
 
 test("connection requests match either side of the canonical pair, by who did not initiate", async () => {
@@ -112,11 +106,13 @@ test("a query that rejects (throwOnError or a bug) still yields 0", async () => 
   expect(await fetchPendingCount(ME)).toBe(0);
 });
 
-test("only projects you own are considered, and events are scoped to them", async () => {
+test("only projects you own are considered, and requests are scoped to them", async () => {
   world({ owned: ["p1"] });
   await fetchPendingCount(ME);
   expect(has(db.callsTo("projects")[0], "eq", "owner_id", ME)).toBe(true);
-  const events = db.callsTo("collaboration_events");
-  expect(events).toHaveLength(2);
-  for (const c of events) expect(has(c, "in", "project_id", ["p1"])).toBe(true);
+  const [requests] = db.callsTo("project_members");
+  expect(has(requests, "in", "project_id", ["p1"])).toBe(true);
+  expect(has(requests, "eq", "status", "pending")).toBe(true);
+  expect(has(requests, "neq", "user_id", ME)).toBe(true);
+  expect(db.callsTo("collaboration_events")).toHaveLength(0);
 });

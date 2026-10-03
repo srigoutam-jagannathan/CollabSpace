@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 
 /** Bounds, matching the discipline in discover/queries.ts — no open reads. */
-const LIMITS = { ownedProjects: 200, events: 500 } as const;
+const LIMITS = { ownedProjects: 200, requests: 500 } as const;
 
 /**
  * How many notifications are waiting for the viewer to do something.
@@ -11,9 +11,8 @@ const LIMITS = { ownedProjects: 200, events: 500 } as const;
  * owns that they have not yet approved. Things that merely happened — someone
  * approved you, someone left — are news, not a task, and do not light the dot.
  *
- * The approval rule mirrors notifications.tsx: an owner approving a member
- * writes a `mou_signed` event with `metadata.approved_for` set to that member.
- * A join event with no matching approval is still outstanding.
+ * The approval rule mirrors notifications.tsx: a join request is outstanding
+ * while the joiner's project_members row is still `status = 'pending'`.
  *
  * Returns 0 rather than throwing. A dot is not worth an error state, and the
  * notifications screen is the source of truth for what is actually there.
@@ -48,32 +47,19 @@ export async function fetchPendingCount(viewerId: string): Promise<number> {
     const ownedIds = (owned.data ?? []).map((p: any) => p.id);
     if (ownedIds.length === 0) return total;
 
-    const [joins, approvals] = await Promise.all([
-      supabase
-        .from("collaboration_events")
-        .select("project_id, user_id")
-        .in("project_id", ownedIds)
-        .eq("event_type", "join")
-        .limit(LIMITS.events),
-      supabase
-        .from("collaboration_events")
-        .select("project_id, metadata")
-        .in("project_id", ownedIds)
-        .eq("event_type", "mou_signed")
-        .eq("user_id", viewerId)
-        .limit(LIMITS.events),
-    ]);
+    // A join request is a pending membership row on a project you own.
+    // Approval (approve_member or an accepted invitation) flips it to
+    // 'approved', and leaving deletes it, so neither stays counted.
+    const requests = await supabase
+      .from("project_members")
+      .select("project_id, user_id")
+      .in("project_id", ownedIds)
+      .eq("status", "pending")
+      // Your own row on a project you created is never a request.
+      .neq("user_id", viewerId)
+      .limit(LIMITS.requests);
 
-    const approved = new Set<string>(
-      (approvals.data ?? [])
-        .filter((e: any) => e.metadata?.approved_for)
-        .map((e: any) => `${e.project_id}:${e.metadata.approved_for}`)
-    );
-
-    // The owner's own join (logged when they create the project) is not a request.
-    total += (joins.data ?? []).filter(
-      (e: any) => e.user_id !== viewerId && !approved.has(`${e.project_id}:${e.user_id}`)
-    ).length;
+    total += (requests.data ?? []).length;
 
     return total;
   } catch {
