@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(28);
+select plan(31);
 
 create schema tests;
 grant usage on schema tests to authenticated;
@@ -41,12 +41,17 @@ insert into public.connections (id, requester_id, recipient_id, initiated_by) va
    '00000000-0000-0000-0000-0000000000c3', '00000000-0000-0000-0000-0000000000a1');
 
 -- ── Connections ─────────────────────────────────────────────────────────
+-- Requests are sent only through request_connection(), which takes the other
+-- person and uses auth.uid() as the asker.
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
 select lives_ok(
-  $$ insert into public.connections (id, requester_id, recipient_id, initiated_by)
-     values ('00000000-0000-0000-0000-00000000c0ab', '00000000-0000-0000-0000-0000000000a1',
-             '00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000a1') $$,
+  $$ select public.request_connection('00000000-0000-0000-0000-0000000000b2') $$,
   'a user can send a connection request');
+-- Pin the new row's id so the tests below can name it.
+reset role;
+update public.connections set id = '00000000-0000-0000-0000-00000000c0ab'
+  where requester_id = '00000000-0000-0000-0000-0000000000a1'
+    and recipient_id = '00000000-0000-0000-0000-0000000000b2';
 
 select tests.act_as('00000000-0000-0000-0000-0000000000c3');
 select throws_ok(
@@ -61,6 +66,27 @@ select throws_ok(
      values ('00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000d4',
              '00000000-0000-0000-0000-0000000000d4') $$,
   '42501', null, 'nobody can send a request in someone else''s name');
+
+-- The RPC has no initiator argument: whoever calls it is the asker.
+select lives_ok(
+  $$ select public.request_connection('00000000-0000-0000-0000-0000000000d4') $$,
+  'bob can ask dave through the RPC');
+reset role;
+select is(
+  (select initiated_by from public.connections
+    where requester_id = '00000000-0000-0000-0000-0000000000b2'
+      and recipient_id = '00000000-0000-0000-0000-0000000000d4'),
+  '00000000-0000-0000-0000-0000000000b2'::uuid,
+  'request_connection records the caller as the initiator, so it cannot be spoofed');
+
+-- A well-formed pending request from a party, in their own name: only the
+-- missing insert policy can refuse it.
+select tests.act_as('00000000-0000-0000-0000-0000000000c3');
+select throws_ok(
+  $$ insert into public.connections (requester_id, recipient_id, initiated_by)
+     values ('00000000-0000-0000-0000-0000000000c3', '00000000-0000-0000-0000-0000000000d4',
+             '00000000-0000-0000-0000-0000000000c3') $$,
+  '42501', null, 'requests cannot be inserted directly, only sent through request_connection');
 
 select tests.act_as('00000000-0000-0000-0000-0000000000c3');
 select is(

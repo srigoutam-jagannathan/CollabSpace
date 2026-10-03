@@ -9,6 +9,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, MapPin, BookOpen, Share2 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "@/lib/supabaseClient";
+import { requestConnection } from "@/lib/requestConnection";
 import { Btn } from "@/components/Btn";
 import { Avatar } from "@/components/Avatar";
 import { ShareProfileSheet } from "@/components/ShareProfileSheet";
@@ -99,17 +100,11 @@ export default function UserProfileScreen() {
     setConnecting(true);
     setActionError(null);
 
-    // Row identity is the sorted pair; initiated_by records who asked.
-    const ids = [user.id, id].sort();
-    const { error } = await supabase.from("connections").insert({
-      requester_id: ids[0],
-      recipient_id: ids[1],
-      initiated_by: user.id,
-    });
+    const result = await requestConnection(id);
 
     setConnecting(false);
-    if (error) {
-      setActionError("Couldn't send the request. Try again.");
+    if (!result.ok) {
+      setActionError(result.message);
       return;
     }
     setConnectionStatus("pending");

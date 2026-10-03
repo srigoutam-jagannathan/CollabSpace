@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { View, Text, Modal, Animated, ScrollView, ActivityIndicator } from "react-native";
 import { supabase } from "@/lib/supabaseClient";
+import { requestConnection } from "@/lib/requestConnection";
 import { SheetBackdrop, SheetSurface } from "@/components/SheetBackdrop";
 import { Avatar } from "@/components/Avatar";
 import { Btn } from "@/components/Btn";
@@ -17,7 +18,7 @@ function initials(name: string | null): string {
   return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
-type Status = "none" | "pending" | "accepted" | "sending" | "failed";
+type Status = "none" | "pending" | "accepted" | "declined" | "sending" | "failed";
 
 /**
  * The archive's primary action: connect with the people who shipped it.
@@ -42,6 +43,7 @@ export function ConnectTeamSheet({
   const [team, setTeam] = useState<ArchiveMember[]>([]);
   const [statuses, setStatuses] = useState<Record<string, Status>>({});
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (reducedMotion) {
@@ -58,6 +60,7 @@ export function ConnectTeamSheet({
   const load = useCallback(async () => {
     if (!visible || !user?.id) return;
     setLoading(true);
+    setNotice(null);
 
     const members = (await fetchTeam(projectId)).filter(m => m.id !== user.id);
     const { data: connections } = await supabase
@@ -82,22 +85,23 @@ export function ConnectTeamSheet({
   async function connect(memberId: string) {
     if (!user?.id) return;
     setStatuses(prev => ({ ...prev, [memberId]: "sending" }));
+    setNotice(null);
 
-    // Row identity is the sorted pair; initiated_by records who asked.
-    // Same shape as the profile screen's connect, deliberately.
-    const ids = [user.id, memberId].sort();
-    const { error } = await supabase.from("connections").insert({
-      requester_id: ids[0],
-      recipient_id: ids[1],
-      initiated_by: user.id,
-    });
+    // Same RPC as the profile screen's connect, deliberately.
+    const result = await requestConnection(memberId);
 
-    setStatuses(prev => ({ ...prev, [memberId]: error ? "failed" : "pending" }));
+    const next: Status = result.ok ? "pending"
+      : result.reason === "exists" ? "pending"
+      : result.reason === "too_soon" ? "declined"
+      : "failed";
+    setStatuses(prev => ({ ...prev, [memberId]: next }));
+    if (!result.ok && result.reason !== "failed") setNotice(result.message);
   }
 
   function labelFor(status: Status): string {
     if (status === "accepted") return "Connected";
     if (status === "pending") return "Requested";
+    if (status === "declined") return "Declined";
     if (status === "sending") return "Sending…";
     if (status === "failed") return "Try again";
     return "Connect";
@@ -128,6 +132,14 @@ export function ConnectTeamSheet({
           Connect with them individually.
         </Text>
 
+        {notice && (
+          <Text style={{
+            color: C.danger, fontFamily: FONT.regular, fontSize: fs(12), marginBottom: vs(10),
+          }}>
+            {notice}
+          </Text>
+        )}
+
         {loading ? (
           <View style={{ paddingVertical: vs(30) }}>
             <ActivityIndicator size="small" color={C.purpleL} />
@@ -143,7 +155,7 @@ export function ConnectTeamSheet({
           <ScrollView showsVerticalScrollIndicator={false}>
             {team.map(member => {
               const status = statuses[member.id] ?? "none";
-              const settled = status === "accepted" || status === "pending";
+              const settled = status === "accepted" || status === "pending" || status === "declined";
               return (
                 <View
                   key={member.id}
