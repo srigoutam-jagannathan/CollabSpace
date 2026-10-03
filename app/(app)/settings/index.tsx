@@ -322,7 +322,7 @@ export default function SettingsScreen() {
             kind="nav" label="Edit Skills"
             icon={<Code2 size={s(16)} color={C.white} strokeWidth={1.8} />}
             iconBg="rgba(140,90,60,0.70)"
-            onPress={() => router.push({ pathname: "/(onboarding)/skills", params: { from: "settings" } } as any)}
+            onPress={() => router.push({ pathname: "/(app)/settings/skills", params: { from: "settings" } })}
           />
           <SettingsRow
             kind="nav" label="Portfolio Links"

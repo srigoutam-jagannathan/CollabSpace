@@ -10,7 +10,7 @@ import { useEffect } from "react";
 import { Text } from "react-native";
 import * as fs from "fs";
 import * as path from "path";
-import { act } from "@testing-library/react-native";
+import { act, fireEvent } from "@testing-library/react-native";
 import { renderRouter, screen } from "expo-router/testing-library";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -26,6 +26,8 @@ jest.mock("@/features/auth/AuthContext", () => ({
 import * as AppLayoutModule from "../../app/(app)/_layout";
 import TabsLayout from "../../app/(app)/(tabs)/_layout";
 import ProjectsLayout from "../../app/(app)/projects/_layout";
+import SettingsLayout from "../../app/(app)/settings/_layout";
+import EditSkillsScreen from "../../app/(app)/settings/skills";
 import { db } from "@/test/supabaseMock";
 
 const stub = (label: string) => {
@@ -90,7 +92,9 @@ const ROUTES = {
   "(app)/projects/_layout": ProjectsLayout,
   "(app)/projects/index": stub("My projects"),
   "(app)/projects/[id]/preview": withId("Preview"),
+  "(app)/settings/_layout": SettingsLayout,
   "(app)/settings/index": stub("Settings screen"),
+  "(app)/settings/skills": EditSkillsScreen,
   "(app)/users/[id]": withId("User"),
 };
 
@@ -181,5 +185,23 @@ test("back from a profile opened from Settings lands on Settings", async () => {
   act(() => router.push({ pathname: "/(app)/users/[id]", params: { id: "u2" } }));
   expect(await screen.findByText("User u2")).toBeTruthy();
   act(() => router.back());
+  expect(await screen.findByText("Settings screen")).toBeTruthy();
+});
+
+test("editing skills from Settings returns to Settings, on back and on save", async () => {
+  // It used to open (onboarding)/skills, outside the (app) Stack, so back fell
+  // through to the home screen (QA, 2026-10-03).
+  renderRouter(ROUTES, { initialUrl: "/settings" });
+  expect(await screen.findByText("Settings screen")).toBeTruthy();
+
+  act(() => router.push({ pathname: "/(app)/settings/skills", params: { from: "settings" } }));
+  expect(await screen.findByText("Save")).toBeTruthy();
+  act(() => router.back());
+  expect(await screen.findByText("Settings screen")).toBeTruthy();
+
+  act(() => router.push({ pathname: "/(app)/settings/skills", params: { from: "settings" } }));
+  await act(async () => {
+    fireEvent.press(await screen.findByText("Save"));
+  });
   expect(await screen.findByText("Settings screen")).toBeTruthy();
 });
