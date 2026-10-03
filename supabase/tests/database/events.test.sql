@@ -18,7 +18,7 @@ insert into auth.users (id, email) values
 insert into public.projects (id, owner_id, title) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
 
-select plan(24);
+select plan(35);
 
 -- As postgres: ...e5 an approved member who leaves, ...e6 a pending joiner
 -- who withdraws.
@@ -152,6 +152,83 @@ reset role;
 select is((select count(*)::int from public.collaboration_events
   where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000d4'), 1,
   'accepting an invitation records a committed event');
+
+-- ── Once per person per project, ever ──────────────────────────────────
+-- Uncommitting and recommitting records nothing new.
+select tests.act_as('00000000-0000-0000-0000-0000000000b2');
+update public.project_members set mou_accepted = false where user_id = '00000000-0000-0000-0000-0000000000b2';
+update public.project_members set mou_accepted = true  where user_id = '00000000-0000-0000-0000-0000000000b2';
+update public.project_members set mou_accepted = false where user_id = '00000000-0000-0000-0000-0000000000b2';
+update public.project_members set mou_accepted = true  where user_id = '00000000-0000-0000-0000-0000000000b2';
+reset role;
+select is((select count(*)::int from public.collaboration_events
+  where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000b2'), 1,
+  'toggling a commitment off and on records no second commitment');
+
+-- Approve, commit, uncommit, recommit.
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000e7', 'toggler@qub.ac.uk');
+insert into public.project_members (project_id, user_id, role) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e7', 'Dev');
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select public.approve_member('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e7');
+select tests.act_as('00000000-0000-0000-0000-0000000000e7');
+update public.project_members set mou_accepted = true  where user_id = '00000000-0000-0000-0000-0000000000e7';
+update public.project_members set mou_accepted = false where user_id = '00000000-0000-0000-0000-0000000000e7';
+update public.project_members set mou_accepted = true  where user_id = '00000000-0000-0000-0000-0000000000e7';
+reset role;
+select is((select count(*)::int from public.collaboration_events
+  where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000e7'), 1,
+  'approve, commit, uncommit, recommit records exactly one commitment');
+
+-- The owner flipping status back and forth records nothing new.
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+update public.project_members set status = 'pending'  where user_id = '00000000-0000-0000-0000-0000000000e7';
+update public.project_members set status = 'approved' where user_id = '00000000-0000-0000-0000-0000000000e7';
+reset role;
+select is((select count(*)::int from public.collaboration_events
+  where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000e7'), 1,
+  'the owner re-approving a committed member records no second commitment');
+
+-- ── The owner logs removals only ───────────────────────────────────────
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d4', 'committed') $$,
+  '42501', null, 'the owner cannot forge a commitment');
+select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d4', 'join') $$,
+  '42501', null, 'the owner cannot forge a join');
+select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'member_quit') $$,
+  '42501', null, 'the owner cannot forge a departure');
+select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'milestone') $$,
+  '42501', null, 'the owner cannot log a milestone directly');
+
+-- ── Members leave only through leave_project ───────────────────────────
+-- b2 stays the actor and stays in the row: the delete policy does the refusing.
+select tests.act_as('00000000-0000-0000-0000-0000000000b2');
+delete from public.project_members
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000b2';
+reset role;
+select is((select count(*)::int from public.project_members
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000b2'), 1,
+  'a member''s direct delete of their own row removes nothing');
+select tests.act_as('00000000-0000-0000-0000-0000000000b2');
+select lives_ok($$ select public.leave_project('00000000-0000-0000-0000-0000000000f1') $$,
+  'leave_project still works for them');
+reset role;
+select is((select count(*)::int from public.project_members
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000b2'), 0,
+  'and removes the row');
+
+-- A whitespace-only name falls back to "A user" in the chat message.
+update public.profiles set full_name = '   ' where id = '00000000-0000-0000-0000-0000000000e7';
+select tests.act_as('00000000-0000-0000-0000-0000000000e7');
+select public.leave_project('00000000-0000-0000-0000-0000000000f1');
+reset role;
+select is((select metadata->>'userName' from public.chat_messages
+  where sender_id = '00000000-0000-0000-0000-0000000000e7' and type = 'member_left'), 'A user',
+  'a blank name reads as "A user"');
 
 -- The owner still logs events on their own project (member_removed etc.).
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
