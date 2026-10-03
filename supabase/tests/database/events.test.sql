@@ -18,7 +18,7 @@ insert into auth.users (id, email) values
 insert into public.projects (id, owner_id, title) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
 
-select plan(35);
+select plan(44);
 
 -- As postgres: ...e5 an approved member who leaves, ...e6 a pending joiner
 -- who withdraws.
@@ -230,11 +230,60 @@ select is((select metadata->>'userName' from public.chat_messages
   where sender_id = '00000000-0000-0000-0000-0000000000e7' and type = 'member_left'), 'A user',
   'a blank name reads as "A user"');
 
--- The owner still logs events on their own project (member_removed etc.).
+-- ── Removal goes through remove_member ─────────────────────────────────
+-- No client role inserts events directly, the owner included.
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
-select lives_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
-  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'member_removed') $$,
-  'the owner can still log events on their own project');
+select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d4', 'member_removed') $$,
+  '42501', null, 'the owner''s direct member_removed insert is refused');
+
+-- a1 stays the actor and owns the project: no delete policy is what refuses.
+delete from public.project_members
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000d4';
+reset role;
+select is((select count(*)::int from public.project_members
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000d4'), 1,
+  'the owner''s direct delete of a membership removes nothing');
+
+update public.profiles set full_name = 'Dan Invitee' where id = '00000000-0000-0000-0000-0000000000d4';
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$ select public.remove_member('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d4') $$,
+  'the owner can remove a member through remove_member');
+reset role;
+select is((select count(*)::int from public.project_members
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000d4'), 0,
+  'removing deletes the membership row');
+select is((select count(*)::int from public.collaboration_events
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000d4'
+    and event_type = 'member_removed'), 1,
+  'removing logs exactly one member_removed against the member removed');
+select results_eq(
+  $$ select sender_id, type, content, metadata from public.chat_messages
+     where project_id = '00000000-0000-0000-0000-0000000000f1' and type = 'member_removed' $$,
+  $$ values ('00000000-0000-0000-0000-0000000000a1'::uuid, 'member_removed'::text, ''::text,
+             '{"userName": "Dan Invitee"}'::jsonb) $$,
+  'removing posts the member_removed message to the chat, as the app did');
+
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select throws_ok($$ select public.remove_member('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d4') $$,
+  'P0002', null, 'removing someone twice raises P0002');
+-- The owner's own row is not a removable membership: P0002, as if absent.
+select throws_ok($$ select public.remove_member('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1') $$,
+  'P0002', null, 'the owner cannot remove their own row');
+select tests.act_as('00000000-0000-0000-0000-0000000000c3');
+select throws_ok($$ select public.remove_member('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1') $$,
+  '42501', null, 'a non-owner cannot remove anyone');
+
+-- A pending joiner never had chat access: removing them posts nothing there.
+reset role;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000e8', 'declined@qub.ac.uk');
+insert into public.project_members (project_id, user_id, role) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e8', 'Dev');
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select public.remove_member('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e8');
+reset role;
+select is((select count(*)::int from public.chat_messages where type = 'member_removed'), 1,
+  'removing a pending joiner posts nothing to the chat');
 
 select * from finish();
 rollback;

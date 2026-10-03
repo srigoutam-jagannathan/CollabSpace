@@ -120,9 +120,9 @@ select is(
     where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000c3'),
   1, 'a fellow member cannot remove someone else');
 
+-- remove_member deletes the row and logs member_removed in one transaction.
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
-delete from public.project_members
-  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000c3';
+select public.remove_member('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3');
 reset role;
 select is(
   (select count(*)::int from public.project_members
@@ -130,11 +130,11 @@ select is(
   0, 'the owner can remove a member');
 
 -- ── The audit log ───────────────────────────────────────────────────────
-select tests.act_as('00000000-0000-0000-0000-0000000000a1');
-select lives_ok(
-  $$ insert into public.collaboration_events (project_id, user_id, event_type)
-     values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'member_removed') $$,
-  'the owner can log a removal against the member removed');
+select is(
+  (select count(*)::int from public.collaboration_events
+    where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000c3'
+      and event_type = 'member_removed'),
+  1, 'the removal is logged against the member removed');
 
 select tests.act_as('00000000-0000-0000-0000-0000000000d4');
 select throws_ok(
