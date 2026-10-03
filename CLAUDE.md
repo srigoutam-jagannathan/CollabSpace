@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Current state, work in flight, decisions and known traps: @docs/HANDOFF.md
+
 ## Commands
 
 ```bash
@@ -9,7 +11,9 @@ npm install          # Install dependencies
 npx expo start       # Start dev server (scan QR with Expo Go)
 npx expo start --ios # iOS simulator
 npm run lint         # expo lint
-npm run type-check   # tsc --noEmit (no test runner configured yet)
+npm run type-check   # tsc --noEmit
+npm test             # Jest (npm run test:ci = with coverage floors, as CI runs it)
+npm run test:db      # pgTAP RLS tests against the local stack (supabase db reset first)
 
 # Supabase
 supabase start                              # Start local Supabase stack
@@ -71,7 +75,7 @@ The lock is also enforced in the database (`supabase/migrations/20261002150000_s
 ### Database schema (key design decisions)
 
 - `profiles.pvs_score` — stored here for fast reads; computed by telemetry Edge Functions in Phase 2, not by the client.
-- `project_members.mou_accepted` — activated in Phase 1. The HandshakeChat "Sign MOU" button sets this to `true` and inserts a `mou_signed` collaboration event. Phase 3 will add the LTI verification layer on top.
+- `project_members.mou_accepted` — the member's commitment to the project (owners get `true` on create). The owner approves a member by writing a `mou_signed` collaboration event with `metadata.approved_for` = that member (see `src/features/notifications/pending.ts`). Committed and approved sharing one field is a known gap, tracked as a P1 item.
 - `collaboration_events` — **append-only audit log**. A Postgres trigger (`on_member_join`) auto-inserts a `join` event when a member row is created. This table is the raw data source for the PVS engine.
 - Realtime is enabled on `chat_messages` and `collaboration_events` tables.
 - All tables use RLS. The service role is required for any admin operations.
@@ -81,14 +85,15 @@ The lock is also enforced in the database (`supabase/migrations/20261002150000_s
 ```
 src/features/
   auth/          ← AuthContext, useAuth hook, domain constants
-  projects/
-    DiscoveryFeed.tsx    ← FlashList feed with department search
-    CreateProject.tsx    ← Project creation form → navigates to insights
-    ProjectInsights.tsx  ← BYO-AI prompt cards (calls analyze-project Edge Function)
-  chat/
-    HandshakeChat.tsx    ← Realtime chat + Sign MOU button
-  telemetry/     ← PVS engine — pvs/types.ts and usePVS.ts stub (Phase 2)
+  discover/      ← DiscoverScreen + sections/, ranking, queries, useDiscoverData
+  projects/      ← CreateProject, InviteSheet, ProjectInsights (BYO-AI prompts via analyze-project)
+  chat/          ← HandshakeChat (project chat, members, group icon), DirectChat (DMs)
+  notifications/ ← pending.ts (the pending-count rule behind the badge)
+  archive/       ← shipped-project archive deck
+  telemetry/pvs/ ← types.ts + usePVS.ts stub (Phase 2)
 ```
+
+Shared code lives in `src/components/` (Btn, sheets, CollabTabBar), `src/lib/` (`supabaseClient`, `uploadImage`), `src/utils/` and `src/test/` (Supabase and router mocks, test harness).
 
 Feature code should never import across feature boundaries — route data flows via Expo Router params or Supabase queries.
 
