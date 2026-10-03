@@ -21,16 +21,9 @@ import { ScreenLoader } from "@/components/ScreenLoader";
 import { formatRelativeTime, getInitials } from "@/utils/text";
 import { visibleApprovals, type ApprovedMembershipRow, type MyApproval } from "@/features/notifications/approvals";
 import { buildJoinRequests, type JoinEventRow, type JoinRequest, type MemberRow } from "@/features/notifications/joinRequests";
+import { buildConnectionRequests, type ConnectionRequest, type ConnectionRequestRow } from "@/features/notifications/connectionRequests";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-
-type ConnectionRequest = {
-  id: string;
-  requesterId: string;
-  requesterName: string | null;   // null if profile missing
-  requesterAvatarUrl: string | null;
-  createdAt: string;
-};
 
 type MemberLeftEvent = {
   id: string;
@@ -124,25 +117,14 @@ export default function NotificationsScreen() {
     // ── Section 3: incoming connection requests ─────────────────────────────
     const { data: connReqs } = await supabase
       .from("connections")
-      .select("id, requester_id, recipient_id, initiated_by, created_at, requester:profiles!requester_id(full_name, avatar_url), recipient:profiles!recipient_id(full_name, avatar_url)")
+      .select("id, requester_id, recipient_id, initiated_by, created_at, updated_at, requester:profiles!requester_id(full_name, avatar_url), recipient:profiles!recipient_id(full_name, avatar_url)")
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .neq("initiated_by", user.id)   // only incoming — not ones I sent
       .eq("status", "pending")
-      .order("created_at", { ascending: false });
+      // updated_at, not created_at: a reopened request keeps its old created_at.
+      .order("updated_at", { ascending: false });
 
-    const parsedConnReqs: ConnectionRequest[] = (connReqs ?? []).map((c: any) => {
-      // The initiator's profile (the person who sent the request)
-      const isInitiatorRequester = c.initiated_by === c.requester_id;
-      const initiatorProfile = isInitiatorRequester ? c.requester : c.recipient;
-      return {
-        id: c.id,
-        requesterId: c.initiated_by,
-        requesterName: initiatorProfile?.full_name ?? null,
-        requesterAvatarUrl: initiatorProfile?.avatar_url ?? null,
-        createdAt: c.created_at,
-      };
-    });
-    setConnectionRequests(parsedConnReqs);
+    setConnectionRequests(buildConnectionRequests((connReqs ?? []) as unknown as ConnectionRequestRow[]));
 
     // ── Section 4: received collaboration invitations ───────────────────────
     const { data: rawInv } = await supabase
