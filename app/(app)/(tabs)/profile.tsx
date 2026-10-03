@@ -85,7 +85,7 @@ function Section({ title, children, action, example }: {
         <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
           <Text accessibilityRole="header" style={{ color: C.white, fontWeight: "700", fontSize: fs(16) }}>{title}</Text>
           {example && (
-            <View accessibilityLabel={`${title} example content`} style={{ borderRadius: s(8), borderWidth: 1, borderColor: C.borderBright, paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+            <View accessible accessibilityLabel={`${title} example content`} style={{ borderRadius: s(8), borderWidth: 1, borderColor: C.borderBright, paddingHorizontal: s(8), paddingVertical: vs(2) }}>
               <Text style={{ color: C.textMuted, fontSize: fs(11), fontWeight: "600" }}>Example</Text>
             </View>
           )}
