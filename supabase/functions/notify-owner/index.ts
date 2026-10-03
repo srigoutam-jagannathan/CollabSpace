@@ -1,15 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { type Deps, handle } from "./handler.ts";
+
+// Wiring only: every rule lives in handler.ts, which handler.test.ts covers.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface NotifyPayload {
-  ownerUserId?: string;
-  projectId?: string;       // alternative: look up owner from project
-  title: string;
-  body: string;
+function json(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 Deno.serve(async (req) => {
@@ -18,69 +21,80 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { autoRefreshToken: false, persistSession: false } },
+    );
 
-    const payload: NotifyPayload = await req.json();
-    let ownerUserId = payload.ownerUserId;
+    const deps: Deps = {
+      async userIdFromJwt(authHeader) {
+        const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
+        if (!token) return null;
+        const { data, error } = await admin.auth.getUser(token);
+        return error ? null : data.user?.id ?? null;
+      },
+      async recentQuit(projectId, userId, sinceIso) {
+        const { data, error } = await admin
+          .from("collaboration_events")
+          .select("id")
+          .eq("project_id", projectId)
+          .eq("user_id", userId)
+          .eq("event_type", "member_quit")
+          .gte("created_at", sinceIso)
+          .limit(1);
+        if (error) throw error;
+        return (data?.length ?? 0) > 0;
+      },
+      async project(projectId) {
+        const { data, error } = await admin
+          .from("projects")
+          .select("owner_id, title")
+          .eq("id", projectId)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      },
+      async displayName(userId) {
+        const { data, error } = await admin
+          .from("profiles")
+          .select("full_name")
+          .eq("id", userId)
+          .maybeSingle();
+        if (error) throw error;
+        return data?.full_name?.trim() || null;
+      },
+      async pushToken(userId) {
+        const { data, error } = await admin
+          .from("push_tokens")
+          .select("token")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (error) throw error;
+        return data?.token ?? null;
+      },
+      async sendPush(msg) {
+        const res = await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...msg, sound: "default" }),
+        });
+        return await res.json();
+      },
+      now: () => new Date(),
+    };
 
-    // If ownerUserId not supplied directly, resolve from projectId
-    if (!ownerUserId && payload.projectId) {
-      const { data: project } = await admin
-        .from("projects")
-        .select("owner_id")
-        .eq("id", payload.projectId)
-        .single();
-      ownerUserId = project?.owner_id;
+    let input: unknown = null;
+    try {
+      input = await req.json();
+    } catch {
+      // A missing or malformed body is a 400 from the handler, not a 500.
     }
 
-    if (!ownerUserId) {
-      return new Response(JSON.stringify({ error: "Cannot resolve owner" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Get owner's push token
-    const { data: pushToken } = await admin
-      .from("push_tokens")
-      .select("token")
-      .eq("user_id", ownerUserId)
-      .maybeSingle();
-
-    const token = pushToken?.token;
-    if (!token) {
-      // Owner hasn't granted notifications — skip silently
-      return new Response(JSON.stringify({ sent: false, reason: "no_token" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Send via Expo Push API
-    const expoRes = await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: token,
-        title: payload.title,
-        body: payload.body,
-        sound: "default",
-      }),
-    });
-
-    const expoData = await expoRes.json();
-
-    return new Response(JSON.stringify({ sent: true, expo: expoData }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const result = await handle(req.headers.get("Authorization"), input, deps);
+    return json(result.status, result.body);
   } catch (err) {
     console.error("notify-owner error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json(500, { error: "internal" });
   }
 });

@@ -1,6 +1,8 @@
 module.exports = {
   preset: "jest-expo",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  // Edge Functions are Deno code with Deno tests (`deno test supabase/functions/`).
+  testPathIgnorePatterns: ["/node_modules/", "<rootDir>/supabase/functions/"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },

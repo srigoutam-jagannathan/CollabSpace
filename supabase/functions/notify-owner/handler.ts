@@ -1,0 +1,43 @@
+export interface Deps {
+  userIdFromJwt(authHeader: string | null): Promise<string | null>;
+  recentQuit(projectId: string, userId: string, sinceIso: string): Promise<boolean>;
+  project(projectId: string): Promise<{ owner_id: string; title: string } | null>;
+  displayName(userId: string): Promise<string | null>;
+  pushToken(userId: string): Promise<string | null>;
+  sendPush(msg: { to: string; title: string; body: string }): Promise<unknown>;
+  now(): Date;
+}
+
+export type Result = { status: number; body: Record<string, unknown> };
+
+/** How long after leaving a project the leaver may trigger the owner's push. */
+const QUIT_WINDOW_MS = 10 * 60_000;
+
+/**
+ * Tells a project owner that a member left. The recipient and the text both
+ * come from the database: callers only say which project, and only someone
+ * who just logged member_quit on it (via leave_project) may trigger the push.
+ */
+export async function handle(authHeader: string | null, input: unknown, d: Deps): Promise<Result> {
+  const caller = await d.userIdFromJwt(authHeader);
+  if (!caller) return { status: 401, body: { error: "unauthenticated" } };
+
+  const projectId = (input as { projectId?: unknown } | null)?.projectId;
+  if (typeof projectId !== "string") return { status: 400, body: { error: "projectId required" } };
+
+  const since = new Date(d.now().getTime() - QUIT_WINDOW_MS).toISOString();
+  if (!(await d.recentQuit(projectId, caller, since))) {
+    return { status: 403, body: { error: "nothing to notify" } };
+  }
+
+  const project = await d.project(projectId);
+  if (!project) return { status: 404, body: { error: "no such project" } };
+  if (project.owner_id === caller) return { status: 200, body: { sent: false, reason: "self" } };
+
+  const token = await d.pushToken(project.owner_id);
+  if (!token) return { status: 200, body: { sent: false, reason: "no_token" } };
+
+  const name = (await d.displayName(caller)) || "A member";
+  await d.sendPush({ to: token, title: `${name} left ${project.title}`, body: `${name} has left the project.` });
+  return { status: 200, body: { sent: true } };
+}

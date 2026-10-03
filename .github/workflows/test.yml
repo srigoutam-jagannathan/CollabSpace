@@ -37,3 +37,13 @@ jobs:
           version: 2.75.0
       - run: supabase db start
       - run: supabase test db
+
+  functions:
+    name: Edge functions (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno test supabase/functions/
