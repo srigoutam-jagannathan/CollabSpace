@@ -288,6 +288,12 @@ export default function ProfileScreen() {
             />
           </View>
           <Text style={{ color: C.textFaint, fontSize: fs(11), marginTop: vs(4) }}>{score} / 100</Text>
+          {/* The number is real; the engine behind it is not built yet. Phase 5
+              (docs/superpowers/plans/2026-10-03-p5-rewards-outline.md) removes
+              this caption when the real score lands. Not tagged "Example". */}
+          <Text style={{ color: C.textFaint, fontSize: fs(12), marginTop: vs(4) }}>
+            Earned by shipping projects with your team — coming soon
+          </Text>
         </Section>
 
         {/* ── Skills ────────────────────────────────────────────────────── */}

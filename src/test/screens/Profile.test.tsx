@@ -129,3 +129,10 @@ test("hint copy points at controls that exist", async () => {
   expect(await screen.findByText("No skills added yet. Tap Edit to add your skills.")).toBeTruthy();
   expect(screen.getByText("No projects yet. Tap + in the tab bar to create one.")).toBeTruthy();
 });
+
+test("the Commitment Score explains it is coming, and is not tagged as an example", async () => {
+  world({ badges: [], portfolio_links: [] });
+  const screen = renderWithProviders(<ProfileScreen />);
+  expect(await screen.findByText("Earned by shipping projects with your team — coming soon")).toBeTruthy();
+  expect(screen.queryByLabelText("Commitment Score example content")).toBeNull();
+});
