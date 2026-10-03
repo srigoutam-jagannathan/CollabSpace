@@ -8,7 +8,7 @@ export type University = "qub" | "ulster";
 
 export type ProjectStatus = "active" | "completed" | "paused" | "recruiting";
 
-export type CollaborationEventType = "join" | "chat" | "milestone" | "commit" | "design_sync" | "mou_signed" | "member_quit" | "member_removed";
+export type CollaborationEventType = "join" | "chat" | "milestone" | "commit" | "design_sync" | "mou_signed" | "member_quit" | "member_removed" | "committed";
 
 // ─────────────────────────────────────────────
 // Table row types
