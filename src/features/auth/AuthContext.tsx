@@ -32,8 +32,6 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   /** Set when status === "access_restricted" */
   restrictedEmail: string | null;
-  /** DEV ONLY — bypasses Azure SSO for local UI testing */
-  devSignIn?: () => void;
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -201,17 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Sign out ─────────────────────────────────────────────────────────────────
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
-    // Clear dev bypass too
-    if (__DEV__) setStatus("unauthenticated");
   }, []);
-
-  // ── Dev bypass (development builds only) ────────────────────────────────────
-  const devSignIn = __DEV__
-    ? () => {
-        setStatus("authenticated");
-        setUniversity("qub");
-      }
-    : undefined;
 
   return (
     <AuthContext.Provider
@@ -225,7 +213,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signOut,
         restrictedEmail,
-        devSignIn,
       }}
     >
       {children}

@@ -33,8 +33,7 @@ Ask the user if they're missing.
    chat or media access; an accepted invitation counts as approval. Use separate member-committed and
    owner-approved fields instead of the shared `mou_accepted`. This overlaps the P1 self-approval items, so
    do it inside the security-hardening plan.
-3. **Remove `devSignIn`** (the `__DEV__` bypass in `AuthContext.tsx`). It runs as anon and now sees no data.
-   Use a seeded university test account instead.
+3. ~~**Remove `devSignIn`**~~ Done: the bypass is gone. Sign in with a seeded university test account.
 
 ## How work is done here
 

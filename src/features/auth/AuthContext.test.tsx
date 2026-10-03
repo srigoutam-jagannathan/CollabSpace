@@ -345,22 +345,7 @@ test("sign-up surfaces Supabase's error", async () => {
   await expect(auth.signUp("ana@qub.ac.uk", "pw", "Ana")).rejects.toThrow("User already registered");
 });
 
-test("the dev bypass signs in as QUB without a session", async () => {
-  const screen = renderProbe();
-  await screen.findByText("unauthenticated|-|-");
-  const grabbedRef: { current?: ReturnType<typeof useAuth> } = {};
-  // React Compiler lint rules reject assigning to an outer object during render, but accept assigning through a callback.
-  const store = (v: ReturnType<typeof useAuth>) => {
-    grabbedRef.current = v;
-  };
-  function Grab() {
-    store(useAuth());
-    return null;
-  }
-  // Read devSignIn from the same provider instance as the probe.
-  screen.rerender(<AuthProvider><Probe /><Grab /></AuthProvider>);
-  await act(async () => {
-    grabbedRef.current!.devSignIn!();
-  });
-  expect(await screen.findByText("authenticated|qub|-")).toBeTruthy();
+test("there is no dev sign-in bypass", async () => {
+  const auth = await renderAndCapture();
+  expect(auth).not.toHaveProperty("devSignIn");
 });

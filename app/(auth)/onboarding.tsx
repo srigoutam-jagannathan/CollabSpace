@@ -186,7 +186,7 @@ function SignInSection({
 }) {
   const { tokens: { C } } = useTheme();
   const { height } = useWindowDimensions();
-  const { signInWithPassword, devSignIn } = useAuth();
+  const { signInWithPassword } = useAuth();
   const { onLayout, active } = useSectionReveal(scrollRef, onStoreY);
 
   const [email, setEmail] = useState("");
@@ -292,14 +292,6 @@ function SignInSection({
               New here?{"  "}<Text style={{ color: C.purpleL, fontFamily: FONT.semiBold }}>Create an account</Text>
             </Text>
           </Btn>
-          {__DEV__ && devSignIn && (
-            <Btn
-              onPress={async () => { await AsyncStorage.setItem("skills_set", "true"); devSignIn(); }}
-              style={{ alignItems: "center", marginTop: vs(20) }} pressScale={0.94}
-            >
-              <Text style={{ color: C.textFaint, fontSize: fs(12) }}>DEV: Skip login</Text>
-            </Btn>
-          )}
         </Animated.View>
       </Animated.View>
     </View>

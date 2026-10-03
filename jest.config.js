@@ -24,7 +24,7 @@ module.exports = {
     global: { statements: 19, branches: 14, functions: 16, lines: 20 },
     // What guards sign-in, membership and navigation is held near-total.
     "./src/features/auth/constants.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
-    "./src/features/auth/AuthContext.tsx": { statements: 100, branches: 94, functions: 100, lines: 100 },
+    "./src/features/auth/AuthContext.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/features/notifications/pending.ts": { statements: 95, branches: 58, functions: 100, lines: 95 },
     "./src/components/CollabTabBar.tsx": { statements: 85, branches: 75, functions: 80, lines: 85 },
   },

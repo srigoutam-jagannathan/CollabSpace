@@ -61,7 +61,7 @@ app/(app)/
 3. If invalid → calls `supabase.auth.signOut()` immediately to revoke the token server-side, sets `status = "access_restricted"`
 4. If valid → upserts the `profiles` row and sets `status = "authenticated"`
 
-The lock is also enforced in the database (`supabase/migrations/20261002150000_server_side_belfast_lock.sql`): a trigger on `auth.users` refuses non-university sign-ups and email changes, and restrictive `belfast lock` policies on every public table, and on writes to Storage, require the caller's `auth.users` email to be a university address. The client check gives the friendly error; the database check is the one that holds. The `__DEV__` `devSignIn` bypass has no session, so under the lock its queries run as `anon` and return no data.
+The lock is also enforced in the database (`supabase/migrations/20261002150000_server_side_belfast_lock.sql`): a trigger on `auth.users` refuses non-university sign-ups and email changes, and restrictive `belfast lock` policies on every public table, and on writes to Storage, require the caller's `auth.users` email to be a university address. The client check gives the friendly error; the database check is the one that holds.
 
 **To add a new university in Phase 5:** add the domain to `ALLOWED_DOMAINS` and `DOMAIN_TO_UNIVERSITY` in `constants.ts`, add a `when` branch to `public.university_for_email()` in a new migration, and add the value to `university_enum`.
 
