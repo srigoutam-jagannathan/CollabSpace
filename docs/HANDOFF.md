@@ -1,23 +1,14 @@
 # Hand-off: current state of CollabSpace
 
-Read this after CLAUDE.md. It says what is in flight, where work is tracked, and the traps that cost
-earlier sessions time. Update it at the end of any session that changes the state below.
+What is in flight, where work is tracked, and the traps that cost earlier sessions time. Refresh it with
+`/handoff` at the end of a session.
 
 _Last updated: 2026-10-03, master at b623ecf._
 
 ## Where things stand
 
-- **Shipped to master (2026-10-02/03), live database migrated.** Three migrations are pushed to the live
-  Supabase project, and `supabase db diff --linked` shows only the expected `protect_bucket_control_*`
-  triggers:
-  - `20261002150000_server_side_belfast_lock.sql`: the university-email lock is enforced in the database.
-  - `20261002150100_scope_storage_writes.sql`: Storage writes are limited to the paths the app uses.
-  - `20261002150200_status_only_updates.sql`: connections and invitations start `pending`, and only the
-    status column can change.
-- **Navigation was rebuilt:** `(app)` is a Stack over `(tabs)` (see CLAUDE.md). The `originLink` workaround
-  is gone.
-- **Lint is at 0 errors and gated in CI.** The remaining warnings are deliberate (see Traps).
-- **Photo uploads were fixed** (b623ecf) and verified on the simulator.
+- **The live database is in sync:** every migration in `supabase/migrations/` up to `20261002150200` is
+  pushed. `supabase db diff --linked` shows only the expected `protect_bucket_control_*` triggers.
 - **Not yet on GitHub:** master is about 116 commits ahead of `origin/master`, and the push needs the user's
   SSH key (`ssh-add` in their own terminal). CI has never run on GitHub.
 - **QA in progress:** friends are running the QA checklist (a Claude Doc, "CollabSpace QA Checklist") over
@@ -83,14 +74,10 @@ Ask the user if they're missing.
   - It also has to pass the whole `(app)/_layout` module so `unstable_settings` survives.
 - **Typed routes:** `.expo/types/router.d.ts` is generated and gitignored. If type-check flags valid hrefs,
   run `npx expo start` once to regenerate it.
-- **Lint:** the React Compiler rules `set-state-in-effect` and `preserve-manual-memoization` are warnings on
-  purpose (the compiler isn't enabled). For animated values use
-  `const [v] = useState(() => new Animated.Value(x))`, not `useRef(...).current`.
-- **Supabase mock** (`src/test/supabaseMock.ts`):
-  - A resolver that throws now resolves as `{ error }`, as postgrest-js does.
-  - Use `rejectWith(err)` for a real rejection.
-  - `db.strict()` plus `expect(db.unanswered).toEqual([])` catches unexpected queries.
-  - `single()` and `maybeSingle()` return PGRST116 for array data with the wrong row count.
+- **Lint warnings for `set-state-in-effect` and `preserve-manual-memoization` are deliberate.** The React
+  Compiler isn't enabled, so don't "fix" these.
+- **Supabase mock:** a resolver that throws now resolves as `{ error }`, as postgrest-js does. Read the header
+  of `src/test/supabaseMock.ts` before testing error paths.
 - **Sharing the app with remote testers:** run `npx expo start --tunnel`. The CLI and each tester's Expo Go
   must both be signed in to the throwaway Expo account `goutammm`.
 
