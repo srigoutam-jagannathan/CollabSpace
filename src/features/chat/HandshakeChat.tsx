@@ -386,31 +386,12 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
     if (!isOwner || !projectId || member.isOwner) return;
     setRemovingId(member.userId);
     try {
-      const { data: removed, error } = await supabase
-        .from("project_members")
-        .delete()
-        .eq("project_id", projectId)
-        .eq("user_id", member.userId)
-        .select("id");
+      // One transaction, server-side: deletes the membership row, logs
+      // member_removed against them and posts the member_removed chat message.
+      const { error } = await supabase.rpc("remove_member", {
+        p_project: projectId, p_user: member.userId,
+      });
       if (error) throw error;
-      // A delete RLS refuses comes back 200 with zero rows, not an error.
-      if (!removed || removed.length === 0) {
-        throw new Error("Member was not removed.");
-      }
-
-      // Audit log first -- it is the record that matters if the rest fails.
-      await supabase.from("collaboration_events").insert({
-        project_id: projectId, user_id: member.userId, event_type: "member_removed",
-      });
-
-      await supabase.from("chat_messages").insert({
-        project_id: projectId,
-        sender_id: user?.id,
-        type: "member_removed",
-        content: "",
-        metadata: { userName: member.fullName ?? "A member" },
-        read_by: [],
-      });
 
       setMembers((prev) => prev.filter((x) => x.userId !== member.userId));
     } catch {

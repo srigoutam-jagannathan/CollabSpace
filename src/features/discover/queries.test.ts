@@ -31,7 +31,7 @@ test("Pulse asks only for commitments: no owner approvals, no pending join reque
   });
 });
 
-test("Active right now counts real team activity, not join requests or withdrawals", async () => {
+test("Active right now counts real team activity, not join requests, withdrawals or removals", async () => {
   db.respond((call) => {
     if (call.table === "collaboration_events") return { data: [{ project_id: "p1" }, { project_id: "p1" }] };
     if (call.table === "projects") {
@@ -43,7 +43,7 @@ test("Active right now counts real team activity, not join requests or withdrawa
   const result = await fetchActive();
 
   const [call] = db.callsTo("collaboration_events");
-  expect(has(call, "in", "event_type", ["committed", "mou_signed", "member_removed"])).toBe(true);
+  expect(has(call, "in", "event_type", ["committed", "mou_signed"])).toBe(true);
   expect(result.data).toEqual([
     { id: "p1", title: "Solar Boat", description: "", project_health: null, event_count: 2 },
   ]);

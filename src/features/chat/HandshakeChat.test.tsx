@@ -19,14 +19,13 @@ const P = "p1";
 const NAMES: Record<string, string> = { owner: "Olive Owner", me: "Mia Member", ana: "Ana Lee", ben: "Ben Pending" };
 
 /**
- * The project's owner and its member rows; `removal` is what a member delete
- * returns. Members are approved unless listed in `pending`.
+ * The project's owner and its member rows. Members are approved unless
+ * listed in `pending`.
  */
-function world({ owner, members, pending = [], removal = "removes" }: {
+function world({ owner, members, pending = [] }: {
   owner: string;
   members: string[];
   pending?: string[];
-  removal?: "removes" | "silently-refused";
 }) {
   const status = (id: string) => (pending.includes(id) ? "pending" : "approved");
   db.respond((c) => {
@@ -34,10 +33,6 @@ function world({ owner, members, pending = [], removal = "removes" }: {
       return { data: { id: P, owner_id: owner, title: "Lumen", description: "", chat_icon_url: null } };
     }
     if (c.table === "chat_messages") return c.op === "select" ? { data: [] } : {};
-    if (c.table === "project_members" && c.op === "delete") {
-      // With no matching policy, PostgREST answers 200 with zero rows -- not an error.
-      return { data: removal === "removes" ? [{ id: "row" }] : [] };
-    }
     if (c.table === "project_members" && c.single) {
       // Answer for whoever the query actually asked about, so a membership
       // load that isn't scoped to the current user can't pass by accident.
@@ -151,7 +146,7 @@ describe("removing a member", () => {
     expect(screen.queryAllByLabelText(/^Remove /)).toHaveLength(0);
   });
 
-  test("confirming removes them, logs it against them, and tells the chat", async () => {
+  test("confirming removes them through remove_member", async () => {
     mockAuth.user = { id: "owner" };
     world({ owner: "owner", members: ["ana"] });
     const screen = renderChat();
@@ -164,22 +159,17 @@ describe("removing a member", () => {
 
     await waitFor(() => expect(screen.queryByLabelText("Remove Ana Lee from the project")).toBeNull());
 
-    const removal = db.callsTo("project_members").find((c) => c.op === "delete")!;
-    expect(has(removal, "eq", "user_id", "ana")).toBe(true);
-    expect(has(removal, "eq", "project_id", P)).toBe(true);
-    // .select() is what lets the client tell a real delete from a refused one.
-    expect(removal.columns).toBe("id");
-
-    const event = db.callsTo("collaboration_events").find((c) => c.op === "insert")!;
-    expect(event.payload).toMatchObject({ user_id: "ana", event_type: "member_removed" });
-
-    const notice = db.callsTo("chat_messages").find((c) => c.op === "insert")!;
-    expect(notice.payload).toMatchObject({ type: "member_removed", metadata: { userName: "Ana Lee" } });
+    // One transaction, server-side: the row, the event and the chat message.
+    expect(supabase.rpc).toHaveBeenCalledWith("remove_member", { p_project: P, p_user: "ana" });
+    expect(db.callsTo("project_members").filter((c) => c.op === "delete")).toHaveLength(0);
+    expect(db.callsTo("collaboration_events").filter((c) => c.op === "insert")).toHaveLength(0);
+    expect(db.callsTo("chat_messages").filter((c) => c.op === "insert")).toHaveLength(0);
   });
 
-  test("a delete the database silently refuses is reported, not treated as success", async () => {
+  test("a removal the RPC refuses is reported, not treated as success", async () => {
     mockAuth.user = { id: "owner" };
-    world({ owner: "owner", members: ["ana"], removal: "silently-refused" });
+    world({ owner: "owner", members: ["ana"] });
+    supabase.rpc.mockResolvedValue({ data: null, error: { code: "P0002", message: "no such membership" } });
     const screen = renderChat();
     await openMembers(screen);
 

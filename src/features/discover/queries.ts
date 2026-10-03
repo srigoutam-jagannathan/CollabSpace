@@ -11,10 +11,10 @@ const PULSE_WINDOW_HOURS = 48;
 const ACTIVE_WINDOW_DAYS = 7;
 /**
  * Events that count as a team doing something. join is only a pending
- * request and member_quit can be a withdrawal, so join/withdraw cycles
- * would otherwise inflate "Active right now".
+ * request, member_quit can be a withdrawal and a removal isn't activity,
+ * so those would otherwise inflate "Active right now".
  */
-const ACTIVE_EVENT_TYPES = ["committed", "mou_signed", "member_removed"];
+const ACTIVE_EVENT_TYPES = ["committed", "mou_signed"];
 
 /**
  * How many rows each query may read.
