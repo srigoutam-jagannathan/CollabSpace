@@ -15,6 +15,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { GradientBtn } from "@/components/GradientBtn";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { formatDateInput, ddmmyyyyToIso } from "@/utils/dateInput";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,12 @@ export default function CreateProject() {
 
   async function handleSubmit() {
     if (!user || !isValid) return;
+    const startIso = startDate ? ddmmyyyyToIso(startDate) : null;
+    const endIso = endDate ? ddmmyyyyToIso(endDate) : null;
+    if ((startDate && !startIso) || (endDate && !endIso)) {
+      Alert.alert("Check the dates", "Enter each date as DD/MM/YYYY, e.g. 03/10/2026.");
+      return;
+    }
     setLoading(true);
 
     const tags = skillsInput
@@ -117,8 +124,8 @@ export default function CreateProject() {
         collaboration_style: collabStyle,
         team_size: teamSize,
         commitment_hours: commitmentHours,
-        start_date: startDate || null,
-        end_date: endDate || null,
+        start_date: startIso,
+        end_date: endIso,
         owner_role: ownerRole.trim() || null,
         role_requirements: roleRequirements,
       })
@@ -196,7 +203,9 @@ export default function CreateProject() {
                 placeholder="DD/MM/YYYY"
                 placeholderTextColor={C.textFaint}
                 value={startDate}
-                onChangeText={setStartDate}
+                onChangeText={(t) => setStartDate((prev) => formatDateInput(t, prev))}
+                keyboardType="number-pad"
+                maxLength={10}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -206,7 +215,9 @@ export default function CreateProject() {
                 placeholder="DD/MM/YYYY"
                 placeholderTextColor={C.textFaint}
                 value={endDate}
-                onChangeText={setEndDate}
+                onChangeText={(t) => setEndDate((prev) => formatDateInput(t, prev))}
+                keyboardType="number-pad"
+                maxLength={10}
               />
             </View>
           </View>
