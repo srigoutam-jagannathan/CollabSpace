@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { View, Text, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -56,8 +56,8 @@ const DEV_PROFILE: ProfileData = {
   bio: "Aspiring Ux/Ui Designer",
   pvs_score: 72,
   skills: ["Ui Design", "Figma", "Graphic Design", "Video Editing"],
-  portfolio_links: [{ title: "Design Portfolio", url: "" }, { title: "Video Portfolio", url: "" }],
-  badges: ["Reliable Collaborator", "Great Communicator"],
+  portfolio_links: [],
+  badges: [],
 };
 
 function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
@@ -91,7 +91,7 @@ function Section({ title, children, action, example }: {
           )}
         </View>
         {action && (
-          <Btn onPress={action.onPress} pressScale={0.9}>
+          <Btn onPress={action.onPress} pressScale={0.9} accessibilityLabel={`${action.label} ${title}`}>
             <Text style={{ color: C.pink, fontSize: fs(14), fontWeight: "600" }}>{action.label}</Text>
           </Btn>
         )}
@@ -262,9 +262,19 @@ export default function ProfileScreen() {
             <Text style={{ color: C.textMuted, fontSize: fs(13), marginBottom: vs(4) }}>{profile.department}</Text>
           ) : null}
 
-          <Text style={{ color: C.textFaint, fontSize: fs(13), fontStyle: "italic" }}>
-            &quot;{profile?.bio ?? "Aspiring collaborator"}&quot;
-          </Text>
+          {profile?.bio ? (
+            <Text style={{ color: C.textFaint, fontSize: fs(13), fontStyle: "italic" }}>
+              &quot;{profile.bio}&quot;
+            </Text>
+          ) : (
+            <Btn
+              onPress={() => router.push("/(app)/settings/edit-profile")}
+              accessibilityLabel="Add a bio"
+              pressScale={0.95}
+            >
+              <Text style={{ color: C.textFaint, fontSize: fs(13) }}>Add a bio</Text>
+            </Btn>
+          )}
         </View>
 
         {/* ── Commitment Score ───────────────────────────────────────────── */}
@@ -281,7 +291,7 @@ export default function ProfileScreen() {
         </Section>
 
         {/* ── Skills ────────────────────────────────────────────────────── */}
-        <Section title="Skills">
+        <Section title="Skills" action={{ label: "Edit", onPress: () => router.push({ pathname: "/(app)/settings/skills", params: { from: "settings" } }) }}>
           {skills.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row", gap: s(8) }}>
@@ -293,14 +303,14 @@ export default function ProfileScreen() {
               </View>
             </ScrollView>
           ) : (
-            <Text style={{ color: C.textFaint, fontSize: fs(13) }}>No skills added yet. Tap + Add to get started.</Text>
+            <Text style={{ color: C.textFaint, fontSize: fs(13) }}>No skills added yet. Tap Edit to add your skills.</Text>
           )}
         </Section>
 
         {/* ── My Projects ────────────────────────────────────────────────── */}
         <Section title="My Projects">
           {myProjects.length === 0 ? (
-            <Text style={{ color: C.textFaint, fontSize: fs(13) }}>No projects yet. Tap + New to create one.</Text>
+            <Text style={{ color: C.textFaint, fontSize: fs(13) }}>No projects yet. Tap + in the tab bar to create one.</Text>
           ) : (
             <View style={{ gap: vs(10) }}>
               {myProjects.map((proj) => (

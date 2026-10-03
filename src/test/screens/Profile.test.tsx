@@ -83,7 +83,7 @@ test("example portfolio links cannot be opened", async () => {
 test("the portfolio action edits your links", async () => {
   world({ badges: [], portfolio_links: [] });
   const screen = renderWithProviders(<ProfileScreen />);
-  fireEvent.press(await screen.findByText("Edit"));
+  fireEvent.press(await screen.findByLabelText("Edit Portfolio"));
   await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith("/(app)/settings/portfolio-links"));
 });
 
@@ -104,4 +104,28 @@ test("the commit prompt does not promise an event that isn't recorded", async ()
   const [, message] = alert.mock.calls[0];
   expect(message).not.toMatch(/collaboration event/);
   expect(message).toMatch(/team/);
+});
+
+test("an empty bio shows an Add a bio prompt, not invented text", async () => {
+  world({ badges: [], portfolio_links: [] });
+  const screen = renderWithProviders(<ProfileScreen />);
+  expect(screen.queryByText(/Aspiring collaborator/)).toBeNull();
+  fireEvent.press(await screen.findByLabelText("Add a bio"));
+  await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith("/(app)/settings/edit-profile"));
+});
+
+test("the Skills action edits your skills", async () => {
+  world({ badges: [], portfolio_links: [] });
+  const screen = renderWithProviders(<ProfileScreen />);
+  fireEvent.press(await screen.findByLabelText("Edit Skills"));
+  await waitFor(() =>
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/(app)/settings/skills", params: { from: "settings" } }),
+  );
+});
+
+test("hint copy points at controls that exist", async () => {
+  world({ badges: [], portfolio_links: [] });
+  const screen = renderWithProviders(<ProfileScreen />);
+  expect(await screen.findByText("No skills added yet. Tap Edit to add your skills.")).toBeTruthy();
+  expect(screen.getByText("No projects yet. Tap + in the tab bar to create one.")).toBeTruthy();
 });
