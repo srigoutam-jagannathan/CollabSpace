@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { View, Text, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Alert, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Settings, BadgeCheck, Share2 } from "lucide-react-native";
@@ -67,16 +67,25 @@ function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
   );
 }
 
-function Section({ title, children, action }: {
+function Section({ title, children, action, example }: {
   title: string;
   children: React.ReactNode;
   action?: { label: string; onPress: () => void };
+  /** The section is showing demo content, not the user's own. */
+  example?: boolean;
 }) {
   const { tokens: { C } } = useTheme();
   return (
     <View style={{ paddingHorizontal: s(20), marginBottom: vs(28) }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: vs(12) }}>
-        <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(16) }}>{title}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
+          <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(16) }}>{title}</Text>
+          {example && (
+            <View style={{ borderRadius: s(8), borderWidth: 1, borderColor: C.borderBright, paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+              <Text style={{ color: C.textMuted, fontSize: fs(11), fontWeight: "600" }}>Example</Text>
+            </View>
+          )}
+        </View>
         {action && (
           <Btn onPress={action.onPress} pressScale={0.9}>
             <Text style={{ color: C.pink, fontSize: fs(14), fontWeight: "600" }}>{action.label}</Text>
@@ -196,8 +205,13 @@ export default function ProfileScreen() {
   const initials = displayName.trim().split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
   const score = profile?.pvs_score ?? 0;
   const skills = profile?.skills ?? [];
-  const portfolioLinks = profile?.portfolio_links?.length ? profile.portfolio_links : [{ title: "Design Portfolio", url: "" }, { title: "Video Portfolio", url: "" }];
-  const badges = profile?.badges?.length ? profile.badges : ["Reliable Collaborator", "Great Communicator"];
+  // Demo content, shown until the user has their own; labelled "Example" below.
+  const portfolioIsExample = !profile?.portfolio_links?.length;
+  const portfolioLinks = portfolioIsExample
+    ? [{ title: "Design Portfolio", url: "" }, { title: "Video Portfolio", url: "" }]
+    : profile!.portfolio_links!;
+  const badgesAreExample = !profile?.badges?.length;
+  const badges = badgesAreExample ? ["Reliable Collaborator", "Great Communicator"] : profile!.badges!;
 
   if (loading) {
     return (
@@ -390,7 +404,7 @@ export default function ProfileScreen() {
         )}
 
         {/* ── Portfolio ──────────────────────────────────────────────────── */}
-        <Section title="Portfolio" action={{ label: "See all", onPress: () => {} }}>
+        <Section title="Portfolio" example={portfolioIsExample} action={{ label: "Edit", onPress: () => router.push("/(app)/settings/portfolio-links" as any) }}>
           <View style={{ gap: vs(10) }}>
             {portfolioLinks.map((item, i) => (
               // Keyed on url plus index, not title: a title is free text, so
@@ -403,7 +417,13 @@ export default function ProfileScreen() {
                 justifyContent: "space-between", padding: s(16),
               }}>
                 <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(14) }}>{item.title}</Text>
-                <Btn pressScale={0.93} style={{ borderRadius: s(16), overflow: "hidden" }}>
+                <Btn
+                  pressScale={0.93}
+                  style={{ borderRadius: s(16), overflow: "hidden" }}
+                  accessibilityLabel={`Open ${item.title}`}
+                  disabled={!item.url}
+                  onPress={() => item.url && Linking.openURL(item.url)}
+                >
                   <LinearGradient
                     colors={GRADIENT.cta}
                     start={{ x: 0, y: 0 }}
@@ -419,7 +439,7 @@ export default function ProfileScreen() {
         </Section>
 
         {/* ── Badges ────────────────────────────────────────────────────── */}
-        <Section title="Badges">
+        <Section title="Badges" example={badgesAreExample}>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(8) }}>
             {badges.map((badge) => (
               <View key={badge} style={{
@@ -434,7 +454,7 @@ export default function ProfileScreen() {
         </Section>
 
         {/* ── Latest Feedback ────────────────────────────────────────────── */}
-        <Section title="Latest Feedback">
+        <Section title="Latest Feedback" example>
           <View style={{ flexDirection: "row", alignItems: "flex-start", gap: s(12) }}>
             <LinearGradient
               colors={[C.pink, C.purple]}
