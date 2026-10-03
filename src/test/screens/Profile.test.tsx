@@ -30,6 +30,8 @@ function world(profile: Profile) {
   });
 }
 
+afterEach(() => jest.restoreAllMocks());
+
 beforeEach(() => {
   db.reset();
   routerState.reset();
@@ -40,7 +42,9 @@ test("placeholder badges, portfolio and feedback are each labelled as examples",
   const screen = renderWithProviders(<ProfileScreen />);
   expect(await screen.findByText("Reliable Collaborator")).toBeTruthy();
   // One tag each for Portfolio, Badges and Latest Feedback.
-  expect(screen.getAllByText("Example")).toHaveLength(3);
+  expect(screen.getByLabelText("Portfolio example content")).toBeTruthy();
+  expect(screen.getByLabelText("Badges example content")).toBeTruthy();
+  expect(screen.getByLabelText("Latest Feedback example content")).toBeTruthy();
 });
 
 test("a user's real badges and links carry no example tag; the feedback section still does", async () => {
@@ -49,7 +53,9 @@ test("a user's real badges and links carry no example tag; the feedback section 
   expect(await screen.findByText("First Ship")).toBeTruthy();
   expect(screen.queryByText("Reliable Collaborator")).toBeNull();
   // Feedback has no real source until teammate kudos exist (Phase 5).
-  expect(screen.getAllByText("Example")).toHaveLength(1);
+  expect(screen.getByLabelText("Latest Feedback example content")).toBeTruthy();
+  expect(screen.queryByLabelText("Portfolio example content")).toBeNull();
+  expect(screen.queryByLabelText("Badges example content")).toBeNull();
 });
 
 test("Open on a real portfolio link opens it", async () => {
@@ -58,7 +64,14 @@ test("Open on a real portfolio link opens it", async () => {
   const screen = renderWithProviders(<ProfileScreen />);
   fireEvent.press(await screen.findByLabelText("Open My site"));
   expect(open).toHaveBeenCalledWith("https://ana.dev");
-  open.mockRestore();
+});
+
+test("Open on a scheme-less link adds https://", async () => {
+  const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+  world({ badges: [], portfolio_links: [{ title: "My site", url: "ana.dev" }] });
+  const screen = renderWithProviders(<ProfileScreen />);
+  fireEvent.press(await screen.findByLabelText("Open My site"));
+  await waitFor(() => expect(open).toHaveBeenCalledWith("https://ana.dev"));
 });
 
 test("example portfolio links cannot be opened", async () => {

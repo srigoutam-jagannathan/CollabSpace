@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { View, Text, ScrollView, ActivityIndicator, Alert, Linking } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Settings, BadgeCheck, Share2 } from "lucide-react-native";
@@ -12,6 +12,7 @@ import { ShareProfileSheet } from "@/components/ShareProfileSheet";
 import { supabase } from "@/lib/supabaseClient";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
+import { openLink } from "@/utils/openLink";
 import { s, vs, fs } from "@/utils/scale";
 import { ScreenLoader } from "@/components/ScreenLoader";
 
@@ -44,6 +45,9 @@ type MyCollab = {
   role: string;
   committed: boolean;
 };
+
+const DEMO_LINKS = [{ title: "Design Portfolio", url: "" }, { title: "Video Portfolio", url: "" }];
+const DEMO_BADGES = ["Reliable Collaborator", "Great Communicator"];
 
 const DEV_PROFILE: ProfileData = {
   full_name: "Jacob (Dev)",
@@ -79,9 +83,9 @@ function Section({ title, children, action, example }: {
     <View style={{ paddingHorizontal: s(20), marginBottom: vs(28) }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: vs(12) }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
-          <Text style={{ color: C.white, fontWeight: "700", fontSize: fs(16) }}>{title}</Text>
+          <Text accessibilityRole="header" style={{ color: C.white, fontWeight: "700", fontSize: fs(16) }}>{title}</Text>
           {example && (
-            <View style={{ borderRadius: s(8), borderWidth: 1, borderColor: C.borderBright, paddingHorizontal: s(8), paddingVertical: vs(2) }}>
+            <View accessibilityLabel={`${title} example content`} style={{ borderRadius: s(8), borderWidth: 1, borderColor: C.borderBright, paddingHorizontal: s(8), paddingVertical: vs(2) }}>
               <Text style={{ color: C.textMuted, fontSize: fs(11), fontWeight: "600" }}>Example</Text>
             </View>
           )}
@@ -206,12 +210,12 @@ export default function ProfileScreen() {
   const score = profile?.pvs_score ?? 0;
   const skills = profile?.skills ?? [];
   // Demo content, shown until the user has their own; labelled "Example" below.
-  const portfolioIsExample = !profile?.portfolio_links?.length;
-  const portfolioLinks = portfolioIsExample
-    ? [{ title: "Design Portfolio", url: "" }, { title: "Video Portfolio", url: "" }]
-    : profile!.portfolio_links!;
-  const badgesAreExample = !profile?.badges?.length;
-  const badges = badgesAreExample ? ["Reliable Collaborator", "Great Communicator"] : profile!.badges!;
+  const realLinks = profile?.portfolio_links;
+  const portfolioIsExample = !realLinks?.length;
+  const portfolioLinks = realLinks?.length ? realLinks : DEMO_LINKS;
+  const realBadges = profile?.badges;
+  const badgesAreExample = !realBadges?.length;
+  const badges = realBadges?.length ? realBadges : DEMO_BADGES;
 
   if (loading) {
     return (
@@ -404,7 +408,7 @@ export default function ProfileScreen() {
         )}
 
         {/* ── Portfolio ──────────────────────────────────────────────────── */}
-        <Section title="Portfolio" example={portfolioIsExample} action={{ label: "Edit", onPress: () => router.push("/(app)/settings/portfolio-links" as any) }}>
+        <Section title="Portfolio" example={portfolioIsExample} action={{ label: "Edit", onPress: () => router.push("/(app)/settings/portfolio-links") }}>
           <View style={{ gap: vs(10) }}>
             {portfolioLinks.map((item, i) => (
               // Keyed on url plus index, not title: a title is free text, so
@@ -422,7 +426,7 @@ export default function ProfileScreen() {
                   style={{ borderRadius: s(16), overflow: "hidden" }}
                   accessibilityLabel={`Open ${item.title}`}
                   disabled={!item.url}
-                  onPress={() => item.url && Linking.openURL(item.url)}
+                  onPress={() => item.url && openLink(item.url)}
                 >
                   <LinearGradient
                     colors={GRADIENT.cta}
