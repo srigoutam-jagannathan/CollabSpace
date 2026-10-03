@@ -5,7 +5,8 @@ export type SectionKey = "pulse" | "needs" | "active" | "people" | "shipped";
 export interface PulseItem {
   id: string;
   created_at: string;
-  event_type: "join" | "mou_signed";
+  /** Phase 4 widens this with shipped. */
+  event_type: "committed";
   project_id: string;
   project_title: string;
   actor_id: string;

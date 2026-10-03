@@ -12,8 +12,9 @@ function initials(name: string | null): string {
   return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
-function verb(eventType: PulseItem["event_type"]): string {
-  return eventType === "join" ? "joined" : "signed an MOU with";
+// Only commitments reach Pulse today; Phase 4 adds shipped.
+function verb(_eventType: PulseItem["event_type"]): string {
+  return "committed to";
 }
 
 export function PulseStrip({ items }: { items: PulseItem[] }) {

@@ -36,15 +36,17 @@ function hoursAgo(h: number): string {
 }
 
 /**
- * Recent joins and MOU signings.
- * member_quit is deliberately excluded — a public feed of people leaving
- * projects is socially corrosive on a small campus network.
+ * Recent commitments, recorded server-side by trg_member_committed.
+ * Only true events: mou_signed is an owner approval, not a member action,
+ * and a join event is now only a pending request. member_quit is
+ * deliberately excluded — a public feed of people leaving projects is
+ * socially corrosive on a small campus network. Phase 4 adds shipped.
  */
 export async function fetchPulse(): Promise<QueryResult<PulseItem>> {
   const { data, error } = await supabase
     .from("collaboration_events")
     .select("id, created_at, event_type, project_id, projects(title), profiles(id, full_name, avatar_url)")
-    .in("event_type", ["join", "mou_signed"])
+    .in("event_type", ["committed"])
     .gt("created_at", hoursAgo(PULSE_WINDOW_HOURS))
     .order("created_at", { ascending: false })
     .limit(10);
