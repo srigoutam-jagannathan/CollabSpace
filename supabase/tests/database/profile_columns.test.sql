@@ -18,15 +18,16 @@ insert into auth.users (id, email) values
 insert into public.projects (id, owner_id, title) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
 
-select plan(11);
+select plan(13);
 select tests.act_as('00000000-0000-0000-0000-0000000000b2');
 update public.profiles set pvs_score = 999, badges = '{Hacker}', university = 'ulster',
-  deleted_at = now(), bio = 'hello' where id = '00000000-0000-0000-0000-0000000000b2';
+  deleted_at = now(), display_name_at_deletion = 'x', bio = 'hello' where id = '00000000-0000-0000-0000-0000000000b2';
 reset role;
 select is((select pvs_score from public.profiles where id = '00000000-0000-0000-0000-0000000000b2'), 0, 'pvs_score is not user-writable');
 select is((select badges from public.profiles where id = '00000000-0000-0000-0000-0000000000b2'), '{}'::text[], 'badges are not user-writable');
 select is((select university::text from public.profiles where id = '00000000-0000-0000-0000-0000000000b2'), 'qub', 'university follows the email, not the request');
 select is((select deleted_at from public.profiles where id = '00000000-0000-0000-0000-0000000000b2'), null, 'deletion markers are not user-writable');
+select is((select display_name_at_deletion from public.profiles where id = '00000000-0000-0000-0000-0000000000b2'), null, 'display_name_at_deletion is not user-writable');
 select is((select bio from public.profiles where id = '00000000-0000-0000-0000-0000000000b2'), 'hello', 'ordinary fields still save');
 
 -- Server code (service_role) can still award a score.
@@ -48,13 +49,15 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000e5', 'fresh@ulster.ac.uk');
 set local session_replication_role = origin;
 select tests.act_as('00000000-0000-0000-0000-0000000000e5');
-insert into public.profiles (id, full_name, university, pvs_score, badges)
-  values ('00000000-0000-0000-0000-0000000000e5', 'Fresh', 'qub', 999, '{Hacker}');
+insert into public.profiles (id, full_name, university, pvs_score, badges, deleted_at, display_name_at_deletion)
+  values ('00000000-0000-0000-0000-0000000000e5', 'Fresh', 'qub', 999, '{Hacker}', now(), 'x');
 reset role;
 select is((select (pvs_score, badges)::text from public.profiles where id = '00000000-0000-0000-0000-0000000000e5'),
   '(0,{})', 'a new profile starts with no score or badges');
 select is((select university::text from public.profiles where id = '00000000-0000-0000-0000-0000000000e5'),
   'ulster', 'a new profile takes its university from the email');
+select is((select (deleted_at, display_name_at_deletion)::text from public.profiles where id = '00000000-0000-0000-0000-0000000000e5'),
+  '(,)', 'a new profile starts with no deletion markers');
 
 -- Nobody can look up another user's university through the helper.
 select tests.act_as('00000000-0000-0000-0000-0000000000d4');
