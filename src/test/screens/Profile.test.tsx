@@ -1,4 +1,4 @@
-import { Linking } from "react-native";
+import { Alert, Linking } from "react-native";
 import { fireEvent, waitFor } from "@testing-library/react-native";
 
 jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
@@ -85,4 +85,23 @@ test("the portfolio action edits your links", async () => {
   const screen = renderWithProviders(<ProfileScreen />);
   fireEvent.press(await screen.findByText("Edit"));
   await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith("/(app)/settings/portfolio-links"));
+});
+
+test("the commit prompt does not promise an event that isn't recorded", async () => {
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  db.respond((c) => {
+    if (c.table === "profiles") return { data: { full_name: "Ana", badges: [], portfolio_links: [], skills: [] } };
+    if (c.table === "projects") return { data: [] };
+    if (c.table === "project_members") {
+      return { data: [{ id: "m1", role: "Dev", mou_accepted: false,
+        project: { id: "p1", title: "Aurora", project_type: null, status: "recruiting", owner_id: "owner" } }] };
+    }
+    return undefined;
+  });
+  const screen = renderWithProviders(<ProfileScreen />);
+  // Exact match: the "Commitment Score" heading also contains "Commit".
+  fireEvent.press(await screen.findByText("Commit"));
+  const [, message] = alert.mock.calls[0];
+  expect(message).not.toMatch(/collaboration event/);
+  expect(message).toMatch(/team/);
 });

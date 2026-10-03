@@ -176,7 +176,7 @@ export default function ProfileScreen() {
   async function handleCommit(membershipId: string, projectTitle: string) {
     Alert.alert(
       "Commit to Project",
-      `Confirm your commitment to "${projectTitle}"? This will be recorded as a collaboration event.`,
+      `Commit to "${projectTitle}"? Your team will see that you've committed.`,
       [
         { text: "Cancel", style: "cancel" },
         {
