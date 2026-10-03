@@ -16,7 +16,7 @@ import { db, has } from "@/test/supabaseMock";
 import { routerState } from "@/test/routerMock";
 
 const P = "p1";
-const NAMES: Record<string, string> = { owner: "Olive Owner", me: "Mia Member", ana: "Ana Lee" };
+const NAMES: Record<string, string> = { owner: "Olive Owner", me: "Mia Member", ana: "Ana Lee", ben: "Ben Pending" };
 
 /**
  * The project's owner and its member rows; `removal` is what a member delete
@@ -47,8 +47,10 @@ function world({ owner, members, pending = [], removal = "removes" }: {
       };
     }
     if (c.table === "project_members") {
+      // Honour a status filter the way the database would.
+      const wanted = c.filters.find(([m, col]) => m === "eq" && col === "status")?.[2];
       return {
-        data: members.map((id) => ({
+        data: members.filter((id) => wanted === undefined || status(id) === wanted).map((id) => ({
           user_id: id, role: "Designer", mou_accepted: false, status: status(id),
           profile: { full_name: NAMES[id], avatar_url: null },
         })),
@@ -94,6 +96,18 @@ describe("the composer", () => {
     const screen = renderChat();
     expect(await screen.findByText("You left this project. Rejoin to send messages.")).toBeTruthy();
     expect(screen.queryByPlaceholderText("Message…")).toBeNull();
+  });
+});
+
+describe("the members list", () => {
+  test("shows approved members only; pending requests are for Notifications", async () => {
+    mockAuth.user = { id: "owner" };
+    world({ owner: "owner", members: ["ana", "ben"], pending: ["ben"] });
+    const screen = renderChat();
+    fireEvent.press(await screen.findByText("Lumen"));
+    expect(await screen.findByText("Members · 2")).toBeTruthy();
+    expect(screen.getByText("Ana Lee")).toBeTruthy();
+    expect(screen.queryByText("Ben Pending")).toBeNull();
   });
 });
 

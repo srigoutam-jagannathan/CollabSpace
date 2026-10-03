@@ -106,6 +106,28 @@ test("the commit prompt does not promise an event that isn't recorded", async ()
   expect(message).toMatch(/team/);
 });
 
+test("a collab the owner has not approved yet says so", async () => {
+  db.respond((c) => {
+    if (c.table === "profiles") return { data: { full_name: "Ana", badges: [], portfolio_links: [], skills: [] } };
+    if (c.table === "projects") return { data: [] };
+    if (c.table === "project_members") {
+      const project = (id: string, title: string) => ({ id, title, project_type: null, status: "recruiting", owner_id: "owner" });
+      return { data: [
+        { id: "m1", role: "Dev", mou_accepted: false, status: "pending", project: project("p1", "Aurora") },
+        { id: "m2", role: "Dev", mou_accepted: false, status: "approved", project: project("p2", "Lumen") },
+      ] };
+    }
+    return undefined;
+  });
+  const screen = renderWithProviders(<ProfileScreen />);
+  expect(await screen.findByText("Awaiting approval")).toBeTruthy();
+  // Only the pending one: the approved collab carries no such label.
+  expect(screen.getAllByText("Awaiting approval")).toHaveLength(1);
+  const query = db.callsTo("project_members")[0];
+  // The membership's own status, not the joined project's.
+  expect(query.columns?.split("project:")[0]).toMatch(/\bstatus\b/);
+});
+
 test("an empty bio shows an Add a bio prompt, not invented text", async () => {
   world({ badges: [], portfolio_links: [] });
   const screen = renderWithProviders(<ProfileScreen />);

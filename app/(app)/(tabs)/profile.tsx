@@ -44,6 +44,8 @@ type MyCollab = {
   status: string;
   role: string;
   committed: boolean;
+  /** The owner hasn't approved this membership yet. */
+  awaitingApproval: boolean;
 };
 
 const DEMO_LINKS = [{ title: "Design Portfolio", url: "" }, { title: "Video Portfolio", url: "" }];
@@ -141,7 +143,7 @@ export default function ProfileScreen() {
       });
     supabase
       .from("project_members")
-      .select("id, role, mou_accepted, project:projects!project_id(id, title, project_type, status, owner_id)")
+      .select("id, role, mou_accepted, status, project:projects!project_id(id, title, project_type, status, owner_id)")
       .eq("user_id", user.id)
       .then(({ data: memberData }) => {
         const collabs: MyCollab[] = (memberData ?? [])
@@ -154,6 +156,7 @@ export default function ProfileScreen() {
             status: m.project?.status ?? "recruiting",
             role: m.role ?? "Member",
             committed: m.mou_accepted ?? false,
+            awaitingApproval: m.status === "pending",
           }));
         setMyCollabs(collabs);
       });
@@ -384,6 +387,11 @@ export default function ProfileScreen() {
                       <Text style={{ color: C.purpleL, fontFamily: FONT.medium, fontSize: fs(12), marginBottom: vs(8) }}>
                         {collab.role}
                       </Text>
+                      {collab.awaitingApproval && (
+                        <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(11), marginBottom: vs(8) }}>
+                          Awaiting approval
+                        </Text>
+                      )}
                       {collab.committed ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: s(5), alignSelf: "flex-start" }}>
                           <View style={{ width: s(7), height: s(7), borderRadius: s(4), backgroundColor: C.success }} />

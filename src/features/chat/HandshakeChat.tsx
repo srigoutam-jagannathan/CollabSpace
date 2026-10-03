@@ -297,7 +297,9 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
       supabase
         .from("project_members")
         .select("user_id, role, mou_accepted, profile:profiles!user_id(full_name, avatar_url)")
-        .eq("project_id", projectId),
+        .eq("project_id", projectId)
+        // Pending requesters aren't members yet; the owner sees them in Notifications.
+        .eq("status", "approved"),
       supabase
         .from("profiles")
         .select("id, full_name, avatar_url")
