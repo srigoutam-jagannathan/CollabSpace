@@ -397,7 +397,9 @@ export default function ProfileScreen() {
                           <View style={{ width: s(7), height: s(7), borderRadius: s(4), backgroundColor: C.success }} />
                           <Text style={{ color: C.success, fontFamily: FONT.medium, fontSize: fs(11) }}>Committed</Text>
                         </View>
-                      ) : (
+                      ) : collab.awaitingApproval ? null : (
+                        // A commitment counts once the owner approves, so
+                        // pending rows offer no Commit button.
                         <Btn
                           onPress={() => handleCommit(collab.membershipId, collab.title)}
                           pressScale={0.92}

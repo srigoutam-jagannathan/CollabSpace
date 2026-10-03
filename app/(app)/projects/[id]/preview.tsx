@@ -72,26 +72,10 @@ export default function ProjectPreviewScreen() {
   async function handleQuit() {
     if (!user || !project) return;
     try {
-      // .select() so we can tell a real delete from one RLS silently dropped:
-      // with no matching policy PostgREST still answers 200, affecting 0 rows.
-      const { data: removed, error } = await supabase
-        .from("project_members").delete()
-        .eq("project_id", id).eq("user_id", user.id)
-        .select("id");
+      // One transaction, server-side: deletes the membership row, logs
+      // member_quit and posts the member_left chat message.
+      const { error } = await supabase.rpc("leave_project", { p_project: id });
       if (error) throw error;
-      if (!removed || removed.length === 0) {
-        throw new Error("Membership was not removed.");
-      }
-
-      await supabase.from("collaboration_events").insert({
-        project_id: id, user_id: user.id, event_type: "member_quit",
-      });
-      await supabase.from("chat_messages").insert({
-        project_id: id, sender_id: user.id,
-        type: "member_left", content: "",
-        metadata: { userName: myFullName || "A user" },
-        read_by: [],
-      });
       await supabase.functions.invoke("notify-owner", {
         body: {
           projectId: id,

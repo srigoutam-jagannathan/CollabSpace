@@ -518,17 +518,13 @@ export default function SettingsScreen() {
           onClose={() => setQuitTarget(null)}
           onQuit={async () => {
             if (!quitTarget || !user) return;
-            await supabase.from("project_members").delete()
-              .eq("project_id", quitTarget.projectId).eq("user_id", user.id);
-            await supabase.from("collaboration_events").insert({
-              project_id: quitTarget.projectId, user_id: user.id, event_type: "member_quit",
-            });
-            await supabase.from("chat_messages").insert({
-              project_id: quitTarget.projectId, sender_id: user.id,
-              type: "member_left", content: "",
-              metadata: { userName: myFullName || "A user" },
-              read_by: [],
-            });
+            // One transaction, server-side: deletes the membership row, logs
+            // member_quit and posts the member_left chat message.
+            const { error } = await supabase.rpc("leave_project", { p_project: quitTarget.projectId });
+            if (error) {
+              Alert.alert("Error", "Could not leave the project. Please try again.");
+              return;
+            }
             await supabase.functions.invoke("notify-owner", {
               body: {
                 projectId: quitTarget.projectId,

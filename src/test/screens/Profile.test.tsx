@@ -93,7 +93,7 @@ test("the commit prompt does not promise an event that isn't recorded", async ()
     if (c.table === "profiles") return { data: { full_name: "Ana", badges: [], portfolio_links: [], skills: [] } };
     if (c.table === "projects") return { data: [] };
     if (c.table === "project_members") {
-      return { data: [{ id: "m1", role: "Dev", mou_accepted: false,
+      return { data: [{ id: "m1", role: "Dev", mou_accepted: false, status: "approved",
         project: { id: "p1", title: "Aurora", project_type: null, status: "recruiting", owner_id: "owner" } }] };
     }
     return undefined;
@@ -126,6 +126,26 @@ test("a collab the owner has not approved yet says so", async () => {
   const query = db.callsTo("project_members")[0];
   // The membership's own status, not the joined project's.
   expect(query.columns?.split("project:")[0]).toMatch(/\bstatus\b/);
+});
+
+test("a pending collab has no Commit button: a commitment counts once the owner approves", async () => {
+  db.respond((c) => {
+    if (c.table === "profiles") return { data: { full_name: "Ana", badges: [], portfolio_links: [], skills: [] } };
+    if (c.table === "projects") return { data: [] };
+    if (c.table === "project_members") {
+      const project = (id: string, title: string) => ({ id, title, project_type: null, status: "recruiting", owner_id: "owner" });
+      return { data: [
+        { id: "m1", role: "Dev", mou_accepted: false, status: "pending", project: project("p1", "Aurora") },
+        { id: "m2", role: "Dev", mou_accepted: false, status: "approved", project: project("p2", "Lumen") },
+      ] };
+    }
+    return undefined;
+  });
+  const screen = renderWithProviders(<ProfileScreen />);
+  expect(await screen.findByText("Awaiting approval")).toBeTruthy();
+  // Exact match: the "Commitment Score" heading also contains "Commit".
+  // Only the approved collab offers one.
+  expect(screen.getAllByText("Commit")).toHaveLength(1);
 });
 
 test("an empty bio shows an Add a bio prompt, not invented text", async () => {

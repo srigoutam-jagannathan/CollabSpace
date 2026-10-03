@@ -12,8 +12,8 @@ jest.mock("@/features/auth/AuthContext", () => ({ useAuth: () => mockAuth }));
 
 import HandshakeChat from "./HandshakeChat";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { db, has } from "@/test/supabaseMock";
-import { routerState } from "@/test/routerMock";
+import { db, has, supabase } from "@/test/supabaseMock";
+import { mockRouter, routerState } from "@/test/routerMock";
 
 const P = "p1";
 const NAMES: Record<string, string> = { owner: "Olive Owner", me: "Mia Member", ana: "Ana Lee", ben: "Ben Pending" };
@@ -192,5 +192,46 @@ describe("removing a member", () => {
     expect(screen.getByLabelText("Remove Ana Lee from the project")).toBeTruthy();
     expect(db.callsTo("collaboration_events").filter((c) => c.op === "insert")).toHaveLength(0);
     expect(db.callsTo("chat_messages").filter((c) => c.op === "insert")).toHaveLength(0);
+  });
+});
+
+describe("quitting the project", () => {
+  let alertSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  });
+  afterEach(() => alertSpy.mockRestore());
+
+  async function quit(screen: ReturnType<typeof renderChat>) {
+    fireEvent.press(await screen.findByText("Lumen"));
+    fireEvent.press(await screen.findByText("Quit Project"));
+    fireEvent.press(await screen.findByLabelText("Confirm leaving the project"));
+  }
+
+  test("goes through leave_project, tells the owner, and moves on", async () => {
+    world({ owner: "owner", members: ["me"] });
+    const screen = renderChat();
+    await quit(screen);
+
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(app)/projects"));
+    expect(supabase.rpc).toHaveBeenCalledWith("leave_project", { p_project: P });
+    expect(db.callsTo("project_members").filter((c) => c.op === "delete")).toHaveLength(0);
+    expect(db.callsTo("collaboration_events").filter((c) => c.op === "insert")).toHaveLength(0);
+    expect(db.callsTo("chat_messages").filter((c) => c.op === "insert")).toHaveLength(0);
+    expect(supabase.functions.invoke).toHaveBeenCalledWith("notify-owner", expect.anything());
+  });
+
+  test("a leave the RPC refuses is reported, and nothing else happens", async () => {
+    world({ owner: "owner", members: ["me"] });
+    supabase.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "not a member" } });
+    const screen = renderChat();
+    await quit(screen);
+
+    await waitFor(() =>
+      expect(alertSpy).toHaveBeenCalledWith("Error", "Could not leave the project. Please try again.")
+    );
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    expect(supabase.functions.invoke).not.toHaveBeenCalled();
   });
 });

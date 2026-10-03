@@ -9,10 +9,15 @@ jest.mock("@/features/auth/AuthContext", () => ({ useAuth: () => mockAuth }));
 // Route files live under app/. Tests may not: Expo Router would register them as routes.
 import ProjectPreviewScreen from "../../../app/(app)/projects/[id]/preview";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { db, has, supabase } from "@/test/supabaseMock";
+import { db, supabase } from "@/test/supabaseMock";
 import { mockRouter, routerState } from "@/test/routerMock";
 
-function world({ member, leave = "removes" }: { member: boolean; leave?: "removes" | "silently-refused" }) {
+function world({ member, leave = "leaves" }: { member: boolean; leave?: "leaves" | "refused" }) {
+  if (leave === "refused") {
+    supabase.rpc.mockResolvedValue({
+      data: null, error: { code: "42501", message: "not a member of this project" },
+    });
+  }
   db.respond((c) => {
     if (c.table === "projects") {
       return {
@@ -21,9 +26,6 @@ function world({ member, leave = "removes" }: { member: boolean; leave?: "remove
           tags: [], looking_for: [], owner: { full_name: "Olive Owner" },
         },
       };
-    }
-    if (c.table === "project_members" && c.op === "delete") {
-      return { data: leave === "removes" ? [{ id: "m1" }] : [] };
     }
     if (c.table === "project_members") return { data: member ? { id: "m1" } : null };
     if (c.table === "profiles") return { data: { full_name: "Mia Member" } };
@@ -63,27 +65,25 @@ test("a non-member is offered Join, not Leave", async () => {
   expect(screen.queryByLabelText("Leave Project")).toBeNull();
 });
 
-test("leaving removes the membership, logs it, tells the owner, and moves on", async () => {
+test("leaving goes through leave_project, tells the owner, and moves on", async () => {
   world({ member: true });
   const screen = renderPreview();
   await leave(screen);
 
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(app)/projects"));
-  const del = db.callsTo("project_members").find((c) => c.op === "delete")!;
-  expect(del.columns).toBe("id");
-  expect(has(del, "eq", "project_id", "p1")).toBe(true);
-  expect(has(del, "eq", "user_id", "me")).toBe(true);
-  expect(db.callsTo("collaboration_events").find((c) => c.op === "insert")!.payload).toMatchObject({
-    event_type: "member_quit",
-  });
+  // The RPC deletes the row, logs member_quit and posts to the chat, server-side.
+  expect(supabase.rpc).toHaveBeenCalledWith("leave_project", { p_project: "p1" });
+  expect(db.callsTo("project_members").filter((c) => c.op === "delete")).toHaveLength(0);
+  expect(db.callsTo("collaboration_events").filter((c) => c.op === "insert")).toHaveLength(0);
+  expect(db.callsTo("chat_messages").filter((c) => c.op === "insert")).toHaveLength(0);
   expect(supabase.functions.invoke).toHaveBeenCalledWith(
     "notify-owner",
     expect.anything()
   );
 });
 
-test("a leave the database silently refuses is reported, and nothing else happens", async () => {
-  world({ member: true, leave: "silently-refused" });
+test("a leave the RPC refuses is reported, and nothing else happens", async () => {
+  world({ member: true, leave: "refused" });
   const screen = renderPreview();
   await leave(screen);
 
