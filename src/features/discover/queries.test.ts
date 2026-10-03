@@ -1,7 +1,7 @@
 jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
 
 import { db, has } from "@/test/supabaseMock";
-import { fetchPulse } from "./queries";
+import { fetchActive, fetchPulse } from "./queries";
 
 beforeEach(() => db.reset());
 
@@ -29,4 +29,22 @@ test("Pulse asks only for commitments: no owner approvals, no pending join reque
     }],
     error: null,
   });
+});
+
+test("Active right now counts real team activity, not join requests or withdrawals", async () => {
+  db.respond((call) => {
+    if (call.table === "collaboration_events") return { data: [{ project_id: "p1" }, { project_id: "p1" }] };
+    if (call.table === "projects") {
+      return { data: [{ id: "p1", title: "Solar Boat", description: "", project_health: null }] };
+    }
+    return undefined;
+  });
+
+  const result = await fetchActive();
+
+  const [call] = db.callsTo("collaboration_events");
+  expect(has(call, "in", "event_type", ["committed", "mou_signed", "member_removed"])).toBe(true);
+  expect(result.data).toEqual([
+    { id: "p1", title: "Solar Boat", description: "", project_health: null, event_count: 2 },
+  ]);
 });

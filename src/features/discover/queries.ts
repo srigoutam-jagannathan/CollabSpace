@@ -9,6 +9,12 @@ export interface QueryResult<T> {
 
 const PULSE_WINDOW_HOURS = 48;
 const ACTIVE_WINDOW_DAYS = 7;
+/**
+ * Events that count as a team doing something. join is only a pending
+ * request and member_quit can be a withdrawal, so join/withdraw cycles
+ * would otherwise inflate "Active right now".
+ */
+const ACTIVE_EVENT_TYPES = ["committed", "mou_signed", "member_removed"];
 
 /**
  * How many rows each query may read.
@@ -115,7 +121,7 @@ export async function fetchNeeds(
 }
 
 /**
- * Projects with at least one collaboration event in the last 7 days.
+ * Projects with at least one team event (ACTIVE_EVENT_TYPES) in the last 7 days.
  *
  * Event counts are taken over the most recent WINDOW.activeEvents events in
  * the window rather than every row in the table. Past that ceiling the
@@ -128,6 +134,7 @@ export async function fetchActive(
   const { data: events, error: eventsError } = await supabase
     .from("collaboration_events")
     .select("project_id")
+    .in("event_type", ACTIVE_EVENT_TYPES)
     .gt("created_at", hoursAgo(ACTIVE_WINDOW_DAYS * 24))
     .order("created_at", { ascending: false })
     .limit(WINDOW.activeEvents);
