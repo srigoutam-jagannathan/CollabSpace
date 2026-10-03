@@ -25,11 +25,10 @@ export default function ProjectPreviewScreen() {
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
   const [quitSheetVisible, setQuitSheetVisible] = useState(false);
-  const [myFullName, setMyFullName] = useState("");
 
   useEffect(() => {
     async function load() {
-      const [{ data: proj }, { data: membership }, { data: profileData }] = await Promise.all([
+      const [{ data: proj }, { data: membership }] = await Promise.all([
         supabase.from("projects").select("*, owner:profiles!owner_id(full_name)").eq("id", id).single(),
         supabase
           .from("project_members")
@@ -37,7 +36,6 @@ export default function ProjectPreviewScreen() {
           .eq("project_id", id)
           .eq("user_id", user?.id ?? "")
           .maybeSingle(),
-        supabase.from("profiles").select("full_name").eq("id", user?.id ?? "").single(),
       ]);
       // Flatten owner_name
       if (proj && (proj as any).owner) {
@@ -45,7 +43,6 @@ export default function ProjectPreviewScreen() {
       }
       setProject(proj);
       setIsMember(!!membership);
-      if (profileData) setMyFullName(profileData.full_name ?? "");
       setLoading(false);
     }
     load();
@@ -76,13 +73,8 @@ export default function ProjectPreviewScreen() {
       // member_quit and posts the member_left chat message.
       const { error } = await supabase.rpc("leave_project", { p_project: id });
       if (error) throw error;
-      await supabase.functions.invoke("notify-owner", {
-        body: {
-          projectId: id,
-          title: `${myFullName || "A member"} left ${project.title}`,
-          body: `${myFullName || "A member"} has left the project.`,
-        },
-      });
+      // The function builds the recipient and the text from the database.
+      await supabase.functions.invoke("notify-owner", { body: { projectId: id } });
       router.replace("/(app)/projects" as any);
     } catch {
       Alert.alert("Error", "Could not leave the project. Please try again.");

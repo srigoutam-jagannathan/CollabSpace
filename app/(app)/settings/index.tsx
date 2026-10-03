@@ -167,7 +167,6 @@ export default function SettingsScreen() {
   const [ownedProjects, setOwnedProjects] = useState<OwnedProject[]>([]);
   const [memberProjects, setMemberProjects] = useState<MemberProject[]>([]);
   const [quitTarget, setQuitTarget] = useState<MemberProject | null>(null);
-  const [myFullName, setMyFullName] = useState("");
 
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   const emailPw = isEmailPasswordUser(user);
@@ -189,8 +188,7 @@ export default function SettingsScreen() {
           .from("project_members")
           .select("project_id, role, projects(id, title)")
           .eq("user_id", user.id),
-        supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-      ]).then(([ownedRes, memberRes, profileRes]) => {
+      ]).then(([ownedRes, memberRes]) => {
         setOwnedProjects(
           (ownedRes.data ?? []).map((p: any) => ({ id: p.id, title: p.title }))
         );
@@ -201,7 +199,6 @@ export default function SettingsScreen() {
             title: (m.projects as any)?.title ?? "Unknown Project",
           }))
         );
-        if (profileRes.data) setMyFullName(profileRes.data.full_name ?? "");
       });
     }, [user])
   );
@@ -525,13 +522,8 @@ export default function SettingsScreen() {
               Alert.alert("Error", "Could not leave the project. Please try again.");
               return;
             }
-            await supabase.functions.invoke("notify-owner", {
-              body: {
-                projectId: quitTarget.projectId,
-                title: `${myFullName || "A member"} left ${quitTarget.title}`,
-                body: `${myFullName || "A member"} has left the project.`,
-              },
-            });
+            // The function builds the recipient and the text from the database.
+            await supabase.functions.invoke("notify-owner", { body: { projectId: quitTarget.projectId } });
             setQuitTarget(null);
             setMemberProjects((prev) => prev.filter((p) => p.projectId !== quitTarget.projectId));
           }}

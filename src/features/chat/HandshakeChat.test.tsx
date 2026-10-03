@@ -209,7 +209,7 @@ describe("quitting the project", () => {
     expect(db.callsTo("project_members").filter((c) => c.op === "delete")).toHaveLength(0);
     expect(db.callsTo("collaboration_events").filter((c) => c.op === "insert")).toHaveLength(0);
     expect(db.callsTo("chat_messages").filter((c) => c.op === "insert")).toHaveLength(0);
-    expect(supabase.functions.invoke).toHaveBeenCalledWith("notify-owner", expect.anything());
+    expect(supabase.functions.invoke).toHaveBeenCalledWith("notify-owner", { body: { projectId: P } });
   });
 
   test("a leave the RPC refuses is reported, and nothing else happens", async () => {

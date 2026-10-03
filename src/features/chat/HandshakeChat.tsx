@@ -173,7 +173,6 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
   const [sending, setSending] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [showQuitSheet, setShowQuitSheet] = useState(false);
-  const [myFullName, setMyFullName] = useState<string>("");
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
@@ -191,7 +190,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
   const loadData = useCallback(async () => {
     if (!projectId || !user) return;
 
-    const [projectRes, messagesRes, membershipRes, profileRes] = await Promise.all([
+    const [projectRes, messagesRes, membershipRes] = await Promise.all([
       supabase.from("projects").select("*").eq("id", projectId).single(),
       supabase
         .from("chat_messages")
@@ -204,13 +203,11 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
         .eq("project_id", projectId)
         .eq("user_id", user.id)
         .maybeSingle(),
-      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
     ]);
 
     if (projectRes.data) setProject(projectRes.data as Project);
     if (messagesRes.data) setMessages(messagesRes.data as MessageWithSender[]);
     if (membershipRes.data) setMembership(membershipRes.data as ProjectMember);
-    if (profileRes.data) setMyFullName(profileRes.data.full_name ?? "");
 
     setLoading(false);
   }, [projectId, user]);
@@ -411,13 +408,8 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
       const { error: leaveErr } = await supabase.rpc("leave_project", { p_project: projectId });
       if (leaveErr) throw leaveErr;
 
-      await supabase.functions.invoke("notify-owner", {
-        body: {
-          projectId,
-          title: `${myFullName || "A member"} left ${project.title}`,
-          body: `${myFullName || "A member"} has left the project.`,
-        },
-      });
+      // The function builds the recipient and the text from the database.
+      await supabase.functions.invoke("notify-owner", { body: { projectId } });
 
       router.replace("/(app)/projects" as any);
     } catch {
