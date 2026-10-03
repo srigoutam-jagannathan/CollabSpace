@@ -13,21 +13,44 @@ test("sends the request through the request_connection RPC with the other person
   expect(db.callsTo("connections")).toEqual([]);
 });
 
-test("within 7 days of a rejection, says when they can ask again", async () => {
+test("within 7 days of a rejection (CS001), says when they can ask again", async () => {
   supabase.rpc.mockResolvedValue({
-    data: null, error: { code: "P0001", message: "you can ask again 7 days after a rejection" },
+    data: null, error: { code: "CS001", message: "you can ask again 7 days after a rejection" },
   });
   expect(await requestConnection("u2")).toEqual({
     ok: false, reason: "too_soon", message: "You can send a new request 7 days after it was declined",
   });
 });
 
-test("an existing request or connection reads as already sent", async () => {
+test("an existing request or connection (CS002) reads as already sent", async () => {
   supabase.rpc.mockResolvedValue({
-    data: null, error: { code: "P0001", message: "a request between you already exists" },
+    data: null, error: { code: "CS002", message: "a request between you already exists" },
   });
   expect(await requestConnection("u2")).toEqual({
     ok: false, reason: "exists", message: "Request already sent",
+  });
+});
+
+// The code decides, not the wording. Each code is paired with the other
+// error's message, so matching on text, or swapping the codes, fails here.
+test("CS001 is the 7-day wait, whatever the message says", async () => {
+  supabase.rpc.mockResolvedValue({
+    data: null, error: { code: "CS001", message: "a request between you already exists" },
+  });
+  expect(await requestConnection("u2")).toMatchObject({ ok: false, reason: "too_soon" });
+});
+
+test("CS002 is already sent, whatever the message says", async () => {
+  supabase.rpc.mockResolvedValue({
+    data: null, error: { code: "CS002", message: "you can ask again 7 days after a rejection" },
+  });
+  expect(await requestConnection("u2")).toMatchObject({ ok: false, reason: "exists" });
+});
+
+test("an invalid recipient (22023) is a generic retry", async () => {
+  supabase.rpc.mockResolvedValue({ data: null, error: { code: "22023", message: "not a valid recipient" } });
+  expect(await requestConnection("u2")).toEqual({
+    ok: false, reason: "failed", message: "Couldn't send the request. Try again.",
   });
 });
 

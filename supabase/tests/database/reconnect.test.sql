@@ -23,7 +23,7 @@ insert into auth.users (id, email) values
 insert into public.projects (id, owner_id, title) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
 
-select plan(6);
+select plan(10);
 -- a1 asked b2; b2 rejected it 8 days ago. c3's rejection by a1 is only 2 days old.
 -- update_connections_updated_at is BEFORE UPDATE only, so these back-dated
 -- updated_at values survive the insert.
@@ -43,7 +43,7 @@ select ok((select status = 'pending' and initiated_by = '00000000-0000-0000-0000
 
 select tests.act_as('00000000-0000-0000-0000-0000000000c3');
 select throws_ok($$ select public.request_connection('00000000-0000-0000-0000-0000000000a1') $$,
-  'P0001', null, 'within 7 days of a rejection, nobody can ask again');
+  'CS001', null, 'within 7 days of a rejection, nobody can ask again');
 
 select tests.act_as('00000000-0000-0000-0000-0000000000d4');
 select lives_ok($$ select public.request_connection('00000000-0000-0000-0000-0000000000b2') $$,
@@ -56,6 +56,28 @@ select is((select count(*)::int from public.connections
 
 select tests.act_as('00000000-0000-0000-0000-0000000000d4');
 select throws_ok($$ select public.request_connection('00000000-0000-0000-0000-0000000000b2') $$,
-  'P0001', null, 'a pending request cannot be sent twice');
+  'CS002', null, 'a pending request cannot be sent twice');
+
+-- A legacy non-university account, with a profile row so that only the
+-- target check (not the profiles foreign key) can refuse a request to it.
+reset role;
+set local session_replication_role = replica;
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000d9', 'legacy@gmail.com');
+insert into public.profiles (id) values ('00000000-0000-0000-0000-0000000000d9');
+set local session_replication_role = origin;
+
+select tests.act_as('00000000-0000-0000-0000-0000000000d4');
+select throws_ok($$ select public.request_connection('00000000-0000-0000-0000-0000000000d9') $$,
+  '22023', null, 'a non-university account cannot be sent a request');
+select throws_ok($$ select public.request_connection('00000000-0000-0000-0000-0000000000ee') $$,
+  '22023', null, 'an unknown user is an invalid recipient, not a foreign-key error');
+reset role;
+
+-- The grants survive create or replace.
+select ok(has_function_privilege('authenticated', 'public.request_connection(uuid)', 'execute'),
+  'signed-in users can call request_connection');
+select ok(not has_function_privilege('anon', 'public.request_connection(uuid)', 'execute'),
+  'anon cannot call request_connection');
 select * from finish();
 rollback;

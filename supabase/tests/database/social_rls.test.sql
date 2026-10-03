@@ -125,8 +125,12 @@ select is(
   (select status from public.connections where id = '00000000-0000-0000-0000-00000000c0ab'),
   'accepted', 'the recipient can accept');
 
--- A fresh alice-dave pair: alice initiates and stays a party, so only the
--- status = 'pending' check can refuse this.
+-- A fresh alice-dave pair, created already accepted. There is no insert
+-- policy any more (request_connection is the only way in, and it always
+-- inserts pending), so the missing policy refuses this, as it refuses the
+-- well-formed pending insert above. Kept because it pins the consent rule
+-- itself: if an insert policy ever comes back, an accepted row must still be
+-- refused.
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
 select throws_ok(
   $$ insert into public.connections (requester_id, recipient_id, initiated_by, status)
