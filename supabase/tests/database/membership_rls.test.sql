@@ -143,14 +143,11 @@ select throws_ok(
   '42501', null, 'an outsider cannot write events about other people');
 
 -- ── Leaving ─────────────────────────────────────────────────────────────
+-- leave_project deletes the row and logs member_quit in one transaction.
 select tests.act_as('00000000-0000-0000-0000-0000000000b2');
 select lives_ok(
-  $$ insert into public.collaboration_events (project_id, user_id, event_type)
-     values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'member_quit') $$,
-  'a member can log their own departure');
-
-delete from public.project_members
-  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000b2';
+  $$ select public.leave_project('00000000-0000-0000-0000-0000000000f1') $$,
+  'a member can leave and log their own departure');
 reset role;
 select is(
   (select count(*)::int from public.project_members

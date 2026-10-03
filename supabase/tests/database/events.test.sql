@@ -18,16 +18,24 @@ insert into auth.users (id, email) values
 insert into public.projects (id, owner_id, title) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
 
-select plan(10);
+select plan(24);
 
--- As postgres: the owner's own committed row (as CreateProject inserts it),
--- an approved member who has not committed yet, and a pending joiner.
+-- As postgres: ...e5 an approved member who leaves, ...e6 a pending joiner
+-- who withdraws.
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000e5', 'leaver@qub.ac.uk'),
+  ('00000000-0000-0000-0000-0000000000e6', 'withdrawer@ulster.ac.uk');
+update public.profiles set full_name = 'Eve Leaver' where id = '00000000-0000-0000-0000-0000000000e5';
+-- The owner's own committed row (as CreateProject inserts it), an approved
+-- member who has not committed yet, and pending joiners.
 insert into public.project_members (project_id, user_id, role, status, mou_accepted) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Owner', 'approved', true),
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'Designer', 'approved', false),
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'Dev', 'pending', false);
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'Dev', 'pending', false),
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e5', 'Writer', 'approved', false),
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e6', 'Tester', 'pending', false);
 
--- ── Self-logging is limited to leaving ─────────────────────────────────
+-- ── Only the owner writes events directly ──────────────────────────────
 select tests.act_as('00000000-0000-0000-0000-0000000000b2');
 select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
   values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'milestone') $$,
@@ -35,46 +43,105 @@ select throws_ok($$ insert into public.collaboration_events (project_id, user_id
 select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
   values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'committed') $$,
   '42501', null, 'a member cannot log a commitment directly');
-select lives_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
+select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
   values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'member_quit') $$,
-  'a member can still log leaving');
+  '42501', null, 'a member cannot log leaving directly: it goes through leave_project');
 select tests.act_as('00000000-0000-0000-0000-0000000000d4');
 select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
   values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d4', 'member_quit') $$,
   '42501', null, 'an outsider cannot log events on a project they were never in');
 
--- The app deletes the membership row first, then logs member_quit
--- (settings/index.tsx, projects/[id]/preview.tsx, HandshakeChat.tsx).
-select tests.act_as('00000000-0000-0000-0000-0000000000c3');
-delete from public.project_members
-  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000c3';
-select lives_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
-  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'member_quit') $$,
-  'someone who has just left can log leaving');
-select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
-  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'chat') $$,
-  '42501', null, 'someone who has left cannot log anything else');
+-- ── Leaving goes through leave_project ─────────────────────────────────
+select tests.act_as('00000000-0000-0000-0000-0000000000e5');
+select lives_ok($$ select public.leave_project('00000000-0000-0000-0000-0000000000f1') $$,
+  'a member can leave through leave_project');
+reset role;
+select is((select count(*)::int from public.project_members
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000e5'), 0,
+  'leaving removes the membership row');
+select is((select count(*)::int from public.collaboration_events
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000e5'
+    and event_type = 'member_quit'), 1,
+  'leaving logs exactly one member_quit');
+select results_eq(
+  $$ select type, content, metadata from public.chat_messages
+     where project_id = '00000000-0000-0000-0000-0000000000f1' and sender_id = '00000000-0000-0000-0000-0000000000e5' $$,
+  $$ values ('member_left'::text, ''::text, '{"userName": "Eve Leaver"}'::jsonb) $$,
+  'leaving posts the member_left message to the chat, as the app did');
 
--- ── Committing records the event, server-side ──────────────────────────
+select tests.act_as('00000000-0000-0000-0000-0000000000e5');
+select throws_ok($$ select public.leave_project('00000000-0000-0000-0000-0000000000f1') $$,
+  '42501', null, 'leaving twice is refused');
+select throws_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e5', 'member_quit') $$,
+  '42501', null, 'a former member cannot log member_quit directly');
+reset role;
+select is((select count(*)::int from public.collaboration_events
+  where user_id = '00000000-0000-0000-0000-0000000000e5' and event_type = 'member_quit'), 1,
+  'a refused second leave logs nothing');
+
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select throws_ok($$ select public.leave_project('00000000-0000-0000-0000-0000000000f1') $$,
+  '42501', null, 'the owner cannot leave their own project');
+select tests.act_as('00000000-0000-0000-0000-0000000000d4');
+select throws_ok($$ select public.leave_project('00000000-0000-0000-0000-0000000000f1') $$,
+  '42501', null, 'an outsider cannot leave a project they are not in');
+reset role;
+select is((select count(*)::int from public.project_members
+  where project_id = '00000000-0000-0000-0000-0000000000f1' and user_id = '00000000-0000-0000-0000-0000000000a1'), 1,
+  'the owner''s row survives a refused leave');
+
+-- A pending joiner withdrawing never had chat access: no chat message.
+select tests.act_as('00000000-0000-0000-0000-0000000000e6');
+select lives_ok($$ select public.leave_project('00000000-0000-0000-0000-0000000000f1') $$,
+  'a pending joiner can withdraw through leave_project');
+reset role;
+select is((select count(*)::int from public.chat_messages
+  where sender_id = '00000000-0000-0000-0000-0000000000e6'), 0,
+  'a pending joiner withdrawing posts nothing to the chat');
+
+-- ── A commitment counts once the member is approved ────────────────────
+-- Commit, then approval.
+select tests.act_as('00000000-0000-0000-0000-0000000000c3');
+update public.project_members set mou_accepted = true
+  where user_id = '00000000-0000-0000-0000-0000000000c3';
+reset role;
+select is((select count(*)::int from public.collaboration_events
+  where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000c3'), 0,
+  'a pending member who commits records nothing');
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select public.approve_member('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3');
+reset role;
+select is((select count(*)::int from public.collaboration_events
+  where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000c3'), 1,
+  'approving a committed member records exactly one commitment');
+
+-- Approval, then commit.
 select tests.act_as('00000000-0000-0000-0000-0000000000b2');
 update public.project_members set mou_accepted = true
   where user_id = '00000000-0000-0000-0000-0000000000b2';
 reset role;
 select is((select count(*)::int from public.collaboration_events
   where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000b2'), 1,
-  'committing records a committed event');
+  'an approved member who commits records one commitment');
+
+-- Later updates record nothing new.
+update public.project_members set mou_accepted = true, role = 'Lead designer'
+  where user_id = '00000000-0000-0000-0000-0000000000b2';
+update public.project_members set status = 'approved', mou_accepted = true
+  where user_id = '00000000-0000-0000-0000-0000000000c3';
+select is((select count(*)::int from public.collaboration_events
+  where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000b2'), 1,
+  'a second update records no second commitment');
+select is((select count(*)::int from public.collaboration_events
+  where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000c3'), 1,
+  'a second update after approval records no second commitment');
+
 select is((select count(*)::int from public.collaboration_events
   where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000a1'), 0,
   'the owner''s own membership row records no commitment');
 
--- Committing again (an unrelated update) records nothing new.
-update public.project_members set mou_accepted = true, role = 'Lead designer'
-  where user_id = '00000000-0000-0000-0000-0000000000b2';
-select is((select count(*)::int from public.collaboration_events
-  where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000b2'), 1,
-  'an already committed member records no second commitment');
-
--- Accepting an invitation inserts a committed row, which records the event.
+-- Both at once: accepting an invitation inserts an approved, committed row.
 insert into public.collab_invitations (project_id, sender_id, recipient_id, role)
   values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1',
           '00000000-0000-0000-0000-0000000000d4', 'Dev');
@@ -85,6 +152,12 @@ reset role;
 select is((select count(*)::int from public.collaboration_events
   where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000d4'), 1,
   'accepting an invitation records a committed event');
+
+-- The owner still logs events on their own project (member_removed etc.).
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$ insert into public.collaboration_events (project_id, user_id, event_type)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'member_removed') $$,
+  'the owner can still log events on their own project');
 
 select * from finish();
 rollback;
