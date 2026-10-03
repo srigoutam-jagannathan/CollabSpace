@@ -19,6 +19,7 @@ import type { CollabInvitationNotif } from "@/types/database";
 import { s, vs, fs } from "@/utils/scale";
 import { ScreenLoader } from "@/components/ScreenLoader";
 import { formatRelativeTime, getInitials } from "@/utils/text";
+import { visibleApprovals, type ApprovedMembershipRow, type MyApproval } from "@/features/notifications/approvals";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,13 +37,6 @@ type JoinRequest = {
   role: string | null;
   createdAt: string;
   isApproved: boolean;
-};
-
-type MyApproval = {
-  id: string;
-  projectTitle: string;
-  projectId: string;
-  createdAt: string;
 };
 
 type ConnectionRequest = {
@@ -165,17 +159,15 @@ export default function NotificationsScreen() {
 
     const { data: approvedMemberships } = await supabase
       .from("project_members")
-      .select("project_id, created_at, project:projects!project_id(id, title)")
+      .select("project_id, created_at, project:projects!project_id(id, title, owner_id)")
       .eq("user_id", user.id)
       .eq("status", "approved")
       .order("created_at", { ascending: false });
 
-    const approvals: MyApproval[] = (approvedMemberships ?? []).map((m: any) => ({
-      id: `${m.project_id}_approval`,
-      projectTitle: m.project?.title ?? "A project",
-      projectId: m.project_id,
-      createdAt: m.created_at ?? new Date().toISOString(),
-    }));
+    const approvals = visibleApprovals(
+      (approvedMemberships ?? []) as unknown as ApprovedMembershipRow[],
+      user.id
+    );
 
     setMyApprovals(approvals);
 

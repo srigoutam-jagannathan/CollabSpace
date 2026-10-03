@@ -102,7 +102,7 @@ export function ShareProfileSheet({
         .from("project_members")
         .select("project:projects!project_id(id, title)")
         .eq("user_id", user.id)
-        .eq("mou_accepted", true),
+        .eq("status", "approved"),
       supabase
         .from("projects")
         .select("id, title")
