@@ -14,7 +14,9 @@ alter table public.project_members
   add column status text not null default 'pending'
   check (status in ('pending', 'approved'));
 
--- Backfill generously: nobody who is in today loses access.
+-- Backfill: rows that are committed, the owner's own, or approved by an owner
+-- mou_signed event keep access. Pending joiners the owner never approved
+-- lose chat and project-media access until the owner approves them.
 update public.project_members m set status = 'approved'
 where m.mou_accepted
    or exists (select 1 from public.projects p where p.id = m.project_id and p.owner_id = m.user_id)

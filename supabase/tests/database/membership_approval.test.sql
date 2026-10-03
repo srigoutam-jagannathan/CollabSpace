@@ -18,11 +18,13 @@ insert into auth.users (id, email) values
 insert into public.projects (id, owner_id, title) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
 
-select plan(15);
+select plan(21);
 
 -- As postgres: the baseline migration does not create buckets.
 insert into storage.buckets (id, name, public) values ('project-media', 'project-media', true)
   on conflict (id) do nothing;
+insert into public.projects (id, owner_id, title) values
+  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000a1', 'Second fixture project');
 insert into public.project_members (project_id, user_id, role, status) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000b2', 'Designer', 'approved');
 insert into public.chat_messages (project_id, sender_id, content) values
@@ -43,6 +45,18 @@ select throws_ok($$ update public.project_members set status = 'approved'
 select throws_ok($$ update public.project_members set status = 'approved', mou_accepted = true
   where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
   'P0001', null, 'a joiner cannot approve themselves while committing');
+select throws_ok($$ insert into public.project_members (project_id, user_id, role)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'Dev')
+  on conflict (project_id, user_id) do update set status = 'approved' $$,
+  'P0001', null, 'a joiner cannot approve themselves through an upsert');
+-- Still c3's own row in each case, so the own-row policy lets them through
+-- and the guard's "cannot be moved" check is what refuses.
+select throws_ok($$ update public.project_members set project_id = '00000000-0000-0000-0000-0000000000f2'
+  where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
+  'P0001', null, 'a membership cannot be moved to another project');
+select throws_ok($$ update public.project_members set user_id = '00000000-0000-0000-0000-0000000000d4'
+  where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
+  'P0001', null, 'a membership cannot be handed to another user');
 select lives_ok($$ update public.project_members set mou_accepted = true
   where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
   'committing is still the member''s own call');
@@ -67,6 +81,18 @@ select is((select count(*)::int from public.collaboration_events
   where event_type = 'mou_signed' and user_id = '00000000-0000-0000-0000-0000000000a1'
     and metadata->>'approved_for' = '00000000-0000-0000-0000-0000000000c3'), 1,
   'approval writes the owner''s mou_signed event');
+
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$ select public.approve_member('00000000-0000-0000-0000-0000000000f1',
+  '00000000-0000-0000-0000-0000000000c3') $$, 'approving an already approved member is a no-op');
+reset role;
+select is((select count(*)::int from public.collaboration_events
+  where event_type = 'mou_signed' and user_id = '00000000-0000-0000-0000-0000000000a1'
+    and metadata->>'approved_for' = '00000000-0000-0000-0000-0000000000c3'), 1,
+  'approving twice still leaves exactly one mou_signed event');
+select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+select throws_ok($$ select public.approve_member('00000000-0000-0000-0000-0000000000f1',
+  '00000000-0000-0000-0000-0000000000d4') $$, 'P0002', null, 'approving someone with no membership row fails');
 
 select tests.act_as('00000000-0000-0000-0000-0000000000c3');
 select is((select count(*)::int from public.chat_messages
