@@ -18,12 +18,17 @@ import { routerState } from "@/test/routerMock";
 const P = "p1";
 const NAMES: Record<string, string> = { owner: "Olive Owner", me: "Mia Member", ana: "Ana Lee" };
 
-/** The project's owner and its member rows; `removal` is what a member delete returns. */
-function world({ owner, members, removal = "removes" }: {
+/**
+ * The project's owner and its member rows; `removal` is what a member delete
+ * returns. Members are approved unless listed in `pending`.
+ */
+function world({ owner, members, pending = [], removal = "removes" }: {
   owner: string;
   members: string[];
+  pending?: string[];
   removal?: "removes" | "silently-refused";
 }) {
+  const status = (id: string) => (pending.includes(id) ? "pending" : "approved");
   db.respond((c) => {
     if (c.table === "projects") {
       return { data: { id: P, owner_id: owner, title: "Lumen", description: "", chat_icon_url: null } };
@@ -37,12 +42,14 @@ function world({ owner, members, removal = "removes" }: {
       // Answer for whoever the query actually asked about, so a membership
       // load that isn't scoped to the current user can't pass by accident.
       const me = members.find((id) => has(c, "eq", "user_id", id));
-      return { data: me ? { id: "m-me", project_id: P, user_id: me, mou_accepted: false } : null };
+      return {
+        data: me ? { id: "m-me", project_id: P, user_id: me, mou_accepted: false, status: status(me) } : null,
+      };
     }
     if (c.table === "project_members") {
       return {
         data: members.map((id) => ({
-          user_id: id, role: "Designer", mou_accepted: false,
+          user_id: id, role: "Designer", mou_accepted: false, status: status(id),
           profile: { full_name: NAMES[id], avatar_url: null },
         })),
       };
@@ -64,7 +71,7 @@ beforeEach(() => {
 });
 
 describe("the composer", () => {
-  test("is there for a member", async () => {
+  test("is there for an approved member", async () => {
     world({ owner: "owner", members: ["me"] });
     expect(await renderChat().findByPlaceholderText("Message…")).toBeTruthy();
   });
@@ -73,6 +80,13 @@ describe("the composer", () => {
     mockAuth.user = { id: "owner" };
     world({ owner: "owner", members: ["ana"] });
     expect(await renderChat().findByPlaceholderText("Message…")).toBeTruthy();
+  });
+
+  test("is replaced by a waiting note while the owner has not approved you", async () => {
+    world({ owner: "owner", members: ["me"], pending: ["me"] });
+    const screen = renderChat();
+    expect(await screen.findByText("Waiting for the owner to approve you")).toBeTruthy();
+    expect(screen.queryByPlaceholderText("Message…")).toBeNull();
   });
 
   test("is replaced by an explanation once you are not a member", async () => {

@@ -38,7 +38,8 @@ export default function JoinProjectScreen() {
       project_id: id,
       user_id: user.id,
       intro_message: message.trim() || null,
-      role: selectedRole || null,
+      // role is NOT NULL with a default of 'member'; send it only when picked.
+      ...(selectedRole ? { role: selectedRole } : {}),
     });
 
     setLoading(false);

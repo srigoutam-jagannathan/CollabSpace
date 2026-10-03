@@ -88,7 +88,7 @@ export default function MessagesScreen() {
         .from("project_members")
         .select("project:projects(*)")
         .eq("user_id", user.id)
-        .eq("mou_accepted", true)
+        .eq("status", "approved")
         .order("created_at", { ascending: false }),
       supabase
         .from("projects")

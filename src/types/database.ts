@@ -64,8 +64,9 @@ export interface ProjectMember {
   project_id: string;            // FK → projects.id
   user_id: string;               // FK → profiles.id
   role: string;                  // e.g. "Backend Dev", "Legal Advisor"
-  mou_accepted: boolean;         // Phase 3: MOU acceptance gate
+  mou_accepted: boolean;         // the member has committed (their own choice)
   mou_accepted_at: string | null;
+  status: "pending" | "approved"; // the owner's approval; set only by the owner or an accepted invitation
 }
 
 export interface CollaborationEvent {

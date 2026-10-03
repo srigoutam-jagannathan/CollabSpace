@@ -161,19 +161,20 @@ export default function NotificationsScreen() {
 
     // ── Section 2: my own approval notifications ────────────────────────────
     // Read from project_members directly — the member can always SELECT their own rows.
+    // status, not mou_accepted: committing is the member's own choice, approval is the owner's.
 
     const { data: approvedMemberships } = await supabase
       .from("project_members")
-      .select("project_id, mou_accepted_at, project:projects!project_id(id, title)")
+      .select("project_id, created_at, project:projects!project_id(id, title)")
       .eq("user_id", user.id)
-      .eq("mou_accepted", true)
-      .order("mou_accepted_at", { ascending: false });
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
 
     const approvals: MyApproval[] = (approvedMemberships ?? []).map((m: any) => ({
       id: `${m.project_id}_approval`,
       projectTitle: m.project?.title ?? "A project",
       projectId: m.project_id,
-      createdAt: m.mou_accepted_at ?? new Date().toISOString(),
+      createdAt: m.created_at ?? new Date().toISOString(),
     }));
 
     setMyApprovals(approvals);
@@ -273,26 +274,18 @@ export default function NotificationsScreen() {
   async function handleApprove(req: JoinRequest) {
     setApprovingId(req.eventId);
 
-    const { error: updateErr } = await supabase
-      .from("project_members")
-      .update({ mou_accepted: true, mou_accepted_at: new Date().toISOString() })
-      .eq("project_id", req.projectId)
-      .eq("user_id", req.actorId);
+    // Sets status = 'approved' and logs the owner's mou_signed event
+    // (approved_for = the member) in one server-side step.
+    const { error } = await supabase.rpc("approve_member", {
+      p_project: req.projectId,
+      p_user: req.actorId,
+    });
 
-    if (updateErr) {
-      Alert.alert("Error", updateErr.message);
+    if (error) {
+      Alert.alert("Couldn't approve", `We couldn't approve ${req.actorName} just now. Please try again.`);
       setApprovingId(null);
       return;
     }
-
-    // Record the approval as the owner — using owner's user_id so RLS allows the insert.
-    // approved_for identifies which member was approved.
-    await supabase.from("collaboration_events").insert({
-      project_id: req.projectId,
-      user_id: user!.id,
-      event_type: "mou_signed",
-      metadata: { approved: true, project_title: req.projectTitle, approved_for: req.actorId },
-    });
 
     // Update local state — mark as approved
     setRequests((prev) =>
@@ -304,22 +297,12 @@ export default function NotificationsScreen() {
   async function handleInvitationAccept(inv: CollabInvitationNotif) {
     setRespondingInvitationId(inv.id);
     try {
-      const now = new Date().toISOString();
-      const [{ error: memberErr }, { error: invErr }] = await Promise.all([
-        supabase.from("project_members").insert({
-          project_id: inv.projectId,
-          user_id: user!.id,
-          role: inv.role,
-          mou_accepted: true,
-          mou_accepted_at: now,
-        }),
-        supabase.from("collab_invitations").update({ status: "accepted" }).eq("id", inv.id),
-      ]);
-      if (memberErr && memberErr.code !== "23505") {
-        Alert.alert("Error", memberErr.message);
+      // Adds you as an approved member and marks the invitation accepted, together.
+      const { error } = await supabase.rpc("accept_invitation", { p_invitation: inv.id });
+      if (error) {
+        Alert.alert("Couldn't accept", "We couldn't accept this invitation just now. Please try again.");
         return;
       }
-      if (invErr) { Alert.alert("Error", invErr.message); return; }
       setCollabInvitations((prev) => prev.filter((i) => i.id !== inv.id));
     } finally {
       setRespondingInvitationId(null);

@@ -152,6 +152,8 @@ export default function CreateProject() {
         project_id: data.id,
         user_id: user.id,
         role: ownerRole.trim() || "owner",
+        // Allowed because they own the project (guard_member_status).
+        status: "approved",
         mou_accepted: true,
         mou_accepted_at: new Date().toISOString(),
       });

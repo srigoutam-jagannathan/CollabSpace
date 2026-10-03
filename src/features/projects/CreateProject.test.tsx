@@ -64,3 +64,13 @@ test("dates are optional", async () => {
   await waitFor(() => expect(db.callsTo("projects")).toHaveLength(1));
   expect(db.callsTo("projects")[0].payload).toMatchObject({ start_date: null, end_date: null });
 });
+
+test("the owner joins their own project already approved", async () => {
+  const screen = renderWithProviders(<CreateProject />);
+  fillRequired(screen);
+
+  fireEvent.press(screen.getByText("Post Now"));
+  await waitFor(() => expect(db.callsTo("project_members")).toHaveLength(1));
+  // New member rows default to pending; only the owner may write "approved".
+  expect(db.callsTo("project_members")[0].payload).toMatchObject({ user_id: "me", status: "approved" });
+});

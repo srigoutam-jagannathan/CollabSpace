@@ -181,8 +181,10 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
 
   const hasCommitted = membership?.mou_accepted === true;
   const isOwner = !!user && project?.owner_id === user.id;
-  // Owners have no project_members row, so membership alone is not enough.
-  const canPost = isOwner || !!membership;
+  // Owners may have no project_members row, so membership alone is not enough.
+  // A member row only lets you post once the owner has approved it.
+  const canPost = isOwner || membership?.status === "approved";
+  const awaitingApproval = !isOwner && membership?.status === "pending";
 
   // ── Initial data load ───────────────────────────────────────────────────────
 
@@ -576,7 +578,7 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
             />
           )}
 
-          {/* Input bar — hidden once you are no longer a member */}
+          {/* Input bar — hidden until you are approved, and once you leave */}
           {canPost ? (
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.borderSubtle, backgroundColor: C.inputBg }}>
               <TextInput
@@ -604,7 +606,9 @@ export default function HandshakeChat({ projectId }: { projectId: string }) {
           ) : (
             <View style={{ paddingHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderTopColor: C.borderSubtle, backgroundColor: C.inputBg }}>
               <Text style={{ color: C.textFaint, fontSize: fs(13), textAlign: "center" }}>
-                You left this project. Rejoin to send messages.
+                {awaitingApproval
+                  ? "Waiting for the owner to approve you"
+                  : "You left this project. Rejoin to send messages."}
               </Text>
             </View>
           )}
