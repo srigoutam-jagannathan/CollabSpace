@@ -45,13 +45,13 @@ Deno.serve(async (req) => {
     }
 
     // Get owner's push token
-    const { data: ownerProfile } = await admin
-      .from("profiles")
-      .select("expo_push_token")
-      .eq("id", ownerUserId)
-      .single();
+    const { data: pushToken } = await admin
+      .from("push_tokens")
+      .select("token")
+      .eq("user_id", ownerUserId)
+      .maybeSingle();
 
-    const token = ownerProfile?.expo_push_token;
+    const token = pushToken?.token;
     if (!token) {
       // Owner hasn't granted notifications — skip silently
       return new Response(JSON.stringify({ sent: false, reason: "no_token" }), {

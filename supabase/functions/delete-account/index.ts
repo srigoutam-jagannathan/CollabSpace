@@ -139,9 +139,11 @@ Deno.serve(async (req) => {
         skills: [],
         badges: [],
         portfolio_links: [],
-        expo_push_token: null,
       })
       .eq("id", userId);
+
+    const { error: pushTokenErr } = await admin.from("push_tokens").delete().eq("user_id", userId);
+    if (pushTokenErr) throw pushTokenErr;
 
     // ── Step 5: Delete the auth user (invalidates all sessions) ───────────────
     const { error: deleteErr } = await admin.auth.admin.deleteUser(userId);

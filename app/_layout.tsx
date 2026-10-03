@@ -54,9 +54,8 @@ function PushTokenRegistrar() {
 
         const tokenData = await Notifications.getExpoPushTokenAsync();
         await supabase
-          .from("profiles")
-          .update({ expo_push_token: tokenData.data })
-          .eq("id", user.id);
+          .from("push_tokens")
+          .upsert({ user_id: user.id, token: tokenData.data, updated_at: new Date().toISOString() });
       } catch {
         // Push token registration is best-effort; don't surface errors to the user
       }

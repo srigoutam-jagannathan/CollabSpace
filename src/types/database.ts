@@ -30,7 +30,6 @@ export interface Profile {
   portfolio_links: { title: string; url: string }[]; // External portfolio URLs
   deleted_at: string | null;
   display_name_at_deletion: string | null;
-  expo_push_token: string | null;
 }
 
 export interface Project {
