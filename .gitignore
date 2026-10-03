@@ -31,3 +31,6 @@ Plans/
 
 # Jest coverage report
 coverage/
+
+# Git worktrees for isolated work (Claude Code)
+.claude/worktrees/
