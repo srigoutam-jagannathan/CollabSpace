@@ -3,7 +3,7 @@ import { type Deps, handle } from "./handler.ts";
 
 const OWNER = "owner-id";
 const LEAVER = "leaver-id";
-const PROJECT = "project-id";
+const PROJECT = "6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b";
 const NOW = new Date("2026-10-04T12:00:00.000Z");
 
 type Push = { to: string; title: string; body: string };
@@ -51,6 +51,14 @@ Deno.test("a missing projectId is 400", async () => {
   assertEquals((await handle("Bearer good", {}, deps)).status, 400);
   assertEquals((await handle("Bearer good", null, deps)).status, 400);
   assertEquals((await handle("Bearer good", { projectId: 42 }, deps)).status, 400);
+  assertEquals(pushes.length, 0);
+});
+
+Deno.test("a projectId that isn't a UUID is 400 and sends nothing", async () => {
+  const { deps, pushes, quitChecks } = fakeDeps();
+  const res = await handle("Bearer good", { projectId: "not-a-uuid" }, deps);
+  assertEquals(res.status, 400);
+  assertEquals(quitChecks.length, 0);
   assertEquals(pushes.length, 0);
 });
 
