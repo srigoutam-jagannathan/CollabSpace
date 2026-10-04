@@ -1,4 +1,6 @@
 node_modules/
+# Written by `deno test`; Edge Function deps are pinned by URL.
+deno.lock
 .expo/
 dist/
 web-build/
