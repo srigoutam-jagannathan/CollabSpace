@@ -2,7 +2,9 @@ module.exports = {
   preset: "jest-expo",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   // Edge Functions are Deno code with Deno tests (`deno test supabase/functions/`).
-  testPathIgnorePatterns: ["/node_modules/", "<rootDir>/supabase/functions/"],
+  // supabase/functions is Deno; .claude/worktrees holds other checkouts of this repo.
+  testPathIgnorePatterns: ["/node_modules/", "<rootDir>/supabase/functions/", "<rootDir>/.claude/"],
+  modulePathIgnorePatterns: ["<rootDir>/.claude/"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
