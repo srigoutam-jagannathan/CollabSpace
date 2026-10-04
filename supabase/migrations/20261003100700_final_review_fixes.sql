@@ -157,3 +157,24 @@ where m.status = 'approved' and m.mou_accepted
   and not exists (select 1 from public.collaboration_events e
                   where e.project_id = m.project_id and e.user_id = m.user_id
                     and e.event_type = 'committed');
+
+-- ── 6. Clients send user messages only ──────────────────────────────────
+-- Any approved member could insert member_left, member_removed or
+-- account_deleted with any userName, which HandshakeChat renders as a
+-- system notice. The app sends 'text' (HandshakeChat, by default) and
+-- 'profile_card' (ShareProfileSheet). System messages come from
+-- leave_project and remove_member (SECURITY DEFINER) and delete-account
+-- (service role), none of which this policy applies to. Membership
+-- conditions unchanged from 20261003100200.
+alter policy "chat_messages: members and owner send" on public.chat_messages
+  with check (
+    auth.uid() = sender_id
+    and type in ('text', 'profile_card')
+    and (
+      exists (select 1 from public.project_members pm
+              where pm.project_id = chat_messages.project_id and pm.user_id = auth.uid()
+                and pm.status = 'approved')
+      or exists (select 1 from public.projects p
+                 where p.id = chat_messages.project_id and p.owner_id = auth.uid())
+    )
+  );
