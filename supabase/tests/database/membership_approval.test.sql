@@ -38,25 +38,25 @@ select throws_ok($$ insert into public.project_members (project_id, user_id, rol
 select lives_ok($$ insert into public.project_members (project_id, user_id, role)
   values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'Dev') $$,
   'a joiner can request to join (pending)');
--- c3 stays the actor and stays in the row, so the guard does the refusing.
+-- c3 stays the actor and stays in the row. Since 20261003100700 the column
+-- grant (mou_accepted, mou_accepted_at only) refuses these before the guard.
 select throws_ok($$ update public.project_members set status = 'approved'
   where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
-  'P0001', null, 'a joiner cannot approve themselves');
+  '42501', null, 'a joiner cannot approve themselves');
 select throws_ok($$ update public.project_members set status = 'approved', mou_accepted = true
   where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
-  'P0001', null, 'a joiner cannot approve themselves while committing');
+  '42501', null, 'a joiner cannot approve themselves while committing');
 select throws_ok($$ insert into public.project_members (project_id, user_id, role)
   values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'Dev')
   on conflict (project_id, user_id) do update set status = 'approved' $$,
-  'P0001', null, 'a joiner cannot approve themselves through an upsert');
--- Still c3's own row in each case, so the own-row policy lets them through
--- and the guard's "cannot be moved" check is what refuses.
+  '42501', null, 'a joiner cannot approve themselves through an upsert');
+-- Still c3's own row in each case; the column grant refuses the move.
 select throws_ok($$ update public.project_members set project_id = '00000000-0000-0000-0000-0000000000f2'
   where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
-  'P0001', null, 'a membership cannot be moved to another project');
+  '42501', null, 'a membership cannot be moved to another project');
 select throws_ok($$ update public.project_members set user_id = '00000000-0000-0000-0000-0000000000d4'
   where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
-  'P0001', null, 'a membership cannot be handed to another user');
+  '42501', null, 'a membership cannot be handed to another user');
 select lives_ok($$ update public.project_members set mou_accepted = true
   where user_id = '00000000-0000-0000-0000-0000000000c3' $$,
   'committing is still the member''s own call');

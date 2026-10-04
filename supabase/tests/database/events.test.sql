@@ -180,14 +180,14 @@ select is((select count(*)::int from public.collaboration_events
   where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000e7'), 1,
   'approve, commit, uncommit, recommit records exactly one commitment');
 
--- The owner flipping status back and forth records nothing new.
-select tests.act_as('00000000-0000-0000-0000-0000000000a1');
+-- Status flipping back and forth records nothing new. Clients can't do
+-- this since 20261003100700 (member_updates.test.sql); run as postgres to
+-- test the trigger's once-only rule on its own.
 update public.project_members set status = 'pending'  where user_id = '00000000-0000-0000-0000-0000000000e7';
 update public.project_members set status = 'approved' where user_id = '00000000-0000-0000-0000-0000000000e7';
-reset role;
 select is((select count(*)::int from public.collaboration_events
   where event_type = 'committed' and user_id = '00000000-0000-0000-0000-0000000000e7'), 1,
-  'the owner re-approving a committed member records no second commitment');
+  're-approving a committed member records no second commitment');
 
 -- ── The owner logs removals only ───────────────────────────────────────
 select tests.act_as('00000000-0000-0000-0000-0000000000a1');
