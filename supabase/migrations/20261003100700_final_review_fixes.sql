@@ -138,3 +138,22 @@ grant execute on function public.approve_member(uuid, uuid) to authenticated;
 grant execute on function public.accept_invitation(uuid) to authenticated;
 grant execute on function public.leave_project(uuid) to authenticated;
 grant execute on function public.remove_member(uuid, uuid) to authenticated;
+
+-- ── 5. Backfill committed events ────────────────────────────────────────
+-- trg_member_committed (20261003100500) records a commitment once per
+-- person per project, but rows committed and approved before it have no
+-- event, so uncommitting and recommitting would count as new. Same rule as
+-- the trigger: approved, committed, not the owner's own row, no committed
+-- event yet. Dated when they committed, so "Active right now" doesn't count
+-- them; metadata marks them as backfilled. committed_backfill.test.sql
+-- re-runs this statement from supabase_migrations.schema_migrations.
+insert into public.collaboration_events (project_id, user_id, event_type, created_at, metadata)
+select m.project_id, m.user_id, 'committed', coalesce(m.mou_accepted_at, m.created_at),
+       jsonb_build_object('backfilled', true)
+from public.project_members m
+where m.status = 'approved' and m.mou_accepted
+  and not exists (select 1 from public.projects p
+                  where p.id = m.project_id and p.owner_id = m.user_id)
+  and not exists (select 1 from public.collaboration_events e
+                  where e.project_id = m.project_id and e.user_id = m.user_id
+                    and e.event_type = 'committed');
