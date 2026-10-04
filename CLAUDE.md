@@ -63,6 +63,11 @@ app/(app)/
 
 The lock is also enforced in the database (`supabase/migrations/20261002150000_server_side_belfast_lock.sql`): a trigger on `auth.users` refuses non-university sign-ups and email changes, and restrictive `belfast lock` policies on every public table, and on writes to Storage, require the caller's `auth.users` email to be a university address. The client check gives the friendly error; the database check is the one that holds.
 
+- `profiles.university` is derived server-side from the auth email on every write (`protect_profile_columns`); clients can't set it.
+- Client-callable SECURITY DEFINER RPCs (`request_connection`, `approve_member`, `accept_invitation`, `leave_project`, `remove_member`) skip RLS, so each re-checks the lock with `public.is_university_user()` (42501).
+- Push tokens live in `push_tokens` (own row only, plus the lock), not on `profiles`.
+- `notify-owner` takes only `projectId`, builds the message itself, and pushes at most once per `member_quit` (claimed via `claim_quit_notification`, service role only), and at most once per 10 minutes per leaver and project.
+
 **To add a new university in Phase 5:** add the domain to `ALLOWED_DOMAINS` and `DOMAIN_TO_UNIVERSITY` in `constants.ts`, add a `when` branch to `public.university_for_email()` in a new migration, and add the value to `university_enum`.
 
 ### Supabase
@@ -75,8 +80,9 @@ The lock is also enforced in the database (`supabase/migrations/20261002150000_s
 ### Database schema (key design decisions)
 
 - `profiles.pvs_score` — stored here for fast reads; computed by telemetry Edge Functions in Phase 2, not by the client.
-- `project_members.mou_accepted` — the member's commitment to the project (owners get `true` on create). The owner approves a member by writing a `mou_signed` collaboration event with `metadata.approved_for` = that member (see `src/features/notifications/pending.ts`). Committed and approved sharing one field is a known gap, tracked as a P1 item.
-- `collaboration_events` — **append-only audit log**. A Postgres trigger (`on_member_join`) auto-inserts a `join` event when a member row is created. This table is the raw data source for the PVS engine.
+- `project_members.status` — approval (`pending` / `approved`), set only by `approve_member` or `accept_invitation`. `mou_accepted` means committed: clients may update only `mou_accepted` and `mou_accepted_at` on their own row. Members leave via `leave_project`; owners remove via `remove_member`.
+- `collaboration_events` — **append-only audit log**, written only by triggers, SECURITY DEFINER RPCs and the service role (no client insert, update or delete). `join` (from `on_member_join`) means a pending request. `committed` is recorded once per person per project, ever, the first time a non-owner row is both committed and approved. This table is the raw data source for the PVS engine.
+- `chat_messages` — clients send only `text` and `profile_card`; system types (`member_left`, `member_removed`, `account_deleted`) come from the RPCs and `delete-account`.
 - Realtime is enabled on `chat_messages` and `collaboration_events` tables.
 - All tables use RLS. The service role is required for any admin operations.
 
@@ -88,12 +94,12 @@ src/features/
   discover/      ← DiscoverScreen + sections/, ranking, queries, useDiscoverData
   projects/      ← CreateProject, InviteSheet, ProjectInsights (BYO-AI prompts via analyze-project)
   chat/          ← HandshakeChat (project chat, members, group icon), DirectChat (DMs)
-  notifications/ ← pending.ts (the pending-count rule behind the badge)
+  notifications/ ← pending (badge count), approvals, joinRequests, connectionRequests
   archive/       ← shipped-project archive deck
   telemetry/pvs/ ← types.ts + usePVS.ts stub (Phase 2)
 ```
 
-Shared code lives in `src/components/` (Btn, sheets, CollabTabBar), `src/lib/` (`supabaseClient`, `uploadImage`), `src/utils/` and `src/test/` (Supabase and router mocks, test harness).
+Shared code lives in `src/components/` (Btn, sheets, CollabTabBar), `src/lib/` (`supabaseClient`, `uploadImage`, `requestConnection` — connection requests go only through the `request_connection` RPC), `src/utils/` and `src/test/` (Supabase and router mocks, test harness).
 
 Feature code should never import across feature boundaries — route data flows via Expo Router params or Supabase queries.
 
