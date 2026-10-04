@@ -35,17 +35,14 @@ Deno.serve(async (req) => {
         const { data, error } = await admin.auth.getUser(token);
         return error ? null : data.user?.id ?? null;
       },
-      async recentQuit(projectId, userId, sinceIso) {
-        const { data, error } = await admin
-          .from("collaboration_events")
-          .select("id")
-          .eq("project_id", projectId)
-          .eq("user_id", userId)
-          .eq("event_type", "member_quit")
-          .gte("created_at", sinceIso)
-          .limit(1);
+      async claimQuit(projectId, userId, sinceIso) {
+        const { data, error } = await admin.rpc("claim_quit_notification", {
+          p_project: projectId,
+          p_user: userId,
+          p_since: sinceIso,
+        });
         if (error) throw error;
-        return (data?.length ?? 0) > 0;
+        return data === true;
       },
       async project(projectId) {
         const { data, error } = await admin

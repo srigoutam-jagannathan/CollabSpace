@@ -12,11 +12,15 @@ type Push = { to: string; title: string; body: string };
 function fakeDeps(overrides: Partial<Deps> = {}) {
   const pushes: Push[] = [];
   const quitChecks: Array<[string, string, string]> = [];
+  // LEAVER has one unclaimed member_quit on PROJECT; a claim uses it up.
+  let unclaimed = 1;
   const deps: Deps = {
     userIdFromJwt: (h) => Promise.resolve(h === "Bearer good" ? LEAVER : null),
-    recentQuit: (projectId, userId, since) => {
+    claimQuit: (projectId, userId, since) => {
       quitChecks.push([projectId, userId, since]);
-      return Promise.resolve(projectId === PROJECT && userId === LEAVER);
+      if (projectId !== PROJECT || userId !== LEAVER || unclaimed === 0) return Promise.resolve(false);
+      unclaimed--;
+      return Promise.resolve(true);
     },
     project: (id) =>
       Promise.resolve(id === PROJECT ? { owner_id: OWNER, title: "Lumen" } : null),
@@ -62,17 +66,37 @@ Deno.test("a projectId that isn't a UUID is 400 and sends nothing", async () => 
   assertEquals(pushes.length, 0);
 });
 
-Deno.test("no recent member_quit by the caller is 403 and sends nothing", async () => {
-  const { deps, pushes } = fakeDeps({ recentQuit: () => Promise.resolve(false) });
+Deno.test("no unclaimed recent member_quit by the caller is 403 and sends nothing", async () => {
+  const { deps, pushes } = fakeDeps({ claimQuit: () => Promise.resolve(false) });
   const res = await handle("Bearer good", { projectId: PROJECT, title: "spam", body: "spam" }, deps);
   assertEquals(res.status, 403);
   assertEquals(pushes.length, 0);
 });
 
-Deno.test("the quit window is the last 10 minutes, for the caller on that project", async () => {
+Deno.test("the claim window is the last 10 minutes, for the caller on that project", async () => {
   const { deps, quitChecks } = fakeDeps();
   await handle("Bearer good", { projectId: PROJECT }, deps);
   assertEquals(quitChecks, [[PROJECT, LEAVER, "2026-10-04T11:50:00.000Z"]]);
+});
+
+Deno.test("one push per quit: a second call for the same quit is 403 and sends nothing", async () => {
+  const { deps, pushes } = fakeDeps();
+  assertEquals((await handle("Bearer good", { projectId: PROJECT }, deps)).status, 200);
+  const again = await handle("Bearer good", { projectId: PROJECT }, deps);
+  assertEquals(again.status, 403);
+  assertEquals(again.body, { error: "nothing to notify" });
+  assertEquals(pushes.length, 1);
+});
+
+Deno.test("the claim comes before any lookup or push", async () => {
+  const calls: string[] = [];
+  const { deps } = fakeDeps({
+    claimQuit: () => (calls.push("claim"), Promise.resolve(false)),
+    project: () => (calls.push("project"), Promise.resolve(null)),
+    pushToken: () => (calls.push("token"), Promise.resolve(null)),
+  });
+  await handle("Bearer good", { projectId: PROJECT }, deps);
+  assertEquals(calls, ["claim"]);
 });
 
 Deno.test("an unknown project is 404", async () => {
@@ -84,8 +108,8 @@ Deno.test("an unknown project is 404", async () => {
 
 Deno.test("the owner as caller sends nothing", async () => {
   const { deps, pushes } = fakeDeps({ userIdFromJwt: () => Promise.resolve(OWNER) });
-  // recentQuit fake only passes LEAVER; let the owner through to reach the self check.
-  deps.recentQuit = () => Promise.resolve(true);
+  // The claimQuit fake only passes LEAVER; let the owner through to reach the self check.
+  deps.claimQuit = () => Promise.resolve(true);
   const res = await handle("Bearer good", { projectId: PROJECT }, deps);
   assertEquals(res.status, 200);
   assertEquals(res.body, { sent: false, reason: "self" });

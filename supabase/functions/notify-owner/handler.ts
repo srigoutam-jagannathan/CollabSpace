@@ -1,6 +1,11 @@
 export interface Deps {
   userIdFromJwt(authHeader: string | null): Promise<string | null>;
-  recentQuit(projectId: string, userId: string, sinceIso: string): Promise<boolean>;
+  /**
+   * Atomically marks the caller's latest unclaimed member_quit on the
+   * project since sinceIso as notified. False if there is none, or if the
+   * owner was already told about this leaver on this project since then.
+   */
+  claimQuit(projectId: string, userId: string, sinceIso: string): Promise<boolean>;
   project(projectId: string): Promise<{ owner_id: string; title: string } | null>;
   displayName(userId: string): Promise<string | null>;
   pushToken(userId: string): Promise<string | null>;
@@ -10,7 +15,7 @@ export interface Deps {
 
 export type Result = { status: number; body: Record<string, unknown> };
 
-/** How long after leaving a project the leaver may trigger the owner's push. */
+/** How long after leaving the leaver may trigger the push; also the per-leaver limit. */
 const QUIT_WINDOW_MS = 10 * 60_000;
 
 /** A non-UUID would make the uuid-column queries error (a 500); refuse it up front. */
@@ -19,7 +24,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
  * Tells a project owner that a member left. The recipient and the text both
  * come from the database: callers only say which project, and only someone
- * who just logged member_quit on it (via leave_project) may trigger the push.
+ * who just logged member_quit on it (via leave_project) may trigger the push,
+ * once per quit and at most once per window per leaver and project.
  */
 export async function handle(authHeader: string | null, input: unknown, d: Deps): Promise<Result> {
   const caller = await d.userIdFromJwt(authHeader);
@@ -31,7 +37,7 @@ export async function handle(authHeader: string | null, input: unknown, d: Deps)
   }
 
   const since = new Date(d.now().getTime() - QUIT_WINDOW_MS).toISOString();
-  if (!(await d.recentQuit(projectId, caller, since))) {
+  if (!(await d.claimQuit(projectId, caller, since))) {
     return { status: 403, body: { error: "nothing to notify" } };
   }
 
