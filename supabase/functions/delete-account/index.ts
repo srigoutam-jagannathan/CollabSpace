@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendExpoPush } from "../_shared/push.ts";
+import { notifyNewOwner, type TransferPushDeps } from "./transferPush.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,6 +32,19 @@ Deno.serve(async (req) => {
     }
 
     const userId = user.id;
+
+    const pushDeps: TransferPushDeps = {
+      async pushToken(id) {
+        const { data, error } = await admin
+          .from("push_tokens")
+          .select("token")
+          .eq("user_id", id)
+          .maybeSingle();
+        if (error) throw error;
+        return data?.token ?? null;
+      },
+      sendPush: (msg) => sendExpoPush(msg.to, msg.title, msg.body),
+    };
 
     // ── Step 1: Grab the user's display name before we wipe it ────────────────
     const { data: profile } = await admin
@@ -76,14 +91,8 @@ Deno.serve(async (req) => {
           },
         });
 
-        // Notify the new owner via push
-        await admin.functions.invoke("notify-owner", {
-          body: {
-            ownerUserId: firstMember.user_id,
-            title: "You're now the project owner",
-            body: `${displayName} deleted their account. You've inherited ownership.`,
-          },
-        });
+        // Notify the new owner via push (best effort; never throws)
+        await notifyNewOwner(firstMember.user_id, displayName, pushDeps);
       }
     }
 

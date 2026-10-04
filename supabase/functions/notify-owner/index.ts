@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendExpoPush } from "../_shared/push.ts";
 import { type Deps, handle } from "./handler.ts";
 
 // Wiring only: every rule lives in handler.ts, which handler.test.ts covers.
@@ -73,14 +74,7 @@ Deno.serve(async (req) => {
         if (error) throw error;
         return data?.token ?? null;
       },
-      async sendPush(msg) {
-        const res = await fetch("https://exp.host/--/api/v2/push/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...msg, sound: "default" }),
-        });
-        return await res.json();
-      },
+      sendPush: (msg) => sendExpoPush(msg.to, msg.title, msg.body),
       now: () => new Date(),
     };
 
