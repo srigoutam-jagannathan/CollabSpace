@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendExpoPush } from "../_shared/push.ts";
+import { pickHeir } from "./heir.ts";
 import { notifyNewOwner, type TransferPushDeps } from "./transferPush.ts";
 
 const corsHeaders = {
@@ -62,28 +63,29 @@ Deno.serve(async (req) => {
       .eq("owner_id", userId);
 
     for (const project of ownedProjects ?? []) {
-      const { data: firstMember } = await admin
+      // pickHeir re-applies these filters; the query narrows what is fetched.
+      const { data: members, error: membersErr } = await admin
         .from("project_members")
-        .select("user_id")
+        .select("user_id, status, created_at")
         .eq("project_id", project.id)
-        .neq("user_id", userId)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .eq("status", "approved")
+        .neq("user_id", userId);
+      if (membersErr) throw membersErr;
+      const heirId = pickHeir(members ?? [], userId);
 
-      if (!firstMember) {
-        // No other collaborators — delete the project (cascade handles the rest)
+      if (!heirId) {
+        // No approved collaborators — delete the project (cascade handles the rest)
         await admin.from("projects").delete().eq("id", project.id);
       } else {
-        // Transfer ownership to the earliest collaborator
+        // Transfer ownership to the earliest approved collaborator
         await admin
           .from("projects")
-          .update({ owner_id: firstMember.user_id })
+          .update({ owner_id: heirId })
           .eq("id", project.id);
 
         await admin.from("collaboration_events").insert({
           project_id: project.id,
-          user_id: firstMember.user_id,
+          user_id: heirId,
           event_type: "milestone",
           metadata: {
             event: "ownership_transferred",
@@ -92,7 +94,7 @@ Deno.serve(async (req) => {
         });
 
         // Notify the new owner via push (best effort; never throws)
-        await notifyNewOwner(firstMember.user_id, displayName, pushDeps);
+        await notifyNewOwner(heirId, displayName, pushDeps);
       }
     }
 
