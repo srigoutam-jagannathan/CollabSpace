@@ -10,8 +10,8 @@ _Last updated: 2026-10-04, master at 65fa130._
 - **Phases 0 (honest profile) and 1 (security hardening) are live** and were checked on a device on 2026-10-04.
   The live database has every migration up to `20261003100710`. `notify-owner` and `delete-account` are deployed.
   `supabase db diff --linked` shows only the expected `protect_bucket_control_*` triggers.
-- **Not on GitHub yet:** master is about 165 commits ahead of `origin/master`. Pushing needs the user's SSH key
-  (`ssh-add` in their own terminal). CI has never run on GitHub.
+- **GitHub:** master is pushed and CI passes. Pushing needs the user's SSH key (`ssh-add` in their own terminal).
+  QA file bugs and change requests as GitHub Issues (forms in `.github/ISSUE_TEMPLATE/`); the repo is public.
 - **Next:** Phase 1b (in-app notifications), 2 (skill matching) or 3 (quick wins). The user picks.
 - **Leftover worktree:** `.claude/worktrees/p1-security` is fully merged and can be deleted when the user agrees.
 
