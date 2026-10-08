@@ -1,0 +1,141 @@
+name: Bug report
+description: Something in the app is broken or behaves wrongly.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing. One bug per report, please. Don't paste real student emails, passwords or private messages; blur them in screenshots.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What went wrong?
+      description: One or two sentences.
+      placeholder: Tapping "Approve" on a join request shows a spinner forever.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where in the app?
+      options:
+        - Sign-in or onboarding
+        - Home / Discover
+        - Search
+        - Creating a project (+ button)
+        - Project page or settings
+        - Project chat
+        - Direct messages
+        - Notifications
+        - Profile or Edit profile
+        - Settings
+        - Archive
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Start from opening the app. Number each tap or entry.
+      placeholder: |
+        1. Open the Notifications tab
+        2. Tap a join request for "Robotics Society"
+        3. Tap Approve
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Copy any error message word for word.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does it happen?
+      options:
+        - Every time
+        - Sometimes
+        - Happened once, can't repeat it
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it?
+      options:
+        - Blocker - I can't continue or the app crashes
+        - Major - a feature doesn't work, no way around it
+        - Minor - works, but wrong or awkward
+        - Cosmetic - looks off (text, spacing, colours)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: What was your role?
+      description: Many rules depend on whether you own the project or are a member.
+      options:
+        - Project owner
+        - Approved member
+        - Waiting for approval
+        - Not in the project
+        - Not about a project
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Phone and OS version
+      placeholder: iPhone 13, iOS 26.1 / Pixel 8, Android 16
+    validations:
+      required: true
+
+  - type: dropdown
+    id: university
+    attributes:
+      label: Account university
+      options:
+        - QUB
+        - Ulster
+    validations:
+      required: true
+
+  - type: input
+    id: when
+    attributes:
+      label: When did it happen?
+      description: Date and rough time, with timezone. Lets us find it in the server logs.
+      placeholder: 2026-10-08 around 14:30 UK time
+    validations:
+      required: true
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or screen recording
+      description: Drag files in here. A recording is the most useful thing you can send.
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Project name, other user involved, wifi or mobile data, whether reloading the app fixed it.

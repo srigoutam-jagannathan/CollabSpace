@@ -1,0 +1,107 @@
+name: Change or feature request
+description: Suggest a change, an improvement or something new.
+title: "[Task] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For things that work as built but should work differently. If something is broken, use **Bug report** instead.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of change?
+      options:
+        - Improve something that exists
+        - New feature
+        - Wording or copy
+        - Layout or visual design
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where in the app?
+      options:
+        - Sign-in or onboarding
+        - Home / Discover
+        - Search
+        - Creating a project (+ button)
+        - Project page or settings
+        - Project chat
+        - Direct messages
+        - Notifications
+        - Profile or Edit profile
+        - Settings
+        - Archive
+        - Whole app
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem today?
+      description: Describe the situation and why it's annoying or missing. This matters more than the solution.
+      placeholder: Typing dates means adding the "/" by hand every time, which is slow on a phone keyboard.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should happen instead?
+      description: Describe what you'd see and do, step by step.
+      placeholder: The "/" appears automatically after the day and the month.
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: How will we know it's done?
+      description: Checks a tester can tick off.
+      placeholder: |
+        - [ ] Typing 01102026 shows 01/10/2026
+        - [ ] Backspace removes the slash too
+    validations:
+      required: true
+
+  - type: dropdown
+    id: who
+    attributes:
+      label: Who is it for?
+      multiple: true
+      options:
+        - Every user
+        - Project owners
+        - Project members
+        - People looking for projects
+        - New users
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How much does it matter?
+      options:
+        - High - testers keep tripping over it
+        - Medium - clear improvement
+        - Low - nice to have
+    validations:
+      required: true
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots, sketches or examples
+      description: Drag files in. Examples from other apps help.
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Edge cases, things it should not change, related issues (#12).
