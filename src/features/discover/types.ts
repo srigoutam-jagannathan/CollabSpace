@@ -1,18 +1,6 @@
 import type { University } from "@/types/database";
 
-export type SectionKey = "pulse" | "needs" | "active" | "people" | "shipped";
-
-export interface PulseItem {
-  id: string;
-  created_at: string;
-  /** Phase 4 widens this with shipped. */
-  event_type: "committed";
-  project_id: string;
-  project_title: string;
-  actor_id: string;
-  actor_name: string | null;
-  actor_avatar_url: string | null;
-}
+export type SectionKey = "needs" | "active" | "people" | "shipped";
 
 export interface NeedsItem {
   id: string;

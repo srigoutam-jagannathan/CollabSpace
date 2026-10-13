@@ -14,7 +14,6 @@ import { s, vs, fs } from "@/utils/scale";
 import { useDiscoverData } from "./useDiscoverData";
 import { sectionVisible } from "./ranking";
 import { SectionFrame } from "./SectionFrame";
-import { PulseStrip } from "./sections/PulseStrip";
 import { NeedsYourSkills } from "./sections/NeedsYourSkills";
 import { ActiveNow } from "./sections/ActiveNow";
 import { PeopleToKnow } from "./sections/PeopleToKnow";
@@ -45,7 +44,7 @@ export default function DiscoverScreen() {
   }, [user?.id]);
 
   const {
-    pulse, needs, needsMode, active, people, shipped,
+    needs, needsMode, active, people, shipped,
     refreshing, revalidating, stale, refresh, revalidate, retry,
   } = useDiscoverData(skills, department);
 
@@ -59,10 +58,10 @@ export default function DiscoverScreen() {
   }, [revalidate, user?.id]));
 
   const allFailed =
-    !!pulse.error && !!needs.error && !!active.error && !!people.error && !!shipped.error;
+    !!needs.error && !!active.error && !!people.error && !!shipped.error;
 
   const hasContent =
-    pulse.data.length > 0 || needs.data.length > 0 ||
+    needs.data.length > 0 ||
     active.data.length > 0 || people.data.length > 0 ||
     shipped.data.length > 0;
 
@@ -163,19 +162,6 @@ export default function DiscoverScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.purpleL} />
           }
         >
-          {/* Unlabelled by design — see SectionFrame's showHeader note. */}
-          <SectionFrame
-            title="Recent activity"
-            showHeader={false}
-            skeleton="strip"
-            visible={sectionVisible("pulse", pulse.data.length)}
-            loading={pulse.loading && pulse.data.length === 0}
-            error={pulse.error}
-            onRetry={() => retry("pulse")}
-          >
-            <PulseStrip items={pulse.data} />
-          </SectionFrame>
-
           {skills.length === 0 ? (
             <SectionFrame
               title="Needs your skills"

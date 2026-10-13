@@ -16,18 +16,11 @@ interface Props {
   onSeeAll?: () => void;
   /** Shape the first-load placeholder borrows from this section. */
   skeleton: SkeletonShape;
-  /**
-   * The pulse strip is deliberately unlabelled in the approved design — it is
-   * the thinnest thing on the screen and announcing it gives it the same
-   * billing as the hero. It still needs the frame for its loading and error
-   * states, so the header is suppressed rather than the frame skipped.
-   */
-  showHeader?: boolean;
   children: React.ReactNode;
 }
 
 export function SectionFrame({
-  title, visible, loading, error, onRetry, onSeeAll, skeleton, showHeader = true, children,
+  title, visible, loading, error, onRetry, onSeeAll, skeleton, children,
 }: Props) {
   const { tokens: { C } } = useTheme();
 
@@ -36,7 +29,6 @@ export function SectionFrame({
 
   return (
     <View style={{ marginBottom: vs(16) }}>
-      {showHeader && (
       <View style={{
         flexDirection: "row", alignItems: "center", justifyContent: "space-between",
         paddingHorizontal: s(20), marginBottom: vs(8),
@@ -61,7 +53,6 @@ export function SectionFrame({
           </Btn>
         )}
       </View>
-      )}
 
       {loading && <SectionSkeleton shape={skeleton} />}
 

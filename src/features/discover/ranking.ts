@@ -3,7 +3,6 @@ import type { ActiveItem, NeedsItem, PersonItem, SectionKey } from "./types";
 
 /** Section limits, from the spec. */
 export const LIMITS: Record<SectionKey, number> = {
-  pulse: 10,
   needs: 3,
   active: 10,
   people: 10,
@@ -12,7 +11,6 @@ export const LIMITS: Record<SectionKey, number> = {
 
 /** Minimum item count for a section to render at all. */
 const MIN_ITEMS: Record<SectionKey, number> = {
-  pulse: 1,
   needs: 1,
   active: 2,
   // The archive is a credibility surface, and one showing a single item

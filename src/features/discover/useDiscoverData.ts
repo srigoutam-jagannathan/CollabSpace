@@ -2,16 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { rankActive, rankPeople, selectNeeds, type NeedsMode } from "./ranking";
 import {
-  fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchPulse, fetchShipped,
+  fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchShipped,
 } from "./queries";
-import type { ActiveItem, NeedsItem, PersonItem, PulseItem, SectionState, ShippedItem } from "./types";
+import type { ActiveItem, NeedsItem, PersonItem, SectionState, ShippedItem } from "./types";
 
 function initial<T>(): SectionState<T> {
   return { data: [], loading: true, error: null };
 }
 
 export interface DiscoverData {
-  pulse: SectionState<PulseItem>;
   needs: SectionState<NeedsItem>;
   /** Whether the hero is showing skill matches or the recent-projects fallback. */
   needsMode: NeedsMode;
@@ -38,7 +37,7 @@ export interface DiscoverData {
   /** Refetch every section in the background, without the pull spinner. */
   revalidate: () => Promise<void>;
   /** Refetch one section, for its inline Retry. */
-  retry: (key: "pulse" | "needs" | "active" | "people" | "shipped") => Promise<void>;
+  retry: (key: "needs" | "active" | "people" | "shipped") => Promise<void>;
 }
 
 export function useDiscoverData(
@@ -58,7 +57,6 @@ export function useDiscoverData(
   // useDiscoverData.test.ts, which fails without this.
   const viewerSkillsKey = viewerSkills.join("|");
 
-  const [pulse, setPulse] = useState<SectionState<PulseItem>>(initial);
   const [needs, setNeeds] = useState<SectionState<NeedsItem>>(initial);
   const [active, setActive] = useState<SectionState<ActiveItem>>(initial);
   const [people, setPeople] = useState<SectionState<PersonItem>>(initial);
@@ -77,13 +75,6 @@ export function useDiscoverData(
   useEffect(() => {
     alive.current = true;
     return () => { alive.current = false; };
-  }, []);
-
-  const loadPulse = useCallback(async () => {
-    const { data, error } = await fetchPulse();
-    if (!alive.current) return;
-    // On failure keep the previous data and surface the error alongside it.
-    setPulse(prev => ({ data: error ? prev.data : data, loading: false, error }));
   }, []);
 
   const loadNeeds = useCallback(async () => {
@@ -129,8 +120,8 @@ export function useDiscoverData(
   }, []);
 
   const loadAll = useCallback(async () => {
-    await Promise.all([loadPulse(), loadNeeds(), loadActive(), loadPeople(), loadShipped()]);
-  }, [loadPulse, loadNeeds, loadActive, loadPeople, loadShipped]);
+    await Promise.all([loadNeeds(), loadActive(), loadPeople(), loadShipped()]);
+  }, [loadNeeds, loadActive, loadPeople, loadShipped]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -144,27 +135,26 @@ export function useDiscoverData(
     if (alive.current) setRevalidating(false);
   }, [loadAll]);
 
-  const retry = useCallback(async (key: "pulse" | "needs" | "active" | "people" | "shipped") => {
+  const retry = useCallback(async (key: "needs" | "active" | "people" | "shipped") => {
     const runner = {
-      pulse: loadPulse, needs: loadNeeds, active: loadActive,
+      needs: loadNeeds, active: loadActive,
       people: loadPeople, shipped: loadShipped,
     }[key];
     await runner();
-  }, [loadPulse, loadNeeds, loadActive, loadPeople, loadShipped]);
+  }, [loadNeeds, loadActive, loadPeople, loadShipped]);
 
   useEffect(() => { revalidate(); }, [revalidate]);
 
   // Stale means "kept, unconfirmed" — a section that errored with nothing
   // cached shows its own inline retry instead and is not counted here.
   const stale =
-    (!!pulse.error && pulse.data.length > 0) ||
     (!!needs.error && needs.data.length > 0) ||
     (!!active.error && active.data.length > 0) ||
     (!!people.error && people.data.length > 0) ||
     (!!shipped.error && shipped.data.length > 0);
 
   return {
-    pulse, needs, needsMode, active, people, shipped,
+    needs, needsMode, active, people, shipped,
     refreshing, revalidating, stale, refresh, revalidate, retry,
   };
 }

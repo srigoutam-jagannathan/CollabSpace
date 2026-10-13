@@ -21,7 +21,6 @@ const mocked = queries as jest.Mocked<typeof queries>;
 
 function stubAll() {
   mocked.fetchMemberProjectIds.mockResolvedValue([]);
-  mocked.fetchPulse.mockResolvedValue({ data: [], error: null });
   mocked.fetchNeeds.mockResolvedValue({ data: [], error: null });
   mocked.fetchActive.mockResolvedValue({ data: [], error: null });
   mocked.fetchPeople.mockResolvedValue({ data: [], error: null });
@@ -36,7 +35,6 @@ beforeEach(() => {
 test("loads every section in parallel and clears loading", async () => {
   const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
   await waitFor(() => expect(result.current.people.loading).toBe(false));
-  expect(mocked.fetchPulse).toHaveBeenCalledTimes(1);
   expect(mocked.fetchNeeds).toHaveBeenCalledTimes(1);
   expect(mocked.fetchActive).toHaveBeenCalledTimes(1);
   expect(mocked.fetchPeople).toHaveBeenCalledTimes(1);
@@ -95,7 +93,6 @@ test("retry refetches only the named section", async () => {
 
   expect(mocked.fetchActive).toHaveBeenCalledTimes(1);
   expect(mocked.fetchPeople).not.toHaveBeenCalled();
-  expect(mocked.fetchPulse).not.toHaveBeenCalled();
 });
 
 // Risk: viewerSkills is an array prop. If a caller passes a new array
@@ -113,7 +110,6 @@ test("re-rendering with a new-but-equal skills array does not refetch", async ()
   await waitFor(() => expect(result.current.people.loading).toBe(false));
 
   expect(mocked.fetchNeeds).toHaveBeenCalledTimes(1);
-  expect(mocked.fetchPulse).toHaveBeenCalledTimes(1);
 
   // A brand new array instance with the same contents — this is the
   // realistic shape of the bug: identity changes, value doesn't.
@@ -126,7 +122,6 @@ test("re-rendering with a new-but-equal skills array does not refetch", async ()
   });
 
   expect(mocked.fetchNeeds).toHaveBeenCalledTimes(1);
-  expect(mocked.fetchPulse).toHaveBeenCalledTimes(1);
   expect(mocked.fetchActive).toHaveBeenCalledTimes(1);
   expect(mocked.fetchPeople).toHaveBeenCalledTimes(1);
 });
@@ -181,4 +176,10 @@ test("a pull drives refreshing, a focus refetch drives revalidating", async () =
   expect(result.current.refreshing).toBe(false);
   await act(async () => { await pending; });
   expect(result.current.revalidating).toBe(false);
+});
+
+test("Discover no longer has a pulse section", async () => {
+  const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+  await waitFor(() => expect(result.current.people.loading).toBe(false));
+  expect(result.current).not.toHaveProperty("pulse");
 });

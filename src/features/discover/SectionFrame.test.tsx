@@ -44,24 +44,14 @@ test("hides children while loading but keeps the header", () => {
   expect(queryByText("child")).toBeNull();
 });
 
-test("suppresses the header when the section is unlabelled", () => {
-  const { queryByRole, getByText } = renderWithProviders(
-    <SectionFrame skeleton="strip" title="Recent activity" showHeader={false} visible loading={false} error={null} onRetry={() => {}}>
-      <Text>child</Text>
-    </SectionFrame>
-  );
-  expect(queryByRole("header")).toBeNull();
-  expect(getByText("child")).toBeTruthy();
-});
-
-test("an unlabelled section still shows its error and retry", () => {
+test("a section still shows its error and retry", () => {
   const onRetry = jest.fn();
   const { getByText, getByLabelText } = renderWithProviders(
-    <SectionFrame skeleton="strip" title="Recent activity" showHeader={false} visible loading={false} error="Couldn't load recent activity." onRetry={onRetry}>
+    <SectionFrame skeleton="rail" title="Active right now" visible loading={false} error="Couldn't load active projects." onRetry={onRetry}>
       <Text>child</Text>
     </SectionFrame>
   );
-  expect(getByText("Couldn't load recent activity.")).toBeTruthy();
-  fireEvent.press(getByLabelText("Retry loading Recent activity"));
+  expect(getByText("Couldn't load active projects.")).toBeTruthy();
+  fireEvent.press(getByLabelText("Retry loading Active right now"));
   expect(onRetry).toHaveBeenCalled();
 });

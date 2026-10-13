@@ -1,13 +1,12 @@
 import { supabase } from "@/lib/supabaseClient";
 import { matchedRoles } from "./ranking";
-import type { ActiveItem, NeedsItem, PersonItem, PulseItem, ShippedItem } from "./types";
+import type { ActiveItem, NeedsItem, PersonItem, ShippedItem } from "./types";
 
 export interface QueryResult<T> {
   data: T[];
   error: string | null;
 }
 
-const PULSE_WINDOW_HOURS = 48;
 const ACTIVE_WINDOW_DAYS = 7;
 /**
  * Events that count as a team doing something. join is only a pending
@@ -39,37 +38,6 @@ export const WINDOW = {
 
 function hoursAgo(h: number): string {
   return new Date(Date.now() - h * 3600_000).toISOString();
-}
-
-/**
- * Recent commitments, recorded server-side by trg_member_committed.
- * Only true events: mou_signed is an owner approval, not a member action,
- * and a join event is now only a pending request. member_quit is
- * deliberately excluded — a public feed of people leaving projects is
- * socially corrosive on a small campus network. Phase 4 adds shipped.
- */
-export async function fetchPulse(): Promise<QueryResult<PulseItem>> {
-  const { data, error } = await supabase
-    .from("collaboration_events")
-    .select("id, created_at, event_type, project_id, projects(title), profiles(id, full_name, avatar_url)")
-    .in("event_type", ["committed"])
-    .gt("created_at", hoursAgo(PULSE_WINDOW_HOURS))
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  if (error) return { data: [], error: "Couldn't load recent activity." };
-
-  const rows: PulseItem[] = (data ?? []).map((e: any) => ({
-    id: e.id,
-    created_at: e.created_at,
-    event_type: e.event_type,
-    project_id: e.project_id,
-    project_title: e.projects?.title ?? "a project",
-    actor_id: e.profiles?.id ?? "",
-    actor_name: e.profiles?.full_name ?? null,
-    actor_avatar_url: e.profiles?.avatar_url ?? null,
-  }));
-  return { data: rows, error: null };
 }
 
 /**

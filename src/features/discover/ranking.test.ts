@@ -144,13 +144,12 @@ describe("sectionVisible", () => {
   test("active needs at least two items, the rest need one", () => {
     expect(sectionVisible("active", 1)).toBe(false);
     expect(sectionVisible("active", 2)).toBe(true);
-    expect(sectionVisible("pulse", 1)).toBe(true);
     expect(sectionVisible("needs", 1)).toBe(true);
     expect(sectionVisible("people", 1)).toBe(true);
   });
 
   test("every section is hidden when empty", () => {
-    (["pulse", "needs", "active", "people"] as const).forEach(k => {
+    (["needs", "active", "people"] as const).forEach(k => {
       expect(sectionVisible(k, 0)).toBe(false);
     });
   });

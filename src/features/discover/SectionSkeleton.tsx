@@ -5,7 +5,7 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { s, vs, ts } from "@/utils/scale";
 
 /** Which section's shape to imitate while its first load is in flight. */
-export type SkeletonShape = "strip" | "hero" | "rail" | "people";
+export type SkeletonShape = "hero" | "rail" | "people";
 
 function Block({ w, h, r, o }: { w: number | string; h: number; r?: number; o: Animated.Value | number }) {
   const { tokens: { C } } = useTheme();
@@ -50,22 +50,6 @@ export function SectionSkeleton({ shape }: { shape: SkeletonShape }) {
     borderWidth: 1,
     borderColor: GLASS.card.borderColor,
   };
-
-  if (shape === "strip") {
-    return (
-      <View style={{
-        flexDirection: "row", gap: s(14), paddingHorizontal: s(20), paddingVertical: vs(9),
-        borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.border,
-      }}>
-        {[0, 1, 2].map(i => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
-            <Block w={s(22)} h={s(22)} r={s(11)} o={pulse} />
-            <Block w={s(64)} h={vs(9)} o={pulse} />
-          </View>
-        ))}
-      </View>
-    );
-  }
 
   if (shape === "hero") {
     return (
