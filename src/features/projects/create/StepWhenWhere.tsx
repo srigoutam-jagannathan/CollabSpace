@@ -78,7 +78,7 @@ export function StepWhenWhere({ draft, update, onEdit }: Props) {
           {draft.roles.map((r) => (
             <View
               key={r}
-              style={{ paddingHorizontal: s(10), paddingVertical: vs(4), borderRadius: s(12), backgroundColor: C.fieldBg, borderWidth: 1, borderColor: C.border }}
+              style={{ maxWidth: "100%", paddingHorizontal: s(10), paddingVertical: vs(4), borderRadius: s(12), backgroundColor: C.fieldBg, borderWidth: 1, borderColor: C.border }}
             >
               <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12) }}>{r}</Text>
             </View>

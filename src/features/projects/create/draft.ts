@@ -42,11 +42,16 @@ export function stepReady(step: Step, d: ProjectDraft): boolean {
   }
 }
 
-/** Adds a role unless it's blank or already there (case-insensitively). */
+/** Adds a role, with runs of spaces collapsed, unless it's blank or already there (case-insensitively). */
 export function addRole(roles: string[], role: string): string[] {
-  const name = role.trim();
+  const name = role.replace(/\s+/g, " ").trim();
   if (!name || roles.some((r) => r.toLowerCase() === name.toLowerCase())) return roles;
   return [...roles, name];
+}
+
+/** Adds a role typed by hand: "design" or "developer" become the preset they mean. */
+export function addTypedRole(roles: string[], typed: string): string[] {
+  return addRole(roles, canonicalSkill(typed));
 }
 
 /** The projects row for a finished draft. */

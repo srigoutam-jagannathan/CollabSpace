@@ -36,6 +36,8 @@ export function Tile({ label, hint, selected, onPress, accessibilityLabel, size 
       debounceMs={0}
       style={{
         width: size === "card" ? "48%" : size === "full" ? "100%" : undefined,
+        // A long custom role wraps inside the row instead of running off it.
+        maxWidth: "100%",
         paddingHorizontal: s(14),
         paddingVertical: vs(card ? 16 : 9),
         borderRadius: s(card ? 16 : 20),

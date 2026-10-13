@@ -240,6 +240,52 @@ test("roles: tap to add or remove, type one the list lacks, and at least one is 
   expect(screen.getByLabelText("Need Beekeeper").props.accessibilityState).toMatchObject({ selected: true });
 });
 
+function typeCustomRole(screen: Screen, text: string) {
+  fireEvent.press(screen.getByLabelText("Add a role that isn't listed"));
+  fireEvent.changeText(screen.getByPlaceholderText("e.g. Beekeeper"), text);
+}
+
+test("typing a listed role by hand picks its tile instead of adding a second one", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fillDetails(screen);
+  typeCustomRole(screen, "design");
+  fireEvent.press(screen.getByLabelText("Add design"));
+  expect(screen.getByLabelText("Need Design").props.accessibilityState).toMatchObject({ selected: true });
+  expect(screen.queryByLabelText("Need design")).toBeNull();
+});
+
+test("typing a common job title picks the skill it means", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fillDetails(screen);
+  typeCustomRole(screen, "developer");
+  fireEvent.press(screen.getByLabelText("Add developer"));
+  expect(screen.getByLabelText("Need Coding and Development").props.accessibilityState).toMatchObject({ selected: true });
+  expect(screen.queryByLabelText("Need developer")).toBeNull();
+});
+
+test("Add is disabled, and says what it does, until something is typed", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fillDetails(screen);
+  typeCustomRole(screen, "   ");
+  expect(screen.getByLabelText("Add role").props.accessibilityState).toMatchObject({ disabled: true });
+});
+
+test("a typed role that wasn't added is kept when you press Next", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fillDetails(screen);
+  typeCustomRole(screen, "  Bee   keeper ");
+  fireEvent.press(screen.getByText("Next"));
+  expect(screen.getByText("Step 4 of 4")).toBeTruthy();
+  expect(screen.getByText("Bee keeper")).toBeTruthy();
+
+  fireEvent.press(screen.getByLabelText("Edit roles"));
+  expect(screen.getByLabelText("Need Bee keeper").props.accessibilityState).toMatchObject({ selected: true });
+});
+
 test("the preview shows the listing, and Edit goes back to that step", () => {
   const screen = renderWithProviders(<CreateProject />);
   pickType(screen);

@@ -12,7 +12,7 @@ import { GradientBtn } from "@/components/GradientBtn";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
-import { EMPTY_DRAFT, buildProjectInsert, stepReady, type ProjectDraft, type Step } from "./create/draft";
+import { EMPTY_DRAFT, addTypedRole, buildProjectInsert, stepReady, type ProjectDraft, type Step } from "./create/draft";
 import { StepType } from "./create/StepType";
 import { StepDetails } from "./create/StepDetails";
 import { StepRoles } from "./create/StepRoles";
@@ -33,6 +33,7 @@ export default function CreateProject() {
 
   const [step, setStep] = useState<Step>(1);
   const [draft, setDraft] = useState<ProjectDraft>(EMPTY_DRAFT);
+  const [typedRole, setTypedRole] = useState("");
   const [showErrors, setShowErrors] = useState(false);
   const [loading, setLoading] = useState(false);
   const insets = useSafeAreaInsets();
@@ -74,7 +75,14 @@ export default function CreateProject() {
   });
 
   function next() {
-    if (!stepReady(step, draft)) { setShowErrors(true); return; }
+    let ready = draft;
+    // A role typed on step 3 but never added with Add still counts.
+    if (step === 3 && typedRole.trim()) {
+      ready = { ...draft, roles: addTypedRole(draft.roles, typedRole) };
+      setDraft(ready);
+      setTypedRole("");
+    }
+    if (!stepReady(step, ready)) { setShowErrors(true); return; }
     goTo((step + 1) as Step);
   }
 
@@ -148,7 +156,7 @@ export default function CreateProject() {
           ) : step === 2 ? (
             <StepDetails draft={draft} update={update} showErrors={showErrors} />
           ) : step === 3 ? (
-            <StepRoles draft={draft} update={update} />
+            <StepRoles draft={draft} update={update} custom={typedRole} setCustom={setTypedRole} />
           ) : (
             <StepWhenWhere draft={draft} update={update} onEdit={goTo} />
           )}
@@ -167,7 +175,7 @@ export default function CreateProject() {
             ) : (
               // Keyed so step 3's Next is a fresh button, not one still inside step 2's debounce.
               // Step 2 stays pressable so a too-short title or description can say why.
-              <GradientBtn key={step} label="Next" onPress={next} disabled={step === 3 && !stepReady(3, draft)} />
+              <GradientBtn key={step} label="Next" onPress={next} disabled={step === 3 && !stepReady(3, draft) && !typedRole.trim()} />
             )}
           </View>
         ) : null}

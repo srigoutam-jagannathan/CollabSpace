@@ -6,19 +6,21 @@ import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import { Tile } from "./Tile";
-import { addRole, type ProjectDraft } from "./draft";
+import { addRole, addTypedRole, type ProjectDraft } from "./draft";
 
 interface Props {
   draft: ProjectDraft;
   update: (patch: Partial<ProjectDraft>) => void;
+  /** The custom role being typed. Held by the container, so Next can add it if Add wasn't tapped. */
+  custom: string;
+  setCustom: (text: string) => void;
 }
 
 const OWNER_ROLES = ["Project Lead", ...ALL_SKILLS];
 
-export function StepRoles({ draft, update }: Props) {
+export function StepRoles({ draft, update, custom, setCustom }: Props) {
   const { tokens: { C } } = useTheme();
-  const [adding, setAdding] = useState(false);
-  const [custom, setCustom] = useState("");
+  const [adding, setAdding] = useState(() => custom !== "");
 
   const presets: readonly string[] = ALL_SKILLS;
   const customRoles = draft.roles.filter((r) => !presets.includes(r));
@@ -30,9 +32,8 @@ export function StepRoles({ draft, update }: Props) {
 
   function addCustom() {
     if (!name) return;
-    // "design" typed by hand is the Design tile, not a second chip.
-    const preset = presets.find((p) => p.toLowerCase() === name.toLowerCase());
-    update({ roles: addRole(draft.roles, preset ?? name) });
+    // "design" or "developer" typed by hand is that tile, not a second chip.
+    update({ roles: addTypedRole(draft.roles, name) });
     setCustom("");
     setAdding(false);
   }
@@ -80,7 +81,7 @@ export function StepRoles({ draft, update }: Props) {
             <Btn
               onPress={addCustom}
               disabled={!name}
-              accessibilityLabel={`Add ${name}`}
+              accessibilityLabel={name ? `Add ${name}` : "Add role"}
               style={{ paddingHorizontal: s(16), paddingVertical: vs(10), borderRadius: s(12), backgroundColor: C.pink }}
             >
               <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(13) }}>Add</Text>

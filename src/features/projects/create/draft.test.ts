@@ -1,4 +1,4 @@
-import { EMPTY_DRAFT, addRole, buildProjectInsert, stepReady, type ProjectDraft } from "./draft";
+import { EMPTY_DRAFT, addRole, addTypedRole, buildProjectInsert, stepReady, type ProjectDraft } from "./draft";
 
 const full: ProjectDraft = {
   projectType: "Side Project",
@@ -40,9 +40,27 @@ describe("addRole", () => {
     expect(addRole(["Design"], "  Beekeeping ")).toEqual(["Design", "Beekeeping"]);
   });
 
+  test("collapses inner whitespace, so spacing doesn't make a duplicate", () => {
+    expect(addRole([], "  Bee \t  keeping ")).toEqual(["Bee keeping"]);
+    expect(addRole(["Bee keeping"], "bee   KEEPING")).toEqual(["Bee keeping"]);
+  });
+
   test("ignores blanks and case-insensitive duplicates", () => {
     expect(addRole(["Design"], "   ")).toEqual(["Design"]);
     expect(addRole(["Design"], "design")).toEqual(["Design"]);
+  });
+});
+
+describe("addTypedRole", () => {
+  test("a typed preset or job title becomes the preset it means", () => {
+    expect(addTypedRole([], " design ")).toEqual(["Design"]);
+    expect(addTypedRole([], "Developer")).toEqual(["Coding and Development"]);
+    expect(addTypedRole(["Coding and Development"], "programmer")).toEqual(["Coding and Development"]);
+  });
+
+  test("anything else is added as typed, tidied", () => {
+    expect(addTypedRole([], "  Bee   keeper ")).toEqual(["Bee keeper"]);
+    expect(addTypedRole([], "  ")).toEqual([]);
   });
 });
 
