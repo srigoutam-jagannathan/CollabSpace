@@ -44,6 +44,7 @@ export default function JoinProjectScreen() {
   const [loading, setLoading] = useState(false);
   const [project, setProject] = useState<JoinProject | null>(null);
   const [projectError, setProjectError] = useState(false);
+  const firstName = project?.owner?.full_name?.trim().split(/\s+/)[0] || "The owner";
 
   useEffect(() => {
     if (!id) return;
@@ -77,7 +78,7 @@ export default function JoinProjectScreen() {
 
     if (error) {
       if (error.code === "23505") {
-        Alert.alert("Already Applied", "You have already applied to this project.");
+        Alert.alert("Already asked", "You've already asked to join this project.");
       } else {
         Alert.alert("Error", error.message);
       }
@@ -85,8 +86,8 @@ export default function JoinProjectScreen() {
     }
 
     Alert.alert(
-      "Application Sent!",
-      "The project owner has been notified.",
+      "Request sent",
+      `${firstName} will review it. You'll see it in Notifications when they approve.`,
       [{ text: "OK", onPress: () => router.back() }]
     );
   }
@@ -115,7 +116,7 @@ export default function JoinProjectScreen() {
               fontSize: fs(20),
             }}
           >
-            Join Project
+            Ask to join
           </Text>
 
           <Btn
@@ -164,7 +165,7 @@ export default function JoinProjectScreen() {
             marginBottom: vs(10),
           }}
         >
-          Your Role
+          Role you&apos;d like
         </Text>
 
         <ScrollView
@@ -247,15 +248,29 @@ export default function JoinProjectScreen() {
           {message.length} / 500
         </Text>
 
-        {/* Submit */}
-        <View style={{ marginTop: vs(32) }}>
+        {selectedRole ? (
+          <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(13), marginTop: vs(20) }}>
+            Applying as {selectedRole}
+          </Text>
+        ) : null}
+
+        {/* Ask to join */}
+        <View style={{ marginTop: vs(selectedRole ? 12 : 32) }}>
           <GradientBtn
-            label="Submit Application"
+            label="Ask to Join"
             onPress={handleSubmit}
             loading={loading}
             disabled={!message.trim() && !selectedRole}
           />
         </View>
+
+        <Text style={{
+          color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12),
+          lineHeight: vs(18), textAlign: "center", marginTop: vs(12),
+        }}>
+          {firstName} will see your profile and message, and can approve you. Once they do,
+          you&apos;re in the project chat.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );

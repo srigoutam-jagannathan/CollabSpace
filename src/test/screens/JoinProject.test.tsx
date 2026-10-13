@@ -73,3 +73,39 @@ test("if the project can't load, you can still send a request", async () => {
   fireEvent.press(screen.getByText("Ask to Join"));
   await waitFor(() => expect(db.callsTo("project_members")).toHaveLength(1));
 });
+
+test("the button says Ask to Join, not Submit", async () => {
+  world();
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  expect(screen.getByText("Ask to Join")).toBeTruthy();
+  expect(screen.queryByText(/Submit/)).toBeNull();
+});
+
+test("says what happens next, naming the owner", async () => {
+  world();
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  expect(await screen.findByText(/Olive will see your profile and message/)).toBeTruthy();
+});
+
+test("the picked role is spelled out and sent", async () => {
+  world();
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  fireEvent.press(screen.getByText("Designer"));
+  expect(screen.getByText("Applying as Designer")).toBeTruthy();
+  fireEvent.press(screen.getByText("Ask to Join"));
+  await waitFor(() => expect(db.callsTo("project_members")).toHaveLength(1));
+  expect(db.callsTo("project_members")[0].payload).toMatchObject({ project_id: "p1", user_id: "me", role: "Designer" });
+});
+
+test("confirms the request was sent", async () => {
+  world();
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  fireEvent.changeText(screen.getByPlaceholderText(/Tell them why/), "Keen to help");
+  fireEvent.press(screen.getByText("Ask to Join"));
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    "Request sent", expect.stringMatching(/Notifications/), expect.any(Array),
+  ));
+});
