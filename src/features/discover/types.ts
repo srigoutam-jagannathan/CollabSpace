@@ -23,7 +23,7 @@ export interface NeedsItem {
   university_scope: University | "both";
   commitment_hours: number | null;
   member_count: number;
-  /** Roles from looking_for that intersect the viewer's skills. */
+  /** Roles and Skills Needed tags that intersect the viewer's skills, matched by canonical skill. */
   matched_roles: string[];
 }
 

@@ -114,7 +114,7 @@ export async function fetchNeeds(
       university_scope: p.university_scope,
       commitment_hours: p.commitment_hours,
       member_count: p.project_members?.[0]?.count ?? 0,
-      matched_roles: matchedRoles(lookingFor, viewerSkills),
+      matched_roles: matchedRoles(lookingFor, viewerSkills, p.tags ?? []),
     };
   });
   return { data: rows, error: null };

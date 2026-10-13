@@ -1,6 +1,24 @@
 import { matchedRoles, rankNeeds, rankActive, rankPeople, sectionVisible, selectNeeds } from "./ranking";
 import type { ActiveItem, NeedsItem, PersonItem } from "./types";
 
+describe("matchedRoles with canonical skills", () => {
+  test("a free-text role matches the preset it means", () => {
+    expect(matchedRoles(["Frontend Developer", "Marketer"], ["Coding and Development"])).toEqual(["Frontend Developer"]);
+  });
+
+  test("a project's Skills Needed tags count too", () => {
+    expect(matchedRoles([], ["UI/UX"], ["Figma", "ui/ux"])).toEqual(["ui/ux"]);
+  });
+
+  test("a role and a tag naming the same skill are reported once", () => {
+    expect(matchedRoles(["UX Designer"], ["UI/UX"], ["UI/UX"])).toEqual(["UX Designer"]);
+  });
+
+  test("custom skills still match exactly", () => {
+    expect(matchedRoles(["Beekeeping"], ["beekeeping"])).toEqual(["Beekeeping"]);
+  });
+});
+
 describe("matchedRoles", () => {
   test("returns the intersection, case-insensitively", () => {
     expect(matchedRoles(["Backend Dev", "Marketing"], ["backend dev", "AI"]))

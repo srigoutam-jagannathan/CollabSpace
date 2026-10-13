@@ -1,3 +1,4 @@
+import { canonicalSkill } from "@/constants/skills";
 import type { ActiveItem, NeedsItem, PersonItem, SectionKey } from "./types";
 
 /** Section limits, from the spec. */
@@ -22,13 +23,23 @@ const MIN_ITEMS: Record<SectionKey, number> = {
 };
 
 /**
- * Roles a project still needs that the viewer can actually fill.
- * Compared case-insensitively — skills are free text from onboarding.
- * Returned in the project's original casing/wording, not the viewer's.
+ * What a project needs that the viewer can fill: its roles first, then its
+ * Skills Needed tags, compared by canonical skill (so "Frontend Developer"
+ * meets "Coding and Development"). Returned in the project's own wording,
+ * one entry per distinct skill.
  */
-export function matchedRoles(lookingFor: string[], skills: string[]): string[] {
-  const owned = new Set(skills.map(s => s.trim().toLowerCase()));
-  return lookingFor.filter(role => owned.has(role.trim().toLowerCase()));
+export function matchedRoles(lookingFor: string[], skills: string[], tags: string[] = []): string[] {
+  const owned = new Set(skills.map((s) => canonicalSkill(s).toLowerCase()));
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const need of [...lookingFor, ...tags]) {
+    const key = canonicalSkill(need).toLowerCase();
+    if (owned.has(key) && !seen.has(key)) {
+      seen.add(key);
+      out.push(need);
+    }
+  }
+  return out;
 }
 
 /**
