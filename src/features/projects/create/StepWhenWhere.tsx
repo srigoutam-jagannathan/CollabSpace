@@ -16,7 +16,7 @@ interface Props {
   onEdit: (step: Step) => void;
 }
 
-const hoursLabel = (h: number) => `${h}${h === 15 ? "+" : ""} hrs a week`;
+const hoursLabel = (h: number) => `${h} hrs a week`;
 
 export function StepWhenWhere({ draft, update, onEdit }: Props) {
   const { tokens: { C } } = useTheme();

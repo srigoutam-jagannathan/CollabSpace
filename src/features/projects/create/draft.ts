@@ -72,7 +72,7 @@ export function buildProjectInsert(d: ProjectDraft, ownerId: string) {
     project_type: d.projectType,
     collaboration_style: d.collabStyle,
     team_size: d.roles.length + 1,
-    commitment_hours: d.commitmentHours ?? 5,
+    commitment_hours: d.commitmentHours ?? 0,
     start_date: null,
     end_date: null,
     duration: d.duration,

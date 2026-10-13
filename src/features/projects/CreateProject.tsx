@@ -90,18 +90,22 @@ export default function CreateProject() {
     if (!user || loading || !stepReady(4, draft)) return;
     setLoading(true);
     const { data, error } = await supabase.from("projects").insert(buildProjectInsert(draft, user.id)).select().single();
-    setLoading(false);
 
     if (error) {
+      setLoading(false);
       console.error("[CreateProject] insert error:", error);
       Alert.alert("Could not create project", error.message);
       return;
     }
 
     if (!data?.id) {
+      setLoading(false);
       Alert.alert("Error", "Project created but no ID returned.");
       return;
     }
+
+    // The project exists: leaving is decided, and loading stays true so Post can't make a second one.
+    leaving.current = true;
 
     // Add owner to project_members so the group chat is immediately visible
     const { error: memberError } = await supabase
@@ -119,7 +123,6 @@ export default function CreateProject() {
       console.warn("[CreateProject] owner member insert failed:", memberError);
     }
 
-    leaving.current = true;
     router.replace({ pathname: "/(app)/projects/[id]/preview", params: { id: data.id } });
   }
 

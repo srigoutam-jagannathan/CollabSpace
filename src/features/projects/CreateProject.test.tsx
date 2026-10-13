@@ -365,6 +365,31 @@ test("the owner joins their own project already approved", async () => {
   expect(db.callsTo("project_members")[0].payload).toMatchObject({ user_id: "me", status: "approved" });
 });
 
+test("a second Post tap while the owner row is saving creates no second project", async () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fillDetails(screen);
+  pickRoles(screen);
+  pickWhenWhere(screen);
+  fireEvent.press(screen.getByText("Post project"));
+  await waitFor(() => expect(db.callsTo("project_members")).toHaveLength(1));
+  clockOffset += 1000;
+  // By label: the button shows a spinner (no text) while it's busy.
+  fireEvent.press(screen.getByLabelText("Post project"));
+  await act(async () => {});
+  expect(db.callsTo("projects")).toHaveLength(1);
+  expect(db.callsTo("project_members")).toHaveLength(1);
+});
+
+test("hours read as plain numbers, so the top tile is not a hidden 15+", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fillDetails(screen);
+  pickRoles(screen);
+  expect(screen.getByLabelText("15 hrs a week")).toBeTruthy();
+  expect(screen.queryByLabelText("15+ hrs a week")).toBeNull();
+});
+
 test("a failed insert says so and stays on the preview", async () => {
   const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
   db.respond((c) => (c.table === "projects" ? { data: null, error: { code: "42501", message: "denied" } } : undefined));

@@ -28,6 +28,7 @@ import TabsLayout from "../../app/(app)/(tabs)/_layout";
 import ProjectsLayout from "../../app/(app)/projects/_layout";
 import SettingsLayout from "../../app/(app)/settings/_layout";
 import EditSkillsScreen from "../../app/(app)/settings/skills";
+import CreateProjectScreen from "../../app/(app)/projects/create";
 import { db } from "@/test/supabaseMock";
 
 const stub = (label: string) => {
@@ -91,6 +92,7 @@ const ROUTES = {
   "(app)/chat/[id]": withId("Chat room"),
   "(app)/projects/_layout": ProjectsLayout,
   "(app)/projects/index": stub("My projects"),
+  "(app)/projects/create": CreateProjectScreen,
   "(app)/projects/[id]/preview": withId("Preview"),
   "(app)/settings/_layout": SettingsLayout,
   "(app)/settings/index": stub("Settings screen"),
@@ -204,4 +206,16 @@ test("editing skills from Settings returns to Settings, on back and on save", as
     fireEvent.press(await screen.findByText("Save"));
   });
   expect(await screen.findByText("Settings screen")).toBeTruthy();
+});
+
+test("Create Project's guard holds on the real router: back from step 2 goes to step 1, not out", async () => {
+  renderRouter(ROUTES, { initialUrl: "/projects/create" });
+  expect(await screen.findByText("Step 1 of 4")).toBeTruthy();
+
+  fireEvent.press(screen.getByLabelText("Passion project"));
+  expect(await screen.findByText("Step 2 of 4")).toBeTruthy();
+
+  act(() => router.back());
+  expect(await screen.findByText("Step 1 of 4")).toBeTruthy();
+  expect(screen.queryByText("Discover screen")).toBeNull();
 });
