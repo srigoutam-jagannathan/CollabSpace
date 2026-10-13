@@ -63,6 +63,7 @@ test("asks for the project with its owner, by id", async () => {
   await screen.findByText("Aurora");
   const [call] = db.callsTo("projects");
   expect(has(call, "eq", "id", "p1")).toBe(true);
+  expect(call.columns).toContain("owner:profiles!owner_id(");
 });
 
 test("if the project can't load, you can still send a request", async () => {
@@ -106,6 +107,32 @@ test("confirms the request was sent", async () => {
   fireEvent.changeText(screen.getByPlaceholderText(/Tell them why/), "Keen to help");
   fireEvent.press(screen.getByText("Ask to Join"));
   await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
-    "Request sent", expect.stringMatching(/Notifications/), expect.any(Array),
+    "Request sent", expect.stringMatching(/Chats/), expect.any(Array),
+  ));
+  const buttons = alertSpy.mock.calls[0][2];
+  buttons[0].onPress();
+  expect(mockRouter.back).toHaveBeenCalledTimes(1);
+});
+
+test("a project with no owner shows Unknown and no profile link", async () => {
+  world({ project: { ...PROJECT, owner: null } as unknown as typeof PROJECT });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  expect(screen.getByText("Unknown")).toBeTruthy();
+  expect(screen.queryByLabelText(/Opens their profile/)).toBeNull();
+});
+
+test("says so when you've already asked", async () => {
+  db.respond((c) => {
+    if (c.table === "projects") return { data: PROJECT };
+    if (c.table === "project_members") return { data: null, error: { code: "23505", message: "duplicate" } };
+    return undefined;
+  });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  fireEvent.changeText(screen.getByPlaceholderText(/Tell them why/), "Keen to help");
+  fireEvent.press(screen.getByText("Ask to Join"));
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    "Already asked", "You've already asked to join this project.",
   ));
 });

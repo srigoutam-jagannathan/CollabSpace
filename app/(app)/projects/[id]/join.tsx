@@ -48,6 +48,8 @@ export default function JoinProjectScreen() {
 
   useEffect(() => {
     if (!id) return;
+    setProject(null);
+    setProjectError(false);
     let alive = true;
     supabase
       .from("projects")
@@ -87,7 +89,7 @@ export default function JoinProjectScreen() {
 
     Alert.alert(
       "Request sent",
-      `${firstName} will review it. You'll see it in Notifications when they approve.`,
+      `${firstName} will review it. Once they approve, the project shows up in your Chats.`,
       [{ text: "OK", onPress: () => router.back() }]
     );
   }
@@ -147,7 +149,9 @@ export default function JoinProjectScreen() {
               timeframe={describeTimeframe(project)}
               ownerName={project.owner?.full_name ?? null}
               ownerAvatarUrl={project.owner?.avatar_url ?? null}
-              onOwnerPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: project.owner_id } })}
+              onOwnerPress={project.owner
+                ? () => router.push({ pathname: "/(app)/users/[id]", params: { id: project.owner_id } })
+                : undefined}
             />
           ) : projectError ? (
             <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>
