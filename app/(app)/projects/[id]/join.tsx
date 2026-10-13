@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,9 +14,22 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { GradientBtn } from "@/components/GradientBtn";
 import { Btn } from "@/components/Btn";
+import { ProjectSummaryCard } from "@/components/ProjectSummaryCard";
+import { describeTimeframe } from "@/utils/projectTimeframe";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+
+type JoinProject = {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string | null;
+  end_date: string | null;
+  commitment_hours: number | null;
+  owner_id: string;
+  owner: { id: string; full_name: string | null; avatar_url: string | null } | null;
+};
 
 const ROLES = ["Developer", "Designer", "Marketer", "Legal", "Finance", "Other"];
 
@@ -29,6 +42,24 @@ export default function JoinProjectScreen() {
   const [message, setMessage] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
   const [loading, setLoading] = useState(false);
+  const [project, setProject] = useState<JoinProject | null>(null);
+  const [projectError, setProjectError] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    supabase
+      .from("projects")
+      .select("id, title, description, start_date, end_date, commitment_hours, owner_id, owner:profiles!owner_id(id, full_name, avatar_url)")
+      .eq("id", id)
+      .single()
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error || !data) setProjectError(true);
+        else setProject(data as unknown as JoinProject);
+      });
+    return () => { alive = false; };
+  }, [id]);
 
   async function handleSubmit() {
     if (!user || !id) return;
@@ -106,19 +137,23 @@ export default function JoinProjectScreen() {
           </Btn>
         </View>
 
-        {/* Subtitle */}
-        <Text
-          style={{
-            color: C.textMuted,
-            fontFamily: FONT.regular,
-            fontSize: fs(13),
-            lineHeight: vs(20),
-            marginBottom: vs(28),
-          }}
-        >
-          Your profile will be shared with the host once you submit your application
-          — no extra work needed!
-        </Text>
+        {/* The project being joined; the form never waits for it */}
+        <View style={{ marginBottom: vs(24) }}>
+          {project ? (
+            <ProjectSummaryCard
+              title={project.title}
+              description={project.description}
+              timeframe={describeTimeframe(project)}
+              ownerName={project.owner?.full_name ?? null}
+              ownerAvatarUrl={project.owner?.avatar_url ?? null}
+              onOwnerPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: project.owner_id } })}
+            />
+          ) : projectError ? (
+            <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>
+              Couldn&apos;t load this project&apos;s details.
+            </Text>
+          ) : null}
+        </View>
 
         {/* Role section */}
         <Text
