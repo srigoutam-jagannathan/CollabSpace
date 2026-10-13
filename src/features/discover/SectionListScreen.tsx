@@ -28,7 +28,7 @@ const PAGE = 20;
 
 const TITLES: Record<string, string> = {
   needs: "Projects for you",
-  active: "Active right now",
+  active: "Active this week",
   people: "People to know",
 };
 

@@ -166,6 +166,7 @@ export default function DiscoverScreen() {
           {skills.length === 0 ? (
             <SectionFrame
               title="Projects for you"
+              subtitle="Roles you can fill"
               skeleton="hero"
               visible
               loading={false}
@@ -177,6 +178,7 @@ export default function DiscoverScreen() {
           ) : (
             <SectionFrame
               title="Projects for you"
+              subtitle="Roles you can fill"
               skeleton="hero"
               visible
               loading={needs.loading && needs.data.length === 0}
@@ -190,8 +192,25 @@ export default function DiscoverScreen() {
             </SectionFrame>
           )}
 
+          {/* Second, and gated: sectionVisible hides it below five completed
+              projects. Its chevron opens the Archive rather than a see-all,
+              because the Archive is its see-all. */}
           <SectionFrame
-            title="Active right now"
+            title="Shipped from Belfast"
+            subtitle="Finished projects from QUB and Ulster"
+            skeleton="rail"
+            visible={sectionVisible("shipped", shipped.data.length)}
+            loading={shipped.loading && shipped.data.length === 0}
+            error={shipped.error}
+            onRetry={() => retry("shipped")}
+            onSeeAll={() => router.push("/(app)/archive")}
+          >
+            <ShippedRail items={shipped.data} />
+          </SectionFrame>
+
+          <SectionFrame
+            title="Active this week"
+            subtitle="Teams making progress"
             skeleton="rail"
             visible={sectionVisible("active", active.data.length)}
             loading={active.loading && active.data.length === 0}
@@ -212,21 +231,6 @@ export default function DiscoverScreen() {
             onSeeAll={() => router.push({ pathname: "/(app)/discover/[section]", params: { section: "people" } })}
           >
             <PeopleToKnow items={people.data} />
-          </SectionFrame>
-
-          {/* Last, and gated: sectionVisible hides it below five completed
-              projects. Its chevron opens the Archive rather than a see-all,
-              because the Archive is its see-all. */}
-          <SectionFrame
-            title="Shipped from Belfast"
-            skeleton="rail"
-            visible={sectionVisible("shipped", shipped.data.length)}
-            loading={shipped.loading && shipped.data.length === 0}
-            error={shipped.error}
-            onRetry={() => retry("shipped")}
-            onSeeAll={() => router.push("/(app)/archive")}
-          >
-            <ShippedRail items={shipped.data} />
           </SectionFrame>
         </ScrollView>
       )}

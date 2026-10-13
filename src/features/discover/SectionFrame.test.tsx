@@ -5,23 +5,23 @@ import { SectionFrame } from "./SectionFrame";
 
 test("renders nothing when the section is not visible", () => {
   const { queryByText } = renderWithProviders(
-    <SectionFrame skeleton="rail" title="Active right now" visible={false} loading={false} error={null} onRetry={() => {}}>
+    <SectionFrame skeleton="rail" title="Active this week" visible={false} loading={false} error={null} onRetry={() => {}}>
       <Text>child</Text>
     </SectionFrame>
   );
-  expect(queryByText("Active right now")).toBeNull();
+  expect(queryByText("Active this week")).toBeNull();
   expect(queryByText("child")).toBeNull();
 });
 
 test("shows an inline retry when the section errored", () => {
   const onRetry = jest.fn();
   const { getByText, getByLabelText } = renderWithProviders(
-    <SectionFrame skeleton="rail" title="Active right now" visible loading={false} error="Couldn't load active projects." onRetry={onRetry}>
+    <SectionFrame skeleton="rail" title="Active this week" visible loading={false} error="Couldn't load active projects." onRetry={onRetry}>
       <Text>child</Text>
     </SectionFrame>
   );
   expect(getByText("Couldn't load active projects.")).toBeTruthy();
-  fireEvent.press(getByLabelText("Retry loading Active right now"));
+  fireEvent.press(getByLabelText("Retry loading Active this week"));
   expect(onRetry).toHaveBeenCalled();
 });
 
@@ -47,11 +47,20 @@ test("hides children while loading but keeps the header", () => {
 test("a section still shows its error and retry", () => {
   const onRetry = jest.fn();
   const { getByText, getByLabelText } = renderWithProviders(
-    <SectionFrame skeleton="rail" title="Active right now" visible loading={false} error="Couldn't load active projects." onRetry={onRetry}>
+    <SectionFrame skeleton="rail" title="Active this week" visible loading={false} error="Couldn't load active projects." onRetry={onRetry}>
       <Text>child</Text>
     </SectionFrame>
   );
   expect(getByText("Couldn't load active projects.")).toBeTruthy();
-  fireEvent.press(getByLabelText("Retry loading Active right now"));
+  fireEvent.press(getByLabelText("Retry loading Active this week"));
   expect(onRetry).toHaveBeenCalled();
+});
+
+test("shows a subtitle under the title when given", () => {
+  const { getByText } = renderWithProviders(
+    <SectionFrame skeleton="rail" title="Active this week" subtitle="Teams making progress" visible loading={false} error={null} onRetry={() => {}}>
+      <Text>child</Text>
+    </SectionFrame>
+  );
+  expect(getByText("Teams making progress")).toBeTruthy();
 });

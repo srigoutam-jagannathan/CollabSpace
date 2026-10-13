@@ -8,6 +8,8 @@ import { SectionSkeleton, type SkeletonShape } from "./SectionSkeleton";
 
 interface Props {
   title: string;
+  /** One line under the title saying what kind of content this is. */
+  subtitle?: string;
   /** False hides the whole section — header included. */
   visible: boolean;
   loading: boolean;
@@ -20,7 +22,7 @@ interface Props {
 }
 
 export function SectionFrame({
-  title, visible, loading, error, onRetry, onSeeAll, skeleton, children,
+  title, subtitle, visible, loading, error, onRetry, onSeeAll, skeleton, children,
 }: Props) {
   const { tokens: { C } } = useTheme();
 
@@ -28,20 +30,27 @@ export function SectionFrame({
   if (!visible && !loading && !error) return null;
 
   return (
-    <View style={{ marginBottom: vs(16) }}>
+    <View style={{ marginBottom: vs(24) }}>
       <View style={{
         flexDirection: "row", alignItems: "center", justifyContent: "space-between",
         paddingHorizontal: s(20), marginBottom: vs(8),
       }}>
-        <Text
-          accessibilityRole="header"
-          style={{
-            color: C.purpleL, fontFamily: FONT.bold, fontSize: fs(10),
-            letterSpacing: 1.1, textTransform: "uppercase",
-          }}
-        >
-          {title}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text
+            accessibilityRole="header"
+            style={{
+              color: C.purpleL, fontFamily: FONT.bold, fontSize: fs(10),
+              letterSpacing: 1.1, textTransform: "uppercase",
+            }}
+          >
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={{ color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(11.5), marginTop: vs(2) }}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
         {onSeeAll && (
           <Btn
             onPress={onSeeAll}
