@@ -222,6 +222,28 @@ test("asks for the project's roles in the same query as its details", async () =
   expect(db.callsTo("projects")[0].columns).toContain("role_requirements");
 });
 
+test("a refused role says so and clears the pick", async () => {
+  db.respond((c) => {
+    if (c.table === "projects") {
+      return { data: { ...PROJECT, role_requirements: [{ role: "Designer", description: "" }], looking_for: [] } };
+    }
+    if (c.table === "profiles") return { data: { skills: [] } };
+    if (c.table === "project_members") {
+      return { data: null, error: { code: "42501", message: "role not offered by this project" } };
+    }
+    return undefined;
+  });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  fireEvent.press(await screen.findByLabelText("Role Designer"));
+  expect(screen.getByText("Applying as Designer")).toBeTruthy();
+  fireEvent.press(screen.getByText("Ask to Join"));
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    "That role isn't open",
+    "The project's roles have changed. Pick another, or ask without a role.",
+  ));
+  expect(screen.queryByText(/Applying as/)).toBeNull();
+});
+
 test("reads the viewer's skills from their own profile", async () => {
   rolesWorld({ roles: ["Marketer"], skills: [] });
   const screen = renderWithProviders(<JoinProjectScreen />);

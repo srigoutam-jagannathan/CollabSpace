@@ -15,7 +15,7 @@
 -- Not SECURITY DEFINER, like guard_member_status: current_user must be the
 -- caller. accept_invitation and the other RPCs run as postgres and pass
 -- straight through, so an invitation keeps the role the owner chose. The
--- owner's own rows are exempt. projects is readable by every signed-in
+-- owner's own row on their own project is exempt. projects is readable by every signed-in
 -- university user ("projects: public read"), so the caller can read the
 -- list.
 -- ============================================================
@@ -29,7 +29,7 @@ begin
     select 1 from public.projects p
     where p.id = new.project_id
       and (
-        p.owner_id = auth.uid()
+        (p.owner_id = auth.uid() and new.user_id = p.owner_id)
         or new.role = any (p.looking_for)
         or (jsonb_typeof(p.role_requirements) = 'array'
             and exists (select 1 from jsonb_array_elements(p.role_requirements) r

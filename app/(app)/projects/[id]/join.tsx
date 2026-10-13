@@ -126,6 +126,10 @@ export default function JoinProjectScreen() {
     if (error) {
       if (error.code === "23505") {
         Alert.alert("Already asked", "You've already asked to join this project.");
+      } else if (error.code === "42501") {
+        // The role check refused it: the owner changed the roles since this loaded.
+        Alert.alert("That role isn't open", "The project's roles have changed. Pick another, or ask without a role.");
+        setSelectedRole("");
       } else {
         Alert.alert("Error", error.message);
       }

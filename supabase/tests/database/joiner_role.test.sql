@@ -24,8 +24,15 @@ insert into public.projects (id, owner_id, title, role_requirements, looking_for
    '[]', '{Legal}'),
   ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000a1', 'No roles project',
    '[]', '{}');
+-- Malformed role_requirements on projects someone else owns (f5 to f7), and
+-- g1, owned by the second joiner, for the cross-project owner case.
+insert into public.projects (id, owner_id, title, role_requirements, looking_for) values
+  ('00000000-0000-0000-0000-0000000000f5', '00000000-0000-0000-0000-0000000000a1', 'Empty object', '{}'::jsonb, '{}'),
+  ('00000000-0000-0000-0000-0000000000f6', '00000000-0000-0000-0000-0000000000a1', 'Array of strings', '["x"]'::jsonb, '{}'),
+  ('00000000-0000-0000-0000-0000000000f7', '00000000-0000-0000-0000-0000000000a1', 'No role key', '[{"description":"x"}]'::jsonb, '{}'),
+  ('00000000-0000-0000-0000-0000000000a9', '00000000-0000-0000-0000-0000000000d4', 'Second joiner project', '[]', '{}');
 
-select plan(11);
+select plan(16);
 
 -- ── Joiners may only pick a role the project lists ──────────────────────
 -- Each refusal is an INSERT of the joiner's own row (user_id = auth.uid()),
@@ -40,6 +47,18 @@ select throws_ok($$ insert into public.project_members (project_id, user_id, rol
 select throws_ok($$ insert into public.project_members (project_id, user_id, role)
   values ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000c3', 'Designer') $$,
   '42501', 'role not offered by this project', 'a role from another project is refused');
+select throws_ok($$ insert into public.project_members (project_id, user_id, role)
+  values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'designer') $$,
+  '42501', 'role not offered by this project', 'the role match is case-sensitive');
+select throws_ok($$ insert into public.project_members (project_id, user_id, role)
+  values ('00000000-0000-0000-0000-0000000000f5', '00000000-0000-0000-0000-0000000000c3', 'x') $$,
+  '42501', 'role not offered by this project', 'role_requirements {} offers no role');
+select throws_ok($$ insert into public.project_members (project_id, user_id, role)
+  values ('00000000-0000-0000-0000-0000000000f6', '00000000-0000-0000-0000-0000000000c3', 'x') $$,
+  '42501', 'role not offered by this project', 'role_requirements ["x"] offers no role');
+select throws_ok($$ insert into public.project_members (project_id, user_id, role)
+  values ('00000000-0000-0000-0000-0000000000f7', '00000000-0000-0000-0000-0000000000c3', 'x') $$,
+  '42501', 'role not offered by this project', 'role_requirements without a role key offers no role');
 select lives_ok($$ insert into public.project_members (project_id, user_id, role)
   values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000c3', 'Designer') $$,
   'a joiner can ask for a role the project lists');
@@ -67,6 +86,9 @@ insert into public.projects (id, owner_id, title) values
 select lives_ok($$ insert into public.project_members (project_id, user_id, role, status)
   values ('00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000a1', 'Project Lead', 'approved') $$,
   'the owner adds their own row with any role');
+select throws_ok($$ insert into public.project_members (project_id, user_id, role)
+  values ('00000000-0000-0000-0000-0000000000a9', '00000000-0000-0000-0000-0000000000a1', 'Project Lead') $$,
+  '42501', 'role not offered by this project', 'owning one project does not exempt a made-up role on another');
 
 -- ── An accepted invitation keeps the role the owner chose ───────────────
 insert into public.collab_invitations (id, project_id, sender_id, recipient_id, role)
