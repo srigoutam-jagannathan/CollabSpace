@@ -270,3 +270,13 @@ describe("shipped failures", () => {
     expect(result.current.shipped.error).toBe("Couldn't load shipped projects.");
   });
 });
+
+test("a loader that throws cannot leave the spinner or progress line stuck", async () => {
+  const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+  await waitFor(() => expect(result.current.revalidating).toBe(false));
+  mocked.fetchActive.mockRejectedValue(new Error("boom"));
+  await act(async () => { await result.current.refresh().catch(() => {}); });
+  expect(result.current.refreshing).toBe(false);
+  await act(async () => { await result.current.revalidate().catch(() => {}); });
+  expect(result.current.revalidating).toBe(false);
+});

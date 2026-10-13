@@ -136,14 +136,20 @@ export function useDiscoverData(
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
-    await loadAll();
-    if (alive.current) setRefreshing(false);
+    try {
+      await loadAll();
+    } finally {
+      if (alive.current) setRefreshing(false);
+    }
   }, [loadAll]);
 
   const revalidate = useCallback(async () => {
     setRevalidating(true);
-    await loadAll();
-    if (alive.current) setRevalidating(false);
+    try {
+      await loadAll();
+    } finally {
+      if (alive.current) setRevalidating(false);
+    }
   }, [loadAll]);
 
   const retry = useCallback(async (key: "needs" | "active" | "people" | "shipped") => {
@@ -154,7 +160,7 @@ export function useDiscoverData(
     await runner();
   }, [loadNeeds, loadActive, loadPeople, loadShipped]);
 
-  useEffect(() => { revalidate(); }, [revalidate]);
+  useEffect(() => { revalidate().catch(() => {}); }, [revalidate]);
 
   // Stale means "kept, unconfirmed" — a section that errored with nothing
   // cached shows its own inline retry instead and is not counted here.

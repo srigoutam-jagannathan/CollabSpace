@@ -258,7 +258,9 @@ export default function DiscoverScreen() {
             title="People to know"
             subtitle={people.data.some((p) => p.matched_skills.length > 0)
               ? "Skills your projects need"
-              : "Students from your department first"}
+              : profile?.department
+                ? "Students from your department first"
+                : "Students across QUB and Ulster"}
             skeleton="people"
             visible={sectionVisible("people", people.data.length)}
             loading={people.loading && people.data.length === 0}

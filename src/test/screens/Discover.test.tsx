@@ -174,3 +174,10 @@ describe("People to know", () => {
     expect(screen.queryByText(/^Can fill/)).toBeNull();
   });
 });
+
+test("People to know says so when no one matches and the viewer has no department", async () => {
+  world({ profile: { skills: ["Design"], department: null }, recruiting: [] });
+  const screen = renderDiscover();
+  expect(await screen.findByText("Students across QUB and Ulster")).toBeTruthy();
+  expect(screen.queryByText("Students from your department first")).toBeNull();
+});

@@ -40,6 +40,18 @@ function hoursAgo(h: number): string {
   return new Date(Date.now() - h * 3600_000).toISOString();
 }
 
+/** The trimmed, non-empty strings of `v`; anything that is not an array yields []. */
+function strings(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((x) => (typeof x === "string" && x.trim() ? [x.trim()] : []));
+}
+
+/** The string `role`s of a role_requirements value ({ role, description }[]); junk is dropped. */
+function roleNames(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return strings(v.map((r) => (r && typeof r === "object" ? (r as { role?: unknown }).role : null)));
+}
+
 /**
  * Recruiting projects the viewer is not already in, annotated with the roles
  * that match their skills. Ordering and the zero-match cut happen in ranking.ts.
@@ -69,20 +81,20 @@ export async function fetchNeeds(
     // Create Project writes roles to role_requirements ({ role, description }[]).
     // looking_for is the older string[] and is empty on every row written by the
     // current form, so prefer role_requirements and fall back for legacy rows.
-    const roles: string[] =
-      (p.role_requirements ?? []).map((r: any) => r?.role).filter(Boolean);
-    const lookingFor = roles.length > 0 ? roles : (p.looking_for ?? []);
+    const roles = roleNames(p.role_requirements);
+    const lookingFor = roles.length > 0 ? roles : strings(p.looking_for);
+    const tags = strings(p.tags);
 
     return {
       id: p.id,
       title: p.title,
       description: p.description,
       looking_for: lookingFor,
-      tags: p.tags ?? [],
+      tags,
       university_scope: p.university_scope,
       commitment_hours: p.commitment_hours,
       member_count: p.project_members?.[0]?.count ?? 0,
-      matched_roles: matchedRoles(lookingFor, viewerSkills, p.tags ?? []),
+      matched_roles: matchedRoles(lookingFor, viewerSkills, tags),
     };
   });
   return { data: rows, error: null };
@@ -149,14 +161,14 @@ export async function fetchViewerProjectNeeds(viewerId: string): Promise<string[
     .limit(WINDOW.viewerMemberships);
 
   return (data ?? []).flatMap((p: any) => {
-    const roles: string[] = (p.role_requirements ?? []).map((r: any) => r?.role).filter(Boolean);
-    return [...(roles.length > 0 ? roles : (p.looking_for ?? [])), ...(p.tags ?? [])];
+    const roles = roleNames(p.role_requirements);
+    return [...(roles.length > 0 ? roles : strings(p.looking_for)), ...strings(p.tags)];
   });
 }
 
 /**
  * Everyone except the viewer, the deleted, and existing accepted connections,
- * newest activity first, each marked with which of `needs` they can fill.
+ * most recently signed in or edited (profiles.updated_at) first, each marked with which of `needs` they can fill.
  */
 export async function fetchPeople(
   viewerId: string,

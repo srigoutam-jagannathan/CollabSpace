@@ -1,7 +1,7 @@
 jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
 
 import { db, has } from "@/test/supabaseMock";
-import { fetchActive, fetchPeople, fetchViewerProjectNeeds } from "./queries";
+import { fetchActive, fetchNeeds, fetchPeople, fetchViewerProjectNeeds } from "./queries";
 
 beforeEach(() => db.reset());
 
@@ -53,4 +53,28 @@ test("People to know marks what each person can fill, and no longer orders by sc
   const [call] = db.callsTo("profiles");
   expect(has(call, "order", "pvs_score")).toBe(false);
   expect(has(call, "order", "updated_at", { ascending: false })).toBe(true);
+});
+
+const MALFORMED = [
+  { id: "m1", title: "A", description: "", role_requirements: {}, looking_for: null, tags: "x", project_members: [] },
+  {
+    id: "m2", title: "B", description: "",
+    role_requirements: [{ role: 5 }, "x", null, { role: " UX Designer " }],
+    looking_for: [3, " ", "Legal"], tags: ["Marketing", 7, null], project_members: [],
+  },
+];
+
+test("fetchNeeds tolerates malformed role_requirements, looking_for and tags", async () => {
+  db.respond((call) => (call.table === "projects" ? { data: MALFORMED } : undefined));
+  const result = await fetchNeeds("me", ["UX Designer"], []);
+  expect(result.error).toBeNull();
+  expect(result.data.map((p) => [p.looking_for, p.tags])).toEqual([
+    [[], []],
+    [["UX Designer"], ["Marketing"]],
+  ]);
+});
+
+test("fetchViewerProjectNeeds tolerates malformed project columns", async () => {
+  db.respond((call) => (call.table === "projects" ? { data: MALFORMED } : undefined));
+  expect(await fetchViewerProjectNeeds("me")).toEqual(["UX Designer", "Marketing"]);
 });
