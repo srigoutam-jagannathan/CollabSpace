@@ -1,6 +1,9 @@
+import { durationLabel } from "@/constants/projectOptions";
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export interface TimeframeSource {
+  duration?: string | null;
   start_date?: string | null;
   end_date?: string | null;
   commitment_hours?: number | null;
@@ -19,7 +22,7 @@ function monthYear(iso: string | null | undefined): string | null {
 
 /**
  * One line saying when a project runs and how much time it asks for, or null
- * when the project says neither. Shown on the join screen and the create preview.
+ * when the project says neither. A duration bucket wins over dates. Shown on the join screen and the create preview.
  */
 export function describeTimeframe(p: TimeframeSource): string | null {
   const start = monthYear(p.start_date);
@@ -28,10 +31,14 @@ export function describeTimeframe(p: TimeframeSource): string | null {
   // ISO dates compare lexically. An end before the start is a mistake; don't print it backwards.
   const reversed = start && end && p.end_date! < p.start_date!;
 
-  let when: string | null = null;
-  if (start && end && !reversed) when = start === end ? start : `${start} – ${end}`;
-  else if (start) when = `From ${start}`;
-  else if (end && !start) when = `Until ${end}`;
+  const bucket = durationLabel(p.duration);
+
+  let when: string | null = bucket;
+  if (!bucket) {
+    if (start && end && !reversed) when = start === end ? start : `${start} – ${end}`;
+    else if (start) when = `From ${start}`;
+    else if (end && !start) when = `Until ${end}`;
+  }
 
   const h = p.commitment_hours ?? 0;
   const hours = h > 0 ? `${h} ${h === 1 ? "hr" : "hrs"} a week` : null;

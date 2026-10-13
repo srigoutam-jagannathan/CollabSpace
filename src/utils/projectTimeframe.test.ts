@@ -44,3 +44,12 @@ test("a bad start with a valid end reads as until", () => {
 test("a malformed date is ignored rather than printed", () => {
   expect(describeTimeframe({ start_date: "not a date", commitment_hours: 5 })).toBe("5 hrs a week");
 });
+
+test("a duration bucket is used instead of dates", () => {
+  expect(describeTimeframe({ duration: "3_6_months", start_date: "2026-10-03", commitment_hours: 10 }))
+    .toBe("3–6 months · 10 hrs a week");
+});
+
+test("a project with no duration falls back to its dates", () => {
+  expect(describeTimeframe({ duration: null, start_date: "2026-10-03" })).toBe("From Oct 2026");
+});
