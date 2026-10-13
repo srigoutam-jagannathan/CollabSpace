@@ -38,8 +38,13 @@ export interface DiscoverData {
   retry: (key: "needs" | "active" | "people" | "shipped") => Promise<void>;
 }
 
+/**
+ * `viewerSkills` is null until the viewer's profile has loaded. Needs is not
+ * fetched and stays loading until then: matching against a placeholder `[]`
+ * would report "nothing matches" before the real skills are known.
+ */
 export function useDiscoverData(
-  viewerSkills: string[],
+  viewerSkills: string[] | null,
   viewerDepartment: string | null
 ): DiscoverData {
   const { user } = useAuth();
@@ -52,8 +57,9 @@ export function useDiscoverData(
   // causing an infinite refetch loop. Depending on this stable string
   // serialisation instead means loadNeeds only changes when the actual
   // skill set changes. See the "new-but-equal array" test in
-  // useDiscoverData.test.ts, which fails without this.
-  const viewerSkillsKey = viewerSkills.join("|");
+  // useDiscoverData.test.ts, which fails without this. null (not loaded) gets
+  // its own key so it never collides with an empty skill list ("").
+  const viewerSkillsKey = viewerSkills === null ? "\u0000unknown" : viewerSkills.join("|");
 
   const [needs, setNeeds] = useState<SectionState<NeedsItem>>(initial);
   const [active, setActive] = useState<SectionState<ActiveItem>>(initial);
@@ -74,11 +80,16 @@ export function useDiscoverData(
     return () => { alive.current = false; };
   }, []);
 
+  // Latest wins: when the skills change mid-flight, the answer to the older
+  // request must not land over the newer one.
+  const needsRequest = useRef(0);
+
   const loadNeeds = useCallback(async () => {
-    if (!viewerId) return;
+    if (!viewerId || viewerSkills === null) return;
+    const request = ++needsRequest.current;
     const memberIds = await fetchMemberProjectIds(viewerId);
     const { data, error } = await fetchNeeds(viewerId, viewerSkills, memberIds);
-    if (!alive.current) return;
+    if (!alive.current || request !== needsRequest.current) return;
     if (!error) {
       setNeeds({ data: rankNeeds(data), loading: false, error: null });
     } else {

@@ -203,3 +203,61 @@ test("the shipped rail is topped up with examples", async () => {
   await waitFor(() => expect(result.current.shipped.loading).toBe(false));
   expect(result.current.shipped.data).toHaveLength(5);
 });
+
+describe("needs while the viewer's profile is unknown", () => {
+  const row = (id: string, title: string) => ({
+    id, title, description: "", looking_for: ["Design"], tags: [],
+    university_scope: "both" as const, commitment_hours: null, member_count: 1,
+    matched_roles: ["Design"],
+  });
+
+  test("null skills mean not loaded yet: no fetch, and needs stays loading", async () => {
+    const { result } = renderHook(() => useDiscoverData(null, null));
+    await waitFor(() => expect(result.current.people.loading).toBe(false));
+    expect(mocked.fetchNeeds).not.toHaveBeenCalled();
+    expect(result.current.needs.loading).toBe(true);
+    expect(result.current.needs.data).toEqual([]);
+  });
+
+  test("a stale needs response that lands last does not overwrite the latest", async () => {
+    let resolveFirst!: (v: Awaited<ReturnType<typeof queries.fetchNeeds>>) => void;
+    mocked.fetchNeeds
+      .mockImplementationOnce(() => new Promise((r) => { resolveFirst = r; }))
+      .mockResolvedValueOnce({ data: [row("fresh", "Fresh")], error: null });
+
+    const { result, rerender } = renderHook(
+      (props: { skills: string[] }) => useDiscoverData(props.skills, "CS"),
+      { initialProps: { skills: [] as string[] } }
+    );
+    await waitFor(() => expect(mocked.fetchNeeds).toHaveBeenCalledTimes(1));
+
+    rerender({ skills: ["Design"] });
+    await waitFor(() => expect(result.current.needs.data.map((n) => n.id)).toEqual(["fresh"]));
+
+    // The request made with the old skills finally answers.
+    await act(async () => { resolveFirst({ data: [row("stale", "Stale")], error: null }); });
+    expect(result.current.needs.data.map((n) => n.id)).toEqual(["fresh"]);
+  });
+});
+
+describe("shipped failures", () => {
+  test("a first load that fails shows no examples, only the error", async () => {
+    mocked.fetchShipped.mockResolvedValue({ data: [], error: "Couldn't load shipped projects." });
+    const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+    await waitFor(() => expect(result.current.shipped.loading).toBe(false));
+    expect(result.current.shipped.data).toEqual([]);
+    expect(result.current.shipped.error).toBe("Couldn't load shipped projects.");
+  });
+
+  test("a failed revalidate keeps the five rows already shown", async () => {
+    const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+    await waitFor(() => expect(result.current.shipped.data).toHaveLength(5));
+    const before = result.current.shipped.data;
+
+    mocked.fetchShipped.mockResolvedValue({ data: [], error: "Couldn't load shipped projects." });
+    await act(async () => { await result.current.revalidate(); });
+
+    expect(result.current.shipped.data).toEqual(before);
+    expect(result.current.shipped.error).toBe("Couldn't load shipped projects.");
+  });
+});

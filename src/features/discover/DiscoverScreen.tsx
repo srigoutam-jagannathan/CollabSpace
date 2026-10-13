@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { View, Text, ScrollView, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -21,16 +21,25 @@ import { ShippedRail } from "./sections/ShippedRail";
 import { AddSkillsPrompt } from "./sections/AddSkillsPrompt";
 import { NoMatchesPrompt } from "./sections/NoMatchesPrompt";
 
+interface ViewerProfile {
+  skills: string[];
+  department: string | null;
+}
+
 export default function DiscoverScreen() {
   const { tokens: { C, GRADIENT } } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
 
-  const [skills, setSkills] = useState<string[]>([]);
-  const [department, setDepartment] = useState<string | null>(null);
+  // null until the first read lands: "unknown" is not "no skills", and
+  // treating it as [] flashed the wrong prompt on every cold load.
+  const [profile, setProfile] = useState<ViewerProfile | null>(null);
   const [pending, setPending] = useState(0);
 
-  useEffect(() => {
+  // A failed read keeps what was there: unknown before the first load, the
+  // last known profile after it, so a refocus never flickers back to the
+  // skeleton.
+  const loadProfile = useCallback(() => {
     if (!user?.id) return;
     supabase
       .from("profiles")
@@ -39,15 +48,19 @@ export default function DiscoverScreen() {
       .single()
       .then(({ data }) => {
         if (!data) return;
-        setSkills(data.skills ?? []);
-        setDepartment(data.department ?? null);
+        setProfile({ skills: data.skills ?? [], department: data.department ?? null });
       });
   }, [user?.id]);
 
   const {
     needs, active, people, shipped,
     refreshing, revalidating, stale, refresh, revalidate, retry,
-  } = useDiscoverData(skills, department);
+  } = useDiscoverData(profile?.skills ?? null, profile?.department ?? null);
+
+  // Re-read the profile on focus, so saving in the skills editor and coming
+  // back re-matches Projects for you. Its own effect, keyed on the viewer
+  // only, so it does not re-run each time the sections' loaders change.
+  useFocusEffect(loadProfile);
 
   // Refetch on focus without clearing what is already on screen. revalidate()
   // rather than refresh() so this does not drive the pull-to-refresh spinner.
@@ -57,6 +70,12 @@ export default function DiscoverScreen() {
     revalidate();
     if (user?.id) fetchPendingCount(user.id).then(setPending);
   }, [revalidate, user?.id]));
+
+  // A pull or a Retry re-reads the profile too, in case that is what failed.
+  const pull = useCallback(async () => {
+    loadProfile();
+    await refresh();
+  }, [loadProfile, refresh]);
 
   const allFailed =
     !!needs.error && !!active.error && !!people.error && !!shipped.error;
@@ -124,7 +143,7 @@ export default function DiscoverScreen() {
             Showing saved results — couldn&apos;t reach CollabSpace.
           </Text>
           <Btn
-            onPress={refresh}
+            onPress={pull}
             accessibilityLabel="Retry loading Discover"
             style={{
               paddingHorizontal: s(10), paddingVertical: vs(5), borderRadius: s(8),
@@ -145,7 +164,7 @@ export default function DiscoverScreen() {
             Couldn&apos;t reach CollabSpace. Check your connection and try again.
           </Text>
           <Btn
-            onPress={refresh}
+            onPress={pull}
             accessibilityLabel="Retry loading Discover"
             style={{
               paddingHorizontal: s(20), paddingVertical: vs(10), borderRadius: s(12),
@@ -160,10 +179,23 @@ export default function DiscoverScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: vs(32) }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.purpleL} />
+            <RefreshControl refreshing={refreshing} onRefresh={pull} tintColor={C.purpleL} />
           }
         >
-          {skills.length === 0 ? (
+          {profile === null ? (
+            // Which prompt applies isn't known until the skills are.
+            <SectionFrame
+              title="Projects for you"
+              subtitle="Roles you can fill"
+              skeleton="hero"
+              visible
+              loading
+              error={null}
+              onRetry={() => {}}
+            >
+              {null}
+            </SectionFrame>
+          ) : profile.skills.length === 0 ? (
             <SectionFrame
               title="Projects for you"
               subtitle="Roles you can fill"
@@ -192,9 +224,10 @@ export default function DiscoverScreen() {
             </SectionFrame>
           )}
 
-          {/* Second, and gated: sectionVisible hides it below five completed
-              projects. Its chevron opens the Archive rather than a see-all,
-              because the Archive is its see-all. */}
+          {/* Second. Topped up to five with labelled examples until five real
+              projects have shipped, so it only hides when its fetch fails with
+              nothing cached. Its chevron opens the Archive rather than a
+              see-all, because the Archive is its see-all. */}
           <SectionFrame
             title="Shipped from Belfast"
             subtitle="Finished projects from QUB and Ulster"
