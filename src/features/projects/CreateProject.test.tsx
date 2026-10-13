@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { AccessibilityInfo, Alert } from "react-native";
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 
 jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
@@ -105,6 +105,53 @@ test("details need a 3-character title and a 20-character description", () => {
   fireEvent.press(screen.getByText("Next"));
   expect(screen.getByText("Step 2 of 4")).toBeTruthy();
   expect(screen.getByText("Title must be at least 3 characters")).toBeTruthy();
+});
+
+test("a description that's too short says how many characters it still needs, politely", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fireEvent.changeText(screen.getByPlaceholderText(TITLE), "Aurora");
+  fireEvent.changeText(screen.getByPlaceholderText(DESCRIPTION), "Too short");
+  fireEvent.press(screen.getByText("Next"));
+  const message = screen.getByText("Description needs 11 more characters");
+  expect(message.props.accessibilityLiveRegion).toBe("polite");
+  expect(screen.getByText("Step 2 of 4")).toBeTruthy();
+});
+
+test("each step's heading is a header, and step changes are announced (not the first one)", () => {
+  // Already a jest.fn in React Native's mock, so earlier tests' calls are cleared too.
+  const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockClear().mockImplementation(() => {});
+  const screen = renderWithProviders(<CreateProject />);
+  expect(screen.getByRole("header", { name: "What are you starting?" })).toBeTruthy();
+  expect(announce).not.toHaveBeenCalled();
+
+  pickType(screen);
+  expect(announce).toHaveBeenLastCalledWith("Step 2 of 4");
+  expect(screen.getByRole("header", { name: "Name it and describe it" })).toBeTruthy();
+  fillDetails(screen);
+  expect(announce).toHaveBeenLastCalledWith("Step 3 of 4");
+  expect(screen.getByRole("header", { name: "Who do you need?" })).toBeTruthy();
+  pickRoles(screen);
+  expect(screen.getByRole("header", { name: "When and where?" })).toBeTruthy();
+  announce.mockRestore();
+});
+
+test("tiles read their hint to screen readers", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  expect(screen.getByLabelText("Passion project").props.accessibilityHint).toBe("Something you want to exist");
+});
+
+test("the learners toggle is a switch that turns on and off again", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fillDetails(screen);
+  const toggle = () => screen.getByLabelText("Open to learners");
+  expect(toggle().props.accessibilityRole).toBe("switch");
+  expect(toggle().props.accessibilityState).toMatchObject({ checked: false });
+  fireEvent.press(toggle());
+  expect(toggle().props.accessibilityState).toMatchObject({ checked: true });
+  fireEvent.press(toggle());
+  expect(toggle().props.accessibilityState).toMatchObject({ checked: false });
 });
 
 test("Back on later steps goes back one and keeps what you entered", () => {
@@ -273,6 +320,7 @@ test("the owner joins their own project already approved", async () => {
 });
 
 test("a failed insert says so and stays on the preview", async () => {
+  const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
   db.respond((c) => (c.table === "projects" ? { data: null, error: { code: "42501", message: "denied" } } : undefined));
   const screen = renderWithProviders(<CreateProject />);
   pickType(screen);
@@ -282,4 +330,6 @@ test("a failed insert says so and stays on the preview", async () => {
   fireEvent.press(screen.getByText("Post project"));
   await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Could not create project", "denied"));
   expect(screen.getByText("Step 4 of 4")).toBeTruthy();
+  expect(consoleError).toHaveBeenCalled();
+  consoleError.mockRestore();
 });

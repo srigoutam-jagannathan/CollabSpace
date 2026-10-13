@@ -42,7 +42,7 @@ export function StepRoles({ draft, update }: Props) {
   return (
     <View style={{ gap: vs(20) }}>
       <View style={{ gap: vs(6) }}>
-        <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>Who do you need?</Text>
+        <Text accessibilityRole="header" style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>Who do you need?</Text>
         <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>Tap every role you&apos;re looking for.</Text>
       </View>
 
@@ -120,6 +120,7 @@ export function StepRoles({ draft, update }: Props) {
 
       <Tile
         size="full"
+        isSwitch
         label="Open to learners"
         hint="Welcome people who want to learn these skills, not just people who have them"
         selected={draft.openToLearners}

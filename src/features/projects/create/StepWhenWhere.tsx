@@ -25,7 +25,7 @@ export function StepWhenWhere({ draft, update, onEdit }: Props) {
 
   return (
     <View style={{ gap: vs(20) }}>
-      <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>When and where?</Text>
+      <Text accessibilityRole="header" style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>When and where?</Text>
 
       <View style={{ gap: vs(10) }}>
         <Text style={label}>Roughly how long?</Text>

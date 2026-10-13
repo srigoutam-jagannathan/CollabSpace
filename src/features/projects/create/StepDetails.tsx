@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { View, Text, TextInput } from "react-native";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -13,6 +14,7 @@ interface Props {
 
 export function StepDetails({ draft, update, showErrors }: Props) {
   const { tokens: { C } } = useTheme();
+  const descriptionRef = useRef<TextInput>(null);
   const input = {
     backgroundColor: C.fieldBg, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
     color: C.white, fontSize: fs(14), fontFamily: FONT.regular,
@@ -28,7 +30,7 @@ export function StepDetails({ draft, update, showErrors }: Props) {
   return (
     <View style={{ gap: vs(16) }}>
       <View style={{ gap: vs(6) }}>
-        <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>Name it and describe it</Text>
+        <Text accessibilityRole="header" style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>Name it and describe it</Text>
         <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>
           The only typing there is. A sentence or two is plenty.
         </Text>
@@ -41,10 +43,14 @@ export function StepDetails({ draft, update, showErrors }: Props) {
         onChangeText={(title) => update({ title })}
         maxLength={80}
         returnKeyType="next"
+        // Next moves to the description without dropping the keyboard.
+        submitBehavior="submit"
+        onSubmitEditing={() => descriptionRef.current?.focus()}
         accessibilityLabel="Project title"
       />
       <View style={{ gap: vs(6) }}>
         <TextInput
+          ref={descriptionRef}
           style={{ ...input, minHeight: vs(140), textAlignVertical: "top" }}
           placeholder="What is it, and what will the team do?"
           placeholderTextColor={C.textFaint}
@@ -58,7 +64,7 @@ export function StepDetails({ draft, update, showErrors }: Props) {
         </Text>
       </View>
       {error ? (
-        <Text style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(12) }}>{error}</Text>
+        <Text accessibilityLiveRegion="polite" style={{ color: C.textMuted, fontFamily: FONT.semiBold, fontSize: fs(12) }}>{error}</Text>
       ) : null}
     </View>
   );

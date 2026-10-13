@@ -18,7 +18,7 @@ export function StepType({ draft, onPick }: Props) {
   return (
     <View style={{ gap: vs(16) }}>
       <View style={{ gap: vs(6) }}>
-        <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>What are you starting?</Text>
+        <Text accessibilityRole="header" style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(22) }}>What are you starting?</Text>
         <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>Pick the one that fits best.</Text>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(10) }}>

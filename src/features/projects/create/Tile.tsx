@@ -16,17 +16,21 @@ interface Props {
    * "full" is a card spanning the whole row (the learners toggle).
    */
   size?: "card" | "chip" | "full";
+  /** An on/off setting rather than a pick: read as a switch that is checked or not. */
+  isSwitch?: boolean;
 }
 
 /** A tappable choice. Selected tiles fill pink. */
-export function Tile({ label, hint, selected, onPress, accessibilityLabel, size = "chip" }: Props) {
+export function Tile({ label, hint, selected, onPress, accessibilityLabel, size = "chip", isSwitch = false }: Props) {
   const { tokens: { C } } = useTheme();
   const card = size !== "chip";
   return (
     <Btn
       onPress={onPress}
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ selected }}
+      accessibilityHint={hint}
+      accessibilityRole={isSwitch ? "switch" : "button"}
+      accessibilityState={isSwitch ? { checked: selected } : { selected }}
       pressScale={0.96}
       // A toggle, not a navigation: tapping twice quickly should undo, not be swallowed.
       debounceMs={0}

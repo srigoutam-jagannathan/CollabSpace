@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
-import { View, Text, ScrollView, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useRef, useState } from "react";
+import { View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform, AccessibilityInfo } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRouter } from "expo-router";
 // expo-router vendors React Navigation; this is its copy, the one the router's stack uses.
 import { usePreventRemove } from "expo-router/react-navigation";
@@ -35,7 +35,7 @@ export default function CreateProject() {
   const [draft, setDraft] = useState<ProjectDraft>(EMPTY_DRAFT);
   const [showErrors, setShowErrors] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [footerHeight, setFooterHeight] = useState(0);
+  const insets = useSafeAreaInsets();
   // Set once leaving is decided (Discard, or a successful post), so the guard below lets
   // the navigation through. A ref, because router.replace fires before any re-render.
   const leaving = useRef(false);
@@ -43,6 +43,14 @@ export default function CreateProject() {
   const update = (patch: Partial<ProjectDraft>) => setDraft((d) => ({ ...d, ...patch }));
 
   const dirty = draft.projectType !== null || draft.title !== "" || draft.description !== "" || draft.roles.length > 0;
+
+  // Screen readers hear each step change; the first step is the screen opening, so skip it.
+  const announcedStep = useRef(step);
+  useEffect(() => {
+    if (announcedStep.current === step) return;
+    announcedStep.current = step;
+    AccessibilityInfo.announceForAccessibility(`Step ${step} of 4`);
+  }, [step]);
 
   function goTo(target: Step) {
     setShowErrors(false);
@@ -126,42 +134,44 @@ export default function CreateProject() {
         </View>
       </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: s(20), paddingTop: vs(8), paddingBottom: (step === 1 ? 0 : footerHeight) + vs(24) }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {step === 1 ? (
-          <StepType draft={draft} update={update} onPick={(value) => { update({ projectType: value }); goTo(2); }} />
-        ) : step === 2 ? (
-          <StepDetails draft={draft} update={update} showErrors={showErrors} />
-        ) : step === 3 ? (
-          <StepRoles draft={draft} update={update} />
-        ) : (
-          <StepWhenWhere draft={draft} update={update} onEdit={goTo} />
-        )}
-      </ScrollView>
-
-      {step > 1 ? (
-        <View
-          onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
-          style={{
-            position: "absolute", bottom: 0, left: 0, right: 0,
-            padding: s(20), paddingBottom: vs(20),
-            backgroundColor: C.modalBg,
-            borderTopWidth: 1, borderTopColor: C.border,
-          }}
+      {/* The footer sits below the ScrollView, not over it, so the keyboard pushes it up on iOS. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: s(20), paddingTop: vs(8), paddingBottom: vs(24) }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
         >
-          {step === 4 ? (
-            <GradientBtn label="Post project" onPress={post} loading={loading} disabled={!stepReady(4, draft)} />
+          {step === 1 ? (
+            <StepType draft={draft} update={update} onPick={(value) => { update({ projectType: value }); goTo(2); }} />
+          ) : step === 2 ? (
+            <StepDetails draft={draft} update={update} showErrors={showErrors} />
+          ) : step === 3 ? (
+            <StepRoles draft={draft} update={update} />
           ) : (
-            // Keyed so step 3's Next is a fresh button, not one still inside step 2's debounce.
-            // Step 2 stays pressable so a too-short title or description can say why.
-            <GradientBtn key={step} label="Next" onPress={next} disabled={step === 3 && !stepReady(3, draft)} />
+            <StepWhenWhere draft={draft} update={update} onEdit={goTo} />
           )}
-        </View>
-      ) : null}
+        </ScrollView>
+
+        {step > 1 ? (
+          <View
+            style={{
+              padding: s(20), paddingBottom: vs(20) + insets.bottom,
+              backgroundColor: C.modalBg,
+              borderTopWidth: 1, borderTopColor: C.border,
+            }}
+          >
+            {step === 4 ? (
+              <GradientBtn label="Post project" onPress={post} loading={loading} disabled={!stepReady(4, draft)} />
+            ) : (
+              // Keyed so step 3's Next is a fresh button, not one still inside step 2's debounce.
+              // Step 2 stays pressable so a too-short title or description can say why.
+              <GradientBtn key={step} label="Next" onPress={next} disabled={step === 3 && !stepReady(3, draft)} />
+            )}
+          </View>
+        ) : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
