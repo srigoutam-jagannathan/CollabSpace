@@ -1,0 +1,29 @@
+import { describeTimeframe } from "./projectTimeframe";
+
+test("start and end dates read as a month range, with weekly hours", () => {
+  expect(describeTimeframe({ start_date: "2026-10-03", end_date: "2026-12-25", commitment_hours: 5 }))
+    .toBe("Oct 2026 – Dec 2026 · 5 hrs a week");
+});
+
+test("a range inside one month names the month once", () => {
+  expect(describeTimeframe({ start_date: "2026-10-03", end_date: "2026-10-28" })).toBe("Oct 2026");
+});
+
+test("only a start or only an end date", () => {
+  expect(describeTimeframe({ start_date: "2026-10-03" })).toBe("From Oct 2026");
+  expect(describeTimeframe({ end_date: "2027-01-10" })).toBe("Until Jan 2027");
+});
+
+test("hours alone, singular and plural", () => {
+  expect(describeTimeframe({ commitment_hours: 1 })).toBe("1 hr a week");
+  expect(describeTimeframe({ commitment_hours: 10 })).toBe("10 hrs a week");
+});
+
+test("zero hours and missing fields say nothing", () => {
+  expect(describeTimeframe({ commitment_hours: 0 })).toBeNull();
+  expect(describeTimeframe({})).toBeNull();
+});
+
+test("a malformed date is ignored rather than printed", () => {
+  expect(describeTimeframe({ start_date: "not a date", commitment_hours: 5 })).toBe("5 hrs a week");
+});
