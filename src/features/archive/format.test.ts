@@ -1,4 +1,12 @@
-import { deliveredLabel, teamLabel } from "./format";
+import { deliveredLabel, deliveredSummary, teamLabel } from "./format";
+
+describe("deliveredSummary", () => {
+  test("covers none, one and many", () => {
+    expect(deliveredSummary(0)).toBe("No projects delivered yet. Yours could be the first.");
+    expect(deliveredSummary(1)).toBe("One project delivered so far. Yours could be next.");
+    expect(deliveredSummary(3)).toBe("3 projects delivered so far. Yours could be next.");
+  });
+});
 
 describe("deliveredLabel", () => {
   test("names the month and year", () => {

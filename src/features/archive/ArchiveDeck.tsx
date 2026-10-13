@@ -11,6 +11,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import { fetchCompleted } from "./queries";
 import { ArchiveCard } from "./ArchiveCard";
+import { ArchivePageAction } from "./ArchivePageAction";
+import { deliveredSummary } from "./format";
 import { withExampleArchive } from "./examples";
 import { ConnectTeamSheet } from "./ConnectTeamSheet";
 import type { ArchiveItem } from "./types";
@@ -48,6 +50,11 @@ export default function ArchiveDeck() {
   const total = items.length;
   const delivered = items.filter(i => !i.is_example).length;
   const current = Math.min(index + 1, total);
+
+  function onConnect(item: ArchiveItem) {
+    if (item.is_example) return;
+    setSheetFor(item);
+  }
 
   function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
     if (pageHeight <= 0) return;
@@ -101,14 +108,6 @@ export default function ArchiveDeck() {
               <Text style={{ color: C.purpleL, fontFamily: FONT.bold, fontSize: fs(14) }}>Retry</Text>
             </Btn>
           </View>
-        ) : total === 0 ? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: s(30) }}>
-            <Text style={{
-              color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(14), textAlign: "center",
-            }}>
-              Nothing has shipped yet. This is where finished projects will live.
-            </Text>
-          </View>
         ) : pageHeight > 0 ? (
           <FlashList
             ref={scrollRef}
@@ -135,11 +134,7 @@ export default function ArchiveDeck() {
                       color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12),
                       textAlign: "center", marginBottom: vs(18),
                     }}>
-                      {delivered === 0
-                        ? "No projects delivered yet. Yours could be the first."
-                        : delivered === 1
-                          ? "One project delivered so far. Yours could be next."
-                          : `${delivered} projects delivered so far. Yours could be next.`}
+                      {deliveredSummary(delivered)}
                     </Text>
                     <Btn
                       onPress={() => router.back()}
@@ -160,30 +155,7 @@ export default function ArchiveDeck() {
                 ) : (
                   <>
                     <ArchiveCard item={page} />
-                    {page.is_example ? (
-                      <Text style={{
-                        color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12),
-                        textAlign: "center", marginTop: vs(14),
-                      }}>
-                        Example project. Real ones appear here as teams ship.
-                      </Text>
-                    ) : (
-                    <Btn
-                      onPress={() => setSheetFor(page)}
-                      accessibilityLabel={`Connect with the team behind ${page.title}`}
-                      style={{ marginTop: vs(10), borderRadius: s(14), overflow: "hidden" }}
-                    >
-                      <LinearGradient
-                        colors={GRADIENT.ctaSoft}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                        style={{ minHeight: 48, alignItems: "center", justifyContent: "center" }}
-                      >
-                        <Text style={{ color: C.white, fontFamily: FONT.extraBold, fontSize: fs(12.5) }}>
-                          Connect with the team
-                        </Text>
-                      </LinearGradient>
-                    </Btn>
-                    )}
+                    <ArchivePageAction item={page} onConnect={onConnect} />
                   </>
                 )}
               </View>

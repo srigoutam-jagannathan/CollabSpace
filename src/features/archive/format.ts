@@ -12,6 +12,13 @@ export function deliveredLabel(iso: string): string {
   return `Delivered ${month} ${date.getFullYear()}`;
 }
 
+/** End-card line counting real (non-example) delivered projects. */
+export function deliveredSummary(n: number): string {
+  if (n <= 0) return "No projects delivered yet. Yours could be the first.";
+  if (n === 1) return "One project delivered so far. Yours could be next.";
+  return `${n} projects delivered so far. Yours could be next.`;
+}
+
 /** "4 collaborators" / "1 collaborator" — the label beside the team avatars. */
 export function teamLabel(count: number): string {
   const n = Math.max(0, count);
