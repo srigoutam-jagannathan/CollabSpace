@@ -12,11 +12,13 @@ test("explains why the section is empty", () => {
   expect(getByText("Tell us what you're good at")).toBeTruthy();
 });
 
-test("routes to the skills picker", () => {
+test("opens the skills editor in the app stack, which saves and pops back", () => {
   const { getByLabelText } = renderWithProviders(<AddSkillsPrompt />);
   fireEvent.press(getByLabelText("Add your skills"));
+  // The skills screen only returns with back() for from: "settings"; anything
+  // else takes the onboarding exit and replaces the stack with home.
   expect(mockPush).toHaveBeenCalledWith({
-    pathname: "/(onboarding)/skills",
-    params: { from: "discover" },
+    pathname: "/(app)/settings/skills",
+    params: { from: "settings" },
   });
 });

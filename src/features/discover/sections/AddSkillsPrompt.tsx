@@ -29,7 +29,7 @@ export function AddSkillsPrompt() {
           Add your skills and we&apos;ll show you the projects looking for exactly them.
         </Text>
         <Btn
-          onPress={() => router.push({ pathname: "/(onboarding)/skills", params: { from: "discover" } })}
+          onPress={() => router.push({ pathname: "/(app)/settings/skills", params: { from: "settings" } })}
           accessibilityLabel="Add your skills"
           style={{
             alignSelf: "flex-start", paddingHorizontal: s(16), paddingVertical: vs(9),

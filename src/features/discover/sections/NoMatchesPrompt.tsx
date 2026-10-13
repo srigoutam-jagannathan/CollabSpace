@@ -43,7 +43,7 @@ export function NoMatchesPrompt() {
             <Text style={labelStyle}>Browse all</Text>
           </Btn>
           <Btn
-            onPress={() => router.push("/(app)/settings/skills")}
+            onPress={() => router.push({ pathname: "/(app)/settings/skills", params: { from: "settings" } })}
             accessibilityLabel="Edit your skills"
             style={buttonStyle}
           >

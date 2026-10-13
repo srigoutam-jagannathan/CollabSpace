@@ -16,5 +16,10 @@ test("says nothing matches yet, and offers Search and Edit skills", () => {
   expect(mockRouter.push).toHaveBeenCalledWith("/search");
 
   fireEvent.press(screen.getByLabelText("Edit your skills"));
-  expect(mockRouter.push).toHaveBeenCalledWith("/(app)/settings/skills");
+  // from: "settings" makes the editor save and pop back here, not run the
+  // onboarding exit that replaces the stack with home.
+  expect(mockRouter.push).toHaveBeenCalledWith({
+    pathname: "/(app)/settings/skills",
+    params: { from: "settings" },
+  });
 });
