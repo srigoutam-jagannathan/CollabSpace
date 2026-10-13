@@ -20,6 +20,11 @@ export const mockRouter = {
   setParams: jest.fn(),
 };
 
+/** What useNavigation() returns; only dispatch is used so far. */
+export const mockNavigation = {
+  dispatch: jest.fn(),
+};
+
 let pathname = "/";
 let params: Record<string, string> = {};
 
@@ -35,6 +40,7 @@ export const routerState = {
     params = {};
     for (const fn of Object.values(mockRouter)) fn.mockReset();
     mockRouter.canGoBack.mockImplementation(() => true);
+    mockNavigation.dispatch.mockReset();
     expoRouterModule.Redirect.mockReset().mockImplementation(() => null);
   },
 };
@@ -42,6 +48,7 @@ export const routerState = {
 export const expoRouterModule = {
   useRouter: () => mockRouter,
   router: mockRouter,
+  useNavigation: () => mockNavigation,
   usePathname: () => pathname,
   useLocalSearchParams: () => params,
   useGlobalSearchParams: () => params,

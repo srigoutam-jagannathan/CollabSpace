@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { View, Text, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
+// expo-router vendors React Navigation; this is its copy, the one the router's stack uses.
+import { usePreventRemove } from "expo-router/react-navigation";
 import { ChevronLeft } from "lucide-react-native";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -26,6 +28,7 @@ const STEPS: Step[] = [1, 2, 3, 4];
 export default function CreateProject() {
   const { tokens: { C } } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const { user } = useAuth();
 
   const [step, setStep] = useState<Step>(1);
@@ -33,18 +36,34 @@ export default function CreateProject() {
   const [showErrors, setShowErrors] = useState(false);
   const [loading, setLoading] = useState(false);
   const [footerHeight, setFooterHeight] = useState(0);
+  // Set once leaving is decided (Discard, or a successful post), so the guard below lets
+  // the navigation through. A ref, because router.replace fires before any re-render.
+  const leaving = useRef(false);
 
   const update = (patch: Partial<ProjectDraft>) => setDraft((d) => ({ ...d, ...patch }));
+
+  const dirty = draft.projectType !== null || draft.title !== "" || draft.description !== "" || draft.roles.length > 0;
 
   function goTo(target: Step) {
     setShowErrors(false);
     setStep(target);
   }
 
-  function back() {
-    if (step === 1) router.back();
-    else goTo((step - 1) as Step);
+  /** Back one step, or out of the flow from step 1, asking first if that loses a draft. */
+  function back(leave: () => void) {
+    if (step > 1) { goTo((step - 1) as Step); return; }
+    if (!dirty) { leave(); return; }
+    Alert.alert("Discard this project?", "You'll lose what you've entered.", [
+      { text: "Keep editing", style: "cancel" },
+      { text: "Discard", style: "destructive", onPress: () => { leaving.current = true; leave(); } },
+    ]);
   }
+
+  // iOS swipe-back and Android's back button leave the whole screen; send them through back().
+  usePreventRemove(step > 1 || dirty, ({ data }) => {
+    if (leaving.current) navigation.dispatch(data.action);
+    else back(() => navigation.dispatch(data.action));
+  });
 
   function next() {
     if (!stepReady(step, draft)) { setShowErrors(true); return; }
@@ -84,6 +103,7 @@ export default function CreateProject() {
       console.warn("[CreateProject] owner member insert failed:", memberError);
     }
 
+    leaving.current = true;
     router.replace({ pathname: "/(app)/projects/[id]/preview", params: { id: data.id } });
   }
 
@@ -92,9 +112,8 @@ export default function CreateProject() {
       {/* Header */}
       <View style={{ paddingHorizontal: s(20), paddingTop: vs(8), paddingBottom: vs(12), gap: vs(12) }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
-          {/* Keyed by step so a quick double tap isn't swallowed by Btn's debounce across steps,
-              while a double tap on step 1 still leaves only once. */}
-          <Btn key={step} onPress={back} accessibilityLabel="Back" hitSlop={12}>
+          {/* Not keyed by step: Btn's debounce must span steps, so a double tap goes back one. */}
+          <Btn onPress={() => back(() => router.back())} accessibilityLabel="Back" hitSlop={12}>
             <ChevronLeft size={s(24)} color={C.textMuted} />
           </Btn>
           <Text style={{ flex: 1, color: C.white, fontFamily: FONT.bold, fontSize: fs(18) }}>Create project</Text>

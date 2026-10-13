@@ -1,26 +1,66 @@
 import { Alert } from "react-native";
-import { fireEvent, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, waitFor } from "@testing-library/react-native";
 
 jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
 jest.mock("expo-router", () => require("@/test/routerMock").expoRouterModule);
 jest.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
 
+// The latest usePreventRemove call, so tests can see whether leaving is blocked and
+// play the swipe-back / hardware-back event through its callback.
+type PreventCallback = (options: { data: { action: unknown } }) => void;
+const mockPrevent: { active: boolean; callback: PreventCallback | null } = { active: false, callback: null };
+jest.mock("expo-router/react-navigation", () => ({
+  usePreventRemove: (active: boolean, callback: PreventCallback) => {
+    mockPrevent.active = active;
+    mockPrevent.callback = callback;
+  },
+}));
+
 import CreateProject from "./CreateProject";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { db } from "@/test/supabaseMock";
-import { mockRouter, routerState } from "@/test/routerMock";
+import { mockNavigation, mockRouter, routerState } from "@/test/routerMock";
 
 type Screen = ReturnType<typeof renderWithProviders>;
+type AlertButton = { text: string; style?: string; onPress?: () => void };
 
 let alertSpy: jest.SpyInstance;
+// Btn ignores a second press within 500ms; clockOffset lets a test press Back again "later".
+const realNow = Date.now.bind(Date);
+let clockOffset = 0;
+let dateSpy: jest.SpyInstance;
 
 beforeEach(() => {
   db.reset();
   routerState.reset();
+  mockPrevent.active = false;
+  mockPrevent.callback = null;
+  clockOffset = 0;
+  dateSpy = jest.spyOn(Date, "now").mockImplementation(() => realNow() + clockOffset);
   db.respond((c) => (c.table === "projects" && c.op === "insert" ? { data: { id: "p1" } } : undefined));
   alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
 });
-afterEach(() => alertSpy.mockRestore());
+afterEach(() => {
+  alertSpy.mockRestore();
+  dateSpy.mockRestore();
+});
+
+/** Taps the header Back a second after any earlier tap. */
+function pressBack(screen: Screen) {
+  clockOffset += 1000;
+  fireEvent.press(screen.getByLabelText("Back"));
+}
+
+/** Presses a button of the last Alert shown. */
+function pressAlertButton(text: string) {
+  const buttons = alertSpy.mock.calls.at(-1)?.[2] as AlertButton[];
+  act(() => buttons.find((b) => b.text === text)?.onPress?.());
+}
+
+const SWIPE_BACK = { type: "GO_BACK" };
+function swipeBack() {
+  act(() => mockPrevent.callback?.({ data: { action: SWIPE_BACK } }));
+}
 
 const TITLE = "e.g. Mental Health Journaling App";
 const DESCRIPTION = "What is it, and what will the team do?";
@@ -67,21 +107,72 @@ test("details need a 3-character title and a 20-character description", () => {
   expect(screen.getByText("Title must be at least 3 characters")).toBeTruthy();
 });
 
-test("Back on the first step leaves; later steps go back one and keep what you entered", () => {
+test("Back on later steps goes back one and keeps what you entered", () => {
   const screen = renderWithProviders(<CreateProject />);
   pickType(screen);
   fillDetails(screen);
   fireEvent.press(screen.getByLabelText("Need UI/UX"));
-  fireEvent.press(screen.getByLabelText("Back"));
+  pressBack(screen);
   expect(screen.getByPlaceholderText(TITLE).props.value).toBe("Aurora");
   fireEvent.press(screen.getByText("Next"));
   expect(screen.getByLabelText("Need UI/UX").props.accessibilityState).toMatchObject({ selected: true });
 
+  pressBack(screen);
+  pressBack(screen);
+  expect(screen.getByText("Step 1 of 4")).toBeTruthy();
+  expect(mockRouter.back).not.toHaveBeenCalled();
+});
+
+test("Back on the first step with nothing entered leaves", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pressBack(screen);
+  expect(alertSpy).not.toHaveBeenCalled();
+  expect(mockRouter.back).toHaveBeenCalledTimes(1);
+});
+
+test("Back on the first step with a draft asks before throwing it away", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  pressBack(screen);
+  expect(screen.getByText("Step 1 of 4")).toBeTruthy();
+  pressBack(screen);
+  expect(alertSpy).toHaveBeenCalledWith("Discard this project?", "You'll lose what you've entered.", expect.any(Array));
+  expect(mockRouter.back).not.toHaveBeenCalled();
+
+  pressAlertButton("Keep editing");
+  expect(mockRouter.back).not.toHaveBeenCalled();
+  pressBack(screen);
+  pressAlertButton("Discard");
+  expect(mockRouter.back).toHaveBeenCalledTimes(1);
+});
+
+test("a quick double tap on Back goes back one step, not out of the flow", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
   fireEvent.press(screen.getByLabelText("Back"));
   fireEvent.press(screen.getByLabelText("Back"));
   expect(screen.getByText("Step 1 of 4")).toBeTruthy();
-  fireEvent.press(screen.getByLabelText("Back"));
-  expect(mockRouter.back).toHaveBeenCalledTimes(1);
+  expect(alertSpy).not.toHaveBeenCalled();
+  expect(mockRouter.back).not.toHaveBeenCalled();
+});
+
+test("swipe-back and hardware back are blocked once there is something to lose", () => {
+  const screen = renderWithProviders(<CreateProject />);
+  expect(mockPrevent.active).toBe(false);
+  pickType(screen);
+  expect(mockPrevent.active).toBe(true);
+
+  // On a later step it goes back one step instead of leaving.
+  swipeBack();
+  expect(screen.getByText("Step 1 of 4")).toBeTruthy();
+  expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+
+  // On step 1 it asks, and Discard lets the original action through.
+  swipeBack();
+  expect(alertSpy).toHaveBeenCalledWith("Discard this project?", "You'll lose what you've entered.", expect.any(Array));
+  expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+  pressAlertButton("Discard");
+  expect(mockNavigation.dispatch).toHaveBeenCalledWith(SWIPE_BACK);
 });
 
 test("roles: tap to add or remove, type one the list lacks, and at least one is needed", () => {
@@ -140,6 +231,23 @@ test("posting saves the whole draft, with no exact dates", async () => {
   await waitFor(() =>
     expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/(app)/projects/[id]/preview", params: { id: "p1" } })
   );
+});
+
+test("after posting, the guard lets the replace through without asking", async () => {
+  const screen = renderWithProviders(<CreateProject />);
+  pickType(screen);
+  fillDetails(screen);
+  pickRoles(screen);
+  pickWhenWhere(screen);
+  fireEvent.press(screen.getByText("Post project"));
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalled());
+
+  // router.replace removes this screen, which fires the same event as a swipe-back.
+  const REPLACE = { type: "REPLACE" };
+  act(() => mockPrevent.callback?.({ data: { action: REPLACE } }));
+  expect(alertSpy).not.toHaveBeenCalled();
+  expect(mockNavigation.dispatch).toHaveBeenCalledWith(REPLACE);
+  expect(screen.getByText("Step 4 of 4")).toBeTruthy();
 });
 
 test("Post waits until duration, place and hours are all picked", () => {
