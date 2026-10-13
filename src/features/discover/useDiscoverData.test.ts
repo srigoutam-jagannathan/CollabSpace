@@ -183,3 +183,17 @@ test("Discover no longer has a pulse section", async () => {
   await waitFor(() => expect(result.current.people.loading).toBe(false));
   expect(result.current).not.toHaveProperty("pulse");
 });
+
+test("projects that match none of your skills are not shown", async () => {
+  mocked.fetchNeeds.mockResolvedValue({
+    data: [{
+      id: "x", title: "Unrelated", description: "", looking_for: ["Legal"], tags: [],
+      university_scope: "both", commitment_hours: null, member_count: 1, matched_roles: [],
+    }],
+    error: null,
+  });
+  const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+  await waitFor(() => expect(result.current.needs.loading).toBe(false));
+  expect(result.current.needs.data).toEqual([]);
+  expect(result.current).not.toHaveProperty("needsMode");
+});

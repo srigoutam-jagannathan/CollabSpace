@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
-import { rankActive, rankPeople, selectNeeds, type NeedsMode } from "./ranking";
+import { rankActive, rankNeeds, rankPeople } from "./ranking";
 import {
   fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchShipped,
 } from "./queries";
@@ -12,8 +12,6 @@ function initial<T>(): SectionState<T> {
 
 export interface DiscoverData {
   needs: SectionState<NeedsItem>;
-  /** Whether the hero is showing skill matches or the recent-projects fallback. */
-  needsMode: NeedsMode;
   active: SectionState<ActiveItem>;
   people: SectionState<PersonItem>;
   shipped: SectionState<ShippedItem>;
@@ -61,7 +59,6 @@ export function useDiscoverData(
   const [active, setActive] = useState<SectionState<ActiveItem>>(initial);
   const [people, setPeople] = useState<SectionState<PersonItem>>(initial);
   const [shipped, setShipped] = useState<SectionState<ShippedItem>>(initial);
-  const [needsMode, setNeedsMode] = useState<NeedsMode>("matched");
   const [refreshing, setRefreshing] = useState(false);
   const [revalidating, setRevalidating] = useState(false);
 
@@ -83,9 +80,7 @@ export function useDiscoverData(
     const { data, error } = await fetchNeeds(viewerId, viewerSkills, memberIds);
     if (!alive.current) return;
     if (!error) {
-      const { items, mode } = selectNeeds(data);
-      setNeedsMode(mode);
-      setNeeds({ data: items, loading: false, error: null });
+      setNeeds({ data: rankNeeds(data), loading: false, error: null });
     } else {
       setNeeds(prev => ({ data: prev.data, loading: false, error }));
     }
@@ -154,7 +149,7 @@ export function useDiscoverData(
     (!!shipped.error && shipped.data.length > 0);
 
   return {
-    needs, needsMode, active, people, shipped,
+    needs, active, people, shipped,
     refreshing, revalidating, stale, refresh, revalidate, retry,
   };
 }

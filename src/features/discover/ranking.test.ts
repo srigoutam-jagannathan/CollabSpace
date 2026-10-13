@@ -1,4 +1,4 @@
-import { matchedRoles, rankNeeds, rankActive, rankPeople, sectionVisible, selectNeeds } from "./ranking";
+import { matchedRoles, rankNeeds, rankActive, rankPeople, sectionVisible } from "./ranking";
 import type { ActiveItem, NeedsItem, PersonItem } from "./types";
 
 describe("matchedRoles with canonical skills", () => {
@@ -152,47 +152,6 @@ describe("sectionVisible", () => {
     (["needs", "active", "people"] as const).forEach(k => {
       expect(sectionVisible(k, 0)).toBe(false);
     });
-  });
-});
-
-describe("selectNeeds", () => {
-  const base = {
-    description: "", looking_for: [], tags: [], university_scope: "both" as const,
-    commitment_hours: null, member_count: 0, matched_roles: [],
-  };
-
-  test("returns matched projects in matched mode when any match", () => {
-    const rows: NeedsItem[] = [
-      { ...base, id: "a", title: "A", matched_roles: [] },
-      { ...base, id: "b", title: "B", matched_roles: ["Design"] },
-    ];
-    const { items, mode } = selectNeeds(rows);
-    expect(mode).toBe("matched");
-    expect(items.map(r => r.id)).toEqual(["b"]);
-  });
-
-  test("falls back to the newest projects when nothing matches", () => {
-    const rows: NeedsItem[] = [
-      { ...base, id: "a", title: "A" },
-      { ...base, id: "b", title: "B" },
-    ];
-    const { items, mode } = selectNeeds(rows);
-    expect(mode).toBe("recent");
-    // rows arrive newest-first from the query, so order is preserved
-    expect(items.map(r => r.id)).toEqual(["a", "b"]);
-  });
-
-  test("caps the fallback at the section limit", () => {
-    const rows: NeedsItem[] = Array.from({ length: 9 }, (_, i) => ({
-      ...base, id: String(i), title: String(i),
-    }));
-    expect(selectNeeds(rows).items).toHaveLength(3);
-  });
-
-  test("returns recent mode with no items when there are no projects at all", () => {
-    const { items, mode } = selectNeeds([]);
-    expect(items).toEqual([]);
-    expect(mode).toBe("recent");
   });
 });
 

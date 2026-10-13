@@ -19,6 +19,7 @@ import { ActiveNow } from "./sections/ActiveNow";
 import { PeopleToKnow } from "./sections/PeopleToKnow";
 import { ShippedRail } from "./sections/ShippedRail";
 import { AddSkillsPrompt } from "./sections/AddSkillsPrompt";
+import { NoMatchesPrompt } from "./sections/NoMatchesPrompt";
 
 export default function DiscoverScreen() {
   const { tokens: { C, GRADIENT } } = useTheme();
@@ -44,7 +45,7 @@ export default function DiscoverScreen() {
   }, [user?.id]);
 
   const {
-    needs, needsMode, active, people, shipped,
+    needs, active, people, shipped,
     refreshing, revalidating, stale, refresh, revalidate, retry,
   } = useDiscoverData(skills, department);
 
@@ -164,7 +165,7 @@ export default function DiscoverScreen() {
         >
           {skills.length === 0 ? (
             <SectionFrame
-              title="Needs your skills"
+              title="Projects for you"
               skeleton="hero"
               visible
               loading={false}
@@ -175,15 +176,17 @@ export default function DiscoverScreen() {
             </SectionFrame>
           ) : (
             <SectionFrame
-              title={needsMode === "matched" ? "Needs your skills" : "New projects"}
+              title="Projects for you"
               skeleton="hero"
-              visible={sectionVisible("needs", needs.data.length)}
+              visible
               loading={needs.loading && needs.data.length === 0}
               error={needs.error}
               onRetry={() => retry("needs")}
-              onSeeAll={() => router.push({ pathname: "/(app)/discover/[section]", params: { section: "needs" } })}
+              onSeeAll={needs.data.length > 0
+                ? () => router.push({ pathname: "/(app)/discover/[section]", params: { section: "needs" } })
+                : undefined}
             >
-              <NeedsYourSkills items={needs.data} />
+              {needs.data.length > 0 ? <NeedsYourSkills items={needs.data} /> : <NoMatchesPrompt />}
             </SectionFrame>
           )}
 

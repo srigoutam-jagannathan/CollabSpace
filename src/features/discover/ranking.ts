@@ -52,26 +52,6 @@ export function rankNeeds(rows: NeedsItem[], limit: number = LIMITS.needs): Need
     .slice(0, limit);
 }
 
-/** Which mode the hero section is showing. */
-export type NeedsMode = "matched" | "recent";
-
-/**
- * The hero section has two modes. Normally it shows projects needing a role the
- * viewer can fill. When nothing matches — common, since most projects are
- * created without roles — it falls back to the newest recruiting projects so
- * the screen is never empty of projects, and the caller retitles the section.
- *
- * `rows` arrive newest-first from the query, so the fallback is just a slice.
- */
-export function selectNeeds(
-  rows: NeedsItem[],
-  limit: number = LIMITS.needs
-): { items: NeedsItem[]; mode: NeedsMode } {
-  const matched = rankNeeds(rows, limit);
-  if (matched.length > 0) return { items: matched, mode: "matched" };
-  return { items: rows.slice(0, limit), mode: "recent" };
-}
-
 /** Most activity first; project_health breaks ties. */
 export function rankActive(rows: ActiveItem[], limit: number = LIMITS.active): ActiveItem[] {
   return [...rows]

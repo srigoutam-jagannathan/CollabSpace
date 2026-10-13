@@ -27,7 +27,7 @@ import { ScreenLoader } from "@/components/ScreenLoader";
 const PAGE = 20;
 
 const TITLES: Record<string, string> = {
-  needs: "Needs your skills",
+  needs: "Projects for you",
   active: "Active right now",
   people: "People to know",
 };
