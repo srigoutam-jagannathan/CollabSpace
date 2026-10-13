@@ -24,6 +24,23 @@ test("zero hours and missing fields say nothing", () => {
   expect(describeTimeframe({})).toBeNull();
 });
 
+test("an end before the start is treated as start only", () => {
+  expect(describeTimeframe({ start_date: "2026-12-01", end_date: "2026-10-01" })).toBe("From Dec 2026");
+});
+
+test("months 00 and 13 are ignored", () => {
+  expect(describeTimeframe({ start_date: "2026-13-01", commitment_hours: 5 })).toBe("5 hrs a week");
+  expect(describeTimeframe({ start_date: "2026-00-10", commitment_hours: 5 })).toBe("5 hrs a week");
+});
+
+test("negative hours say nothing", () => {
+  expect(describeTimeframe({ commitment_hours: -2 })).toBeNull();
+});
+
+test("a bad start with a valid end reads as until", () => {
+  expect(describeTimeframe({ start_date: "garbage", end_date: "2027-01-10" })).toBe("Until Jan 2027");
+});
+
 test("a malformed date is ignored rather than printed", () => {
   expect(describeTimeframe({ start_date: "not a date", commitment_hours: 5 })).toBe("5 hrs a week");
 });

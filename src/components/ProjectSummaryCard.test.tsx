@@ -33,4 +33,15 @@ test("the owner row opens their profile when a handler is given", () => {
 test("without a handler the owner row is plain text", () => {
   const screen = renderWithProviders(<ProjectSummaryCard {...base} />);
   expect(screen.queryByLabelText(/Opens their profile/)).toBeNull();
+  // One screen-reader stop, not avatar initials, "Started by" and the name separately.
+  expect(screen.getByLabelText("Started by Olive Owner")).toBeTruthy();
+});
+
+test("a missing or blank owner name reads as Unknown", () => {
+  for (const ownerName of ["", "   ", null]) {
+    const screen = renderWithProviders(<ProjectSummaryCard {...base} ownerName={ownerName} />);
+    expect(screen.getByText("Unknown")).toBeTruthy();
+    expect(screen.getByLabelText("Started by Unknown")).toBeTruthy();
+    screen.unmount();
+  }
 });

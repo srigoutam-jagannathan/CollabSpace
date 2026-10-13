@@ -25,10 +25,13 @@ export function describeTimeframe(p: TimeframeSource): string | null {
   const start = monthYear(p.start_date);
   const end = monthYear(p.end_date);
 
+  // ISO dates compare lexically. An end before the start is a mistake; don't print it backwards.
+  const reversed = start && end && p.end_date! < p.start_date!;
+
   let when: string | null = null;
-  if (start && end) when = start === end ? start : `${start} – ${end}`;
+  if (start && end && !reversed) when = start === end ? start : `${start} – ${end}`;
   else if (start) when = `From ${start}`;
-  else if (end) when = `Until ${end}`;
+  else if (end && !start) when = `Until ${end}`;
 
   const h = p.commitment_hours ?? 0;
   const hours = h > 0 ? `${h} ${h === 1 ? "hr" : "hrs"} a week` : null;

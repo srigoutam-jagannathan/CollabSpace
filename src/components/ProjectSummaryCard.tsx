@@ -30,12 +30,15 @@ export function ProjectSummaryCard({
 }: Props) {
   const { tokens: { C, GLASS } } = useTheme();
 
+  // "" and "   " would otherwise show a blank name and an empty avatar.
+  const name = ownerName?.trim() || "Unknown";
+
   const owner = (
     <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
-      <Avatar url={ownerAvatarUrl} initials={initials(ownerName)} size={s(24)} />
+      <Avatar url={ownerAvatarUrl} initials={initials(name)} size={s(24)} />
       <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12) }}>Started by</Text>
       <Text style={{ color: C.white, fontFamily: FONT.semiBold, fontSize: fs(12) }} numberOfLines={1}>
-        {ownerName ?? "Unknown"}
+        {name}
       </Text>
     </View>
   );
@@ -58,14 +61,15 @@ export function ProjectSummaryCard({
       {onOwnerPress ? (
         <Btn
           onPress={onOwnerPress}
-          accessibilityLabel={`Started by ${ownerName ?? "Unknown"}. Opens their profile.`}
+          accessibilityLabel={`Started by ${name}. Opens their profile.`}
           hitSlop={8}
           style={{ alignSelf: "flex-start", marginTop: vs(2) }}
         >
           {owner}
         </Btn>
       ) : (
-        <View style={{ marginTop: vs(2) }}>{owner}</View>
+        // accessible groups the avatar, "Started by" and name into one screen-reader stop.
+        <View accessible accessibilityLabel={`Started by ${name}`} style={{ marginTop: vs(2) }}>{owner}</View>
       )}
     </View>
   );
