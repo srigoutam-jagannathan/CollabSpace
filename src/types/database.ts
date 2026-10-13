@@ -56,6 +56,10 @@ export interface Project {
    * Images only: there is no video player in the app.
    */
   cover_url: string | null;
+  /** Rough length chosen at creation; null on older projects, which use dates. */
+  duration: "under_1_month" | "1_3_months" | "3_6_months" | "flexible" | null;
+  /** The owner welcomes people who want to learn the skills. */
+  open_to_learners: boolean;
 }
 
 export interface ProjectMember {
