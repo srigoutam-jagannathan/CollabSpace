@@ -256,6 +256,9 @@ export default function DiscoverScreen() {
 
           <SectionFrame
             title="People to know"
+            subtitle={people.data.some((p) => p.matched_skills.length > 0)
+              ? "Skills your projects need"
+              : "Students from your department first"}
             skeleton="people"
             visible={sectionVisible("people", people.data.length)}
             loading={people.loading && people.data.length === 0}

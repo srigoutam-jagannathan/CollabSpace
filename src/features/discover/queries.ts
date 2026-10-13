@@ -27,7 +27,7 @@ const ACTIVE_EVENT_TYPES = ["committed", "mou_signed"];
  * calling .range() — a .range() page would be ordered by the wrong key.
  */
 export const WINDOW = {
-  section: { needs: 50, active: 30, people: 40, shipped: 6 },
+  section: { needs: 50, active: 30, people: 100, shipped: 6 },
   seeAll: { needs: 200, active: 200, people: 200 },
   /** Supporting reads that only ever describe the viewer. */
   viewerMemberships: 200,
@@ -135,9 +135,32 @@ export async function fetchActive(
   return { data: rows, error: null };
 }
 
-/** Everyone except the viewer, the deleted, and existing accepted connections. */
+/**
+ * What the viewer's own recruiting projects are looking for: each project's
+ * roles (role_requirements, or the legacy looking_for) and its Skills Needed
+ * tags, in the projects' own wording. People to know matches against these.
+ */
+export async function fetchViewerProjectNeeds(viewerId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("projects")
+    .select("role_requirements, looking_for, tags")
+    .eq("owner_id", viewerId)
+    .eq("status", "recruiting")
+    .limit(WINDOW.viewerMemberships);
+
+  return (data ?? []).flatMap((p: any) => {
+    const roles: string[] = (p.role_requirements ?? []).map((r: any) => r?.role).filter(Boolean);
+    return [...(roles.length > 0 ? roles : (p.looking_for ?? [])), ...(p.tags ?? [])];
+  });
+}
+
+/**
+ * Everyone except the viewer, the deleted, and existing accepted connections,
+ * newest activity first, each marked with which of `needs` they can fill.
+ */
 export async function fetchPeople(
   viewerId: string,
+  needs: string[],
   limit: number = WINDOW.section.people
 ): Promise<QueryResult<PersonItem>> {
   // Bounded like every other read. A viewer with more accepted connections
@@ -159,10 +182,10 @@ export async function fetchPeople(
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, department, university, pvs_score")
+    .select("id, full_name, avatar_url, department, university, skills")
     .neq("id", viewerId)
     .is("deleted_at", null)
-    .order("pvs_score", { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(limit);
 
   if (error) return { data: [], error: "Couldn't load people." };
@@ -175,7 +198,7 @@ export async function fetchPeople(
       avatar_url: p.avatar_url,
       department: p.department,
       university: p.university,
-      pvs_score: p.pvs_score ?? 0,
+      matched_skills: matchedRoles(needs, p.skills ?? []),
     }));
   return { data: rows, error: null };
 }

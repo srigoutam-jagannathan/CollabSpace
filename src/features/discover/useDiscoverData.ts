@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { rankActive, rankNeeds, rankPeople, withExampleShipped } from "./ranking";
 import {
-  fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchShipped,
+  fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchShipped, fetchViewerProjectNeeds,
 } from "./queries";
 import type { ActiveItem, NeedsItem, PersonItem, SectionState, ShippedItem } from "./types";
 
@@ -108,10 +108,15 @@ export function useDiscoverData(
     }));
   }, []);
 
+  // Latest wins here too: the department can change between two loads.
+  const peopleRequest = useRef(0);
+
   const loadPeople = useCallback(async () => {
     if (!viewerId) return;
-    const { data, error } = await fetchPeople(viewerId);
-    if (!alive.current) return;
+    const request = ++peopleRequest.current;
+    const needs = await fetchViewerProjectNeeds(viewerId);
+    const { data, error } = await fetchPeople(viewerId, needs);
+    if (!alive.current || request !== peopleRequest.current) return;
     setPeople(prev => ({
       data: error ? prev.data : rankPeople(data, viewerDepartment),
       loading: false,

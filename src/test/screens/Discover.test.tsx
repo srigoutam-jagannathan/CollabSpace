@@ -36,12 +36,16 @@ type World = {
   /** The viewer's profile row, or "unloaded" for a read that has not come back with one. */
   profile: { skills: string[]; department: string | null } | "unloaded";
   recruiting: unknown[];
+  /** The viewer's own recruiting projects, which People to know matches against. */
+  mine?: unknown[];
+  /** Skills on the one other profile, Pat Person. */
+  patSkills?: string[];
 };
 
 const filter = (c: QueryCall, method: string, col: string) =>
   c.filters.find(([m, k]) => m === method && k === col);
 
-function world({ profile, recruiting }: World) {
+function world({ profile, recruiting, mine = [], patSkills = [] }: World) {
   db.respond((c) => {
     if (c.table === "profiles" && c.single) {
       return profile === "unloaded"
@@ -49,12 +53,13 @@ function world({ profile, recruiting }: World) {
         : { data: profile };
     }
     if (c.table === "profiles") {
-      return { data: [{ id: "u2", full_name: "Pat Person", avatar_url: null, department: "CS", university: "qub", pvs_score: 3 }] };
+      return { data: [{ id: "u2", full_name: "Pat Person", avatar_url: null, department: "CS", university: "qub", skills: patSkills }] };
     }
     if (c.table === "collaboration_events") {
       return { data: [{ project_id: "a1" }, { project_id: "a2" }, { project_id: "a1" }] };
     }
     if (c.table === "projects") {
+      if (filter(c, "eq", "owner_id")?.[2] === "me") return { data: mine };
       if (filter(c, "eq", "status")?.[2] === "recruiting") return { data: recruiting };
       if (filter(c, "eq", "status")?.[2] === "completed") return { data: [] };
       if (filter(c, "in", "id")) {
@@ -105,7 +110,10 @@ test("while the profile is unknown, neither prompt shows and needs is not fetche
   expect(await screen.findByText("Pat P.")).toBeTruthy();
   expect(screen.queryByText("Nothing needs your skills yet")).toBeNull();
   expect(screen.queryByText("Tell us what you're good at")).toBeNull();
-  expect(db.callsTo("projects").some((c) => filter(c, "eq", "status")?.[2] === "recruiting")).toBe(false);
+  // Other people's recruiting projects; reading the viewer's own (for People to know) is fine.
+  expect(db.callsTo("projects").some((c) =>
+    filter(c, "eq", "status")?.[2] === "recruiting" && has(c, "neq", "owner_id", "me")
+  )).toBe(false);
 });
 
 test("no skills: the add-skills prompt", async () => {
@@ -140,4 +148,29 @@ test("returning from the skills editor picks up the new skills", async () => {
   expect(await screen.findByText("Poster Studio")).toBeTruthy();
   expect(screen.queryByText("Tell us what you're good at")).toBeNull();
   expect(db.callsTo("profiles").filter((c) => c.single && has(c, "eq", "id", "me")).length).toBeGreaterThan(1);
+});
+
+describe("People to know", () => {
+  const MINE = {
+    role_requirements: [{ role: "UX Designer", description: "" }], looking_for: [], tags: [],
+  };
+
+  test("someone who can fill a role your project needs says so", async () => {
+    world({ profile: { skills: ["Design"], department: "CS" }, recruiting: [], mine: [MINE], patSkills: ["UI/UX"] });
+    const screen = renderDiscover();
+
+    expect(await screen.findByText("Can fill UX Designer")).toBeTruthy();
+    expect(screen.getByText("Skills your projects need")).toBeTruthy();
+    expect(screen.queryByText("Students from your department first")).toBeNull();
+  });
+
+  test("with no match, the department line and subtitle", async () => {
+    world({ profile: { skills: ["Design"], department: "CS" }, recruiting: [], mine: [MINE], patSkills: ["Law"] });
+    const screen = renderDiscover();
+
+    expect(await screen.findByText("Pat P.")).toBeTruthy();
+    expect(screen.getByText("Students from your department first")).toBeTruthy();
+    expect(screen.getByText("CS · QUB")).toBeTruthy();
+    expect(screen.queryByText(/^Can fill/)).toBeNull();
+  });
 });

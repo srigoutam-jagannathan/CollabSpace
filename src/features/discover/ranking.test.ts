@@ -114,29 +114,23 @@ describe("rankActive", () => {
 });
 
 describe("rankPeople", () => {
-  test("puts people from the viewer's department first, then higher pvs", () => {
-    const rows: PersonItem[] = [
-      { id: "a", full_name: "A", avatar_url: null, department: "Law", university: "qub", pvs_score: 90 },
-      { id: "b", full_name: "B", avatar_url: null, department: "CS", university: "qub", pvs_score: 10 },
-      { id: "c", full_name: "C", avatar_url: null, department: "CS", university: "qub", pvs_score: 50 },
-    ];
-    expect(rankPeople(rows, "CS").map(r => r.id)).toEqual(["c", "b", "a"]);
+  const person = (id: string, department: string | null, matched_skills: string[] = []): PersonItem => ({
+    id, full_name: id, avatar_url: null, department, university: "qub", matched_skills,
   });
 
-  test("falls back to pvs order when the viewer has no department", () => {
-    const rows: PersonItem[] = [
-      { id: "a", full_name: "A", avatar_url: null, department: "Law", university: "qub", pvs_score: 10 },
-      { id: "b", full_name: "B", avatar_url: null, department: "CS", university: "qub", pvs_score: 80 },
-    ];
-    expect(rankPeople(rows, null).map(r => r.id)).toEqual(["b", "a"]);
+  test("people who can fill more of your projects' needs come first", () => {
+    const rows = [person("a", "CS"), person("b", "Law", ["UI/UX"]), person("c", "Law", ["UI/UX", "Marketer"])];
+    expect(rankPeople(rows, "CS").map((r) => r.id)).toEqual(["c", "b", "a"]);
   });
 
-  test("matches department case- and whitespace-insensitively", () => {
-    const rows: PersonItem[] = [
-      { id: "a", full_name: "A", avatar_url: null, department: "Law", university: "qub", pvs_score: 90 },
-      { id: "b", full_name: "B", avatar_url: null, department: " computer science ", university: "qub", pvs_score: 10 },
-    ];
-    expect(rankPeople(rows, "Computer Science").map(r => r.id)).toEqual(["b", "a"]);
+  test("among equal matches, your department comes first", () => {
+    const rows = [person("a", "Law"), person("b", " computer science ")];
+    expect(rankPeople(rows, "Computer Science").map((r) => r.id)).toEqual(["b", "a"]);
+  });
+
+  test("otherwise the query's order (most recently active) is kept", () => {
+    const rows = [person("a", "Law"), person("b", "Art")];
+    expect(rankPeople(rows, null).map((r) => r.id)).toEqual(["a", "b"]);
   });
 });
 

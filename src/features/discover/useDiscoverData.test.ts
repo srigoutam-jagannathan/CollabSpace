@@ -21,6 +21,7 @@ const mocked = queries as jest.Mocked<typeof queries>;
 
 function stubAll() {
   mocked.fetchMemberProjectIds.mockResolvedValue([]);
+  mocked.fetchViewerProjectNeeds.mockResolvedValue([]);
   mocked.fetchNeeds.mockResolvedValue({ data: [], error: null });
   mocked.fetchActive.mockResolvedValue({ data: [], error: null });
   mocked.fetchPeople.mockResolvedValue({ data: [], error: null });
@@ -40,10 +41,18 @@ test("loads every section in parallel and clears loading", async () => {
   expect(mocked.fetchPeople).toHaveBeenCalledTimes(1);
 });
 
+test("People to know is matched against what your own projects need", async () => {
+  mocked.fetchViewerProjectNeeds.mockResolvedValue(["UX Designer", "Legal"]);
+  const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+  await waitFor(() => expect(result.current.people.loading).toBe(false));
+  expect(mocked.fetchViewerProjectNeeds).toHaveBeenCalledWith("viewer-1");
+  expect(mocked.fetchPeople).toHaveBeenCalledWith("viewer-1", ["UX Designer", "Legal"]);
+});
+
 test("one failing section does not affect the others", async () => {
   mocked.fetchActive.mockResolvedValue({ data: [], error: "Couldn't load active projects." });
   mocked.fetchPeople.mockResolvedValue({
-    data: [{ id: "p1", full_name: "Ana", avatar_url: null, department: "CS", university: "qub", pvs_score: 5 }],
+    data: [{ id: "p1", full_name: "Ana", avatar_url: null, department: "CS", university: "qub", matched_skills: [] }],
     error: null,
   });
 
@@ -57,7 +66,7 @@ test("one failing section does not affect the others", async () => {
 
 test("a refetch keeps existing data on screen while it is in flight", async () => {
   mocked.fetchPeople.mockResolvedValue({
-    data: [{ id: "p1", full_name: "Ana", avatar_url: null, department: "CS", university: "qub", pvs_score: 5 }],
+    data: [{ id: "p1", full_name: "Ana", avatar_url: null, department: "CS", university: "qub", matched_skills: [] }],
     error: null,
   });
 
@@ -70,7 +79,7 @@ test("a refetch keeps existing data on screen while it is in flight", async () =
 
 test("a failed refetch does not wipe the last good data", async () => {
   mocked.fetchPeople.mockResolvedValueOnce({
-    data: [{ id: "p1", full_name: "Ana", avatar_url: null, department: "CS", university: "qub", pvs_score: 5 }],
+    data: [{ id: "p1", full_name: "Ana", avatar_url: null, department: "CS", university: "qub", matched_skills: [] }],
     error: null,
   });
   const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
@@ -129,7 +138,7 @@ test("re-rendering with a new-but-equal skills array does not refetch", async ()
 describe("stale", () => {
   const person = {
     id: "p1", full_name: "Ana", avatar_url: null,
-    department: "CS", university: "qub" as const, pvs_score: 5,
+    department: "CS", university: "qub" as const, matched_skills: [],
   };
 
   test("is false while every section is healthy", async () => {

@@ -10,7 +10,9 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
-import { fetchActive, fetchNeeds, fetchPeople, fetchMemberProjectIds, WINDOW } from "./queries";
+import {
+  fetchActive, fetchNeeds, fetchPeople, fetchMemberProjectIds, fetchViewerProjectNeeds, WINDOW,
+} from "./queries";
 import { rankActive, rankNeeds, rankPeople } from "./ranking";
 import { NeedsYourSkills } from "./sections/NeedsYourSkills";
 import { ActiveNow } from "./sections/ActiveNow";
@@ -65,10 +67,11 @@ export function SectionListScreen({ section }: { section: string }) {
       const { data, error: e } = await fetchActive(WINDOW.seeAll.active);
       if (e) setError(e); else setRows(rankActive(data, Infinity));
     } else if (section === "people") {
-      const [profileRow, result] = await Promise.all([
+      const [profileRow, needs] = await Promise.all([
         supabase.from("profiles").select("department").eq("id", user.id).single(),
-        fetchPeople(user.id, WINDOW.seeAll.people),
+        fetchViewerProjectNeeds(user.id),
       ]);
+      const result = await fetchPeople(user.id, needs, WINDOW.seeAll.people);
       if (result.error) setError(result.error);
       else setRows(rankPeople(result.data, profileRow.data?.department ?? null, Infinity));
     }

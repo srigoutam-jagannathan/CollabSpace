@@ -29,7 +29,8 @@ export interface PersonItem {
   avatar_url: string | null;
   department: string | null;
   university: University | null;
-  pvs_score: number;
+  /** The viewer's project needs this person can fill, in the project's wording. */
+  matched_skills: string[];
 }
 
 /** A completed project, as the Shipped rail needs it. */

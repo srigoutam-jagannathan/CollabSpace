@@ -72,7 +72,11 @@ export function rankActive(rows: ActiveItem[], limit: number = LIMITS.active): A
     .slice(0, limit);
 }
 
-/** Same department first, then higher PVS. */
+/**
+ * People who can fill more of the viewer's project needs first, then people
+ * from the viewer's department, then the query's order (most recently active).
+ * Score is deliberately not a factor (decision 2026-10-03: no rankings).
+ */
 export function rankPeople(
   rows: PersonItem[],
   viewerDepartment: string | null,
@@ -83,7 +87,7 @@ export function rankPeople(
     dept !== null && p.department?.trim().toLowerCase() === dept ? 1 : 0;
 
   return [...rows]
-    .sort((a, b) => shares(b) - shares(a) || b.pvs_score - a.pvs_score)
+    .sort((a, b) => b.matched_skills.length - a.matched_skills.length || shares(b) - shares(a))
     .slice(0, limit);
 }
 

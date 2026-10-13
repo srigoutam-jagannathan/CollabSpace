@@ -12,6 +12,16 @@ function initials(name: string | null): string {
   return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
+/** The card's second line and its spoken form: what they can fill, else department and university. */
+function describe(person: PersonItem): { line: string; spoken: string; matched: boolean } {
+  const can = person.matched_skills;
+  const canLine = can.length > 0 ? `Can fill ${can[0]}${can.length > 1 ? ` +${can.length - 1}` : ""}` : null;
+  const canSpoken = can.length > 0 ? `Can fill ${can.join(" and ")}` : null;
+  const uni = person.university === "qub" ? "QUB" : person.university === "ulster" ? "Ulster" : "";
+  const meta = [person.department, uni].filter(Boolean).join(" · ");
+  return { line: canLine ?? meta, spoken: canSpoken ?? meta, matched: canLine !== null };
+}
+
 function shortName(name: string | null): string {
   if (!name) return "Unknown";
   const [first, ...rest] = name.trim().split(/\s+/);
@@ -38,13 +48,12 @@ export function PeopleToKnow({ items, variant = "rail" }: PeopleToKnowProps) {
     return (
       <>
         {items.map(person => {
-          const uni = person.university === "qub" ? "QUB" : person.university === "ulster" ? "Ulster" : "";
-          const meta = [person.department, uni].filter(Boolean).join(" · ");
+          const { line, spoken, matched } = describe(person);
           return (
             <Btn
               key={person.id}
               onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: person.id } })}
-              accessibilityLabel={`${person.full_name ?? "Unknown"}${meta ? `. ${meta}` : ""}. Opens their profile.`}
+              accessibilityLabel={`${person.full_name ?? "Unknown"}${spoken ? `. ${spoken}` : ""}. Opens their profile.`}
               pressScale={0.98}
               style={{
                 flexDirection: "row", alignItems: "center", gap: s(12),
@@ -58,11 +67,13 @@ export function PeopleToKnow({ items, variant = "rail" }: PeopleToKnowProps) {
                 <Text style={{ color: C.white, fontFamily: FONT.bold, fontSize: fs(13) }} numberOfLines={1}>
                   {shortName(person.full_name)}
                 </Text>
-                {meta ? (
+                {line ? (
                   <Text style={{
-                    color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(11), marginTop: vs(2),
+                    color: matched ? C.purpleL : C.textFaint,
+                    fontFamily: matched ? FONT.semiBold : FONT.regular,
+                    fontSize: fs(11), marginTop: vs(2),
                   }} numberOfLines={1}>
-                    {meta}
+                    {line}
                   </Text>
                 ) : null}
               </View>
@@ -80,13 +91,12 @@ export function PeopleToKnow({ items, variant = "rail" }: PeopleToKnowProps) {
       contentContainerStyle={{ paddingHorizontal: s(20), gap: s(8) }}
     >
       {items.map(person => {
-        const uni = person.university === "qub" ? "QUB" : person.university === "ulster" ? "Ulster" : "";
-        const meta = [person.department, uni].filter(Boolean).join(" · ");
+        const { line, spoken, matched } = describe(person);
         return (
           <Btn
             key={person.id}
             onPress={() => router.push({ pathname: "/(app)/users/[id]", params: { id: person.id } })}
-            accessibilityLabel={`${person.full_name ?? "Unknown"}${meta ? `. ${meta}` : ""}. Opens their profile.`}
+            accessibilityLabel={`${person.full_name ?? "Unknown"}${spoken ? `. ${spoken}` : ""}. Opens their profile.`}
             pressScale={0.97}
             style={{
               width: ts(96), borderRadius: s(13), paddingVertical: vs(11), paddingHorizontal: s(8),
@@ -101,11 +111,13 @@ export function PeopleToKnow({ items, variant = "rail" }: PeopleToKnowProps) {
             }} numberOfLines={1}>
               {shortName(person.full_name)}
             </Text>
-            {meta ? (
+            {line ? (
               <Text style={{
-                color: C.textFaint, fontFamily: FONT.regular, fontSize: fs(9), marginTop: vs(2),
+                color: matched ? C.purpleL : C.textFaint,
+                fontFamily: matched ? FONT.semiBold : FONT.regular,
+                fontSize: fs(9), marginTop: vs(2),
               }} numberOfLines={1}>
-                {meta}
+                {line}
               </Text>
             ) : null}
           </Btn>
