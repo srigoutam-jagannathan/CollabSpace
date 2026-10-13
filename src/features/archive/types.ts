@@ -28,4 +28,6 @@ export interface ArchiveItem {
   team: ArchiveMember[];
   /** Full team size, which may exceed team.length. */
   team_count: number;
+  /** An example from src/constants/exampleShipped.ts, not a real project. */
+  is_example?: boolean;
 }

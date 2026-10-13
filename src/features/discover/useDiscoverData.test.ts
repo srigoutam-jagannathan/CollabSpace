@@ -197,3 +197,9 @@ test("projects that match none of your skills are not shown", async () => {
   expect(result.current.needs.data).toEqual([]);
   expect(result.current).not.toHaveProperty("needsMode");
 });
+
+test("the shipped rail is topped up with examples", async () => {
+  const { result } = renderHook(() => useDiscoverData(["Design"], "CS"));
+  await waitFor(() => expect(result.current.shipped.loading).toBe(false));
+  expect(result.current.shipped.data).toHaveLength(5);
+});

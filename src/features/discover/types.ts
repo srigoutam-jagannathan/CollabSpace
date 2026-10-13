@@ -42,6 +42,8 @@ export interface ShippedItem {
   cover_url: string | null;
   /** Avatar urls for the stacked faces, already capped. */
   faces: { id: string; avatar_url: string | null; full_name: string | null }[];
+  /** An example from src/constants/exampleShipped.ts, not a real project. */
+  is_example?: boolean;
 }
 
 /** Per-section fetch state. Sections fail and retry independently. */

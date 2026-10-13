@@ -1,5 +1,9 @@
 import { canonicalSkill } from "@/constants/skills";
-import type { ActiveItem, NeedsItem, PersonItem, SectionKey } from "./types";
+import { EXAMPLE_SHIPPED, SHIPPED_MINIMUM } from "@/constants/exampleShipped";
+import type { ActiveItem, NeedsItem, PersonItem, SectionKey, ShippedItem } from "./types";
+
+/** Faces stacked on a Shipped tile. Matches RAIL_FACES in queries.ts. */
+const RAIL_FACES = 4;
 
 /** Section limits, from the spec. */
 export const LIMITS: Record<SectionKey, number> = {
@@ -13,11 +17,12 @@ export const LIMITS: Record<SectionKey, number> = {
 const MIN_ITEMS: Record<SectionKey, number> = {
   needs: 1,
   active: 2,
-  // The archive is a credibility surface, and one showing a single item
-  // damages the credibility it exists to build. Below five completed
-  // projects the rail — and the doorway into the deck — stays hidden.
   people: 1,
-  shipped: 5,
+  // The archive is a credibility surface, and one showing a single item
+  // damages the credibility it exists to build. Until five real projects
+  // have shipped, withExampleShipped tops the rail up to five with labelled
+  // examples, so the gate is always met.
+  shipped: SHIPPED_MINIMUM,
 };
 
 /**
@@ -83,4 +88,18 @@ export function rankPeople(
  */
 export function sectionVisible(key: SectionKey, itemCount: number): boolean {
   return itemCount >= MIN_ITEMS[key];
+}
+
+/** Real shipped projects first, topped up with labelled examples to SHIPPED_MINIMUM. */
+export function withExampleShipped(real: ShippedItem[]): ShippedItem[] {
+  const needed = Math.max(0, SHIPPED_MINIMUM - real.length);
+  const examples: ShippedItem[] = EXAMPLE_SHIPPED.slice(0, needed).map((e) => ({
+    id: e.id,
+    title: e.title,
+    delivered_at: e.delivered_at,
+    cover_url: null,
+    faces: e.team.slice(0, RAIL_FACES).map((name, i) => ({ id: `${e.id}-${i}`, full_name: name, avatar_url: null })),
+    is_example: true,
+  }));
+  return [...real, ...examples];
 }

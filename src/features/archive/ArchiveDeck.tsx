@@ -11,6 +11,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
 import { fetchCompleted } from "./queries";
 import { ArchiveCard } from "./ArchiveCard";
+import { withExampleArchive } from "./examples";
 import { ConnectTeamSheet } from "./ConnectTeamSheet";
 import type { ArchiveItem } from "./types";
 import { ScreenLoader } from "@/components/ScreenLoader";
@@ -36,7 +37,7 @@ export default function ArchiveDeck() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error: e } = await fetchCompleted();
-    setItems(data);
+    setItems(e ? data : withExampleArchive(data));
     setError(e);
     setLoading(false);
   }, []);
@@ -45,6 +46,7 @@ export default function ArchiveDeck() {
 
   const pages: Page[] = items.length > 0 ? [...items, END] : [];
   const total = items.length;
+  const delivered = items.filter(i => !i.is_example).length;
   const current = Math.min(index + 1, total);
 
   function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
@@ -133,9 +135,11 @@ export default function ArchiveDeck() {
                       color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12),
                       textAlign: "center", marginBottom: vs(18),
                     }}>
-                      {total === 1
-                        ? "One project delivered so far. Yours could be next."
-                        : `${total} projects delivered so far. Yours could be next.`}
+                      {delivered === 0
+                        ? "No projects delivered yet. Yours could be the first."
+                        : delivered === 1
+                          ? "One project delivered so far. Yours could be next."
+                          : `${delivered} projects delivered so far. Yours could be next.`}
                     </Text>
                     <Btn
                       onPress={() => router.back()}
@@ -156,6 +160,14 @@ export default function ArchiveDeck() {
                 ) : (
                   <>
                     <ArchiveCard item={page} />
+                    {page.is_example ? (
+                      <Text style={{
+                        color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(12),
+                        textAlign: "center", marginTop: vs(14),
+                      }}>
+                        Example project. Real ones appear here as teams ship.
+                      </Text>
+                    ) : (
                     <Btn
                       onPress={() => setSheetFor(page)}
                       accessibilityLabel={`Connect with the team behind ${page.title}`}
@@ -171,6 +183,7 @@ export default function ArchiveDeck() {
                         </Text>
                       </LinearGradient>
                     </Btn>
+                    )}
                   </>
                 )}
               </View>

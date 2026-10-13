@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
-import { rankActive, rankNeeds, rankPeople } from "./ranking";
+import { rankActive, rankNeeds, rankPeople, withExampleShipped } from "./ranking";
 import {
   fetchActive, fetchMemberProjectIds, fetchNeeds, fetchPeople, fetchShipped,
 } from "./queries";
@@ -111,7 +111,7 @@ export function useDiscoverData(
   const loadShipped = useCallback(async () => {
     const { data, error } = await fetchShipped();
     if (!alive.current) return;
-    setShipped(prev => ({ data: error ? prev.data : data, loading: false, error }));
+    setShipped(prev => ({ data: error ? prev.data : withExampleShipped(data), loading: false, error }));
   }, []);
 
   const loadAll = useCallback(async () => {

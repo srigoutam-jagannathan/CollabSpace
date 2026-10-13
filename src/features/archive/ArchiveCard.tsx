@@ -37,7 +37,7 @@ export function ArchiveCard({ item }: { item: ArchiveItem }) {
   return (
     <View
       accessible
-      accessibilityLabel={`${item.title}. ${delivered}. ${teamLabel(item.team_count)}.`}
+      accessibilityLabel={`${item.is_example ? "Example project: " : ""}${item.title}. ${delivered}. ${teamLabel(item.team_count)}.`}
       style={{
         flex: 1, borderRadius: s(22), overflow: "hidden",
         borderWidth: 1, borderColor: C.border,
@@ -46,15 +46,28 @@ export function ArchiveCard({ item }: { item: ArchiveItem }) {
     >
       <ProjectBackdrop projectId={item.id} coverUrl={item.cover_url} />
 
-      <View style={{
-        alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: s(5),
-        backgroundColor: "rgba(52,211,153,0.14)", borderWidth: 1,
-        borderColor: "rgba(52,211,153,0.34)", borderRadius: s(7),
-        paddingHorizontal: s(8), paddingVertical: vs(3), marginBottom: vs(8),
-      }}>
-        <Text style={{ color: C.success, fontFamily: FONT.extraBold, fontSize: fs(9.5), letterSpacing: 0.3 }}>
-          {`✓ SHIPPED · ${delivered.replace("Delivered ", "").toUpperCase()}`}
-        </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), marginBottom: vs(8) }}>
+        <View style={{
+          flexDirection: "row", alignItems: "center", gap: s(5),
+          backgroundColor: "rgba(52,211,153,0.14)", borderWidth: 1,
+          borderColor: "rgba(52,211,153,0.34)", borderRadius: s(7),
+          paddingHorizontal: s(8), paddingVertical: vs(3),
+        }}>
+          <Text style={{ color: C.success, fontFamily: FONT.extraBold, fontSize: fs(9.5), letterSpacing: 0.3 }}>
+            {`✓ SHIPPED · ${delivered.replace("Delivered ", "").toUpperCase()}`}
+          </Text>
+        </View>
+        {item.is_example && (
+          <View style={{
+            backgroundColor: "rgba(0,0,0,0.35)", borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.25)", borderRadius: s(6),
+            paddingHorizontal: s(6), paddingVertical: vs(3),
+          }}>
+            <Text style={{ color: "#fff", fontFamily: FONT.extraBold, fontSize: fs(8), letterSpacing: 0.4 }}>
+              EXAMPLE
+            </Text>
+          </View>
+        )}
       </View>
 
       <Text style={{

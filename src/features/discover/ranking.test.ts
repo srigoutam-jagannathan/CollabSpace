@@ -1,5 +1,5 @@
-import { matchedRoles, rankNeeds, rankActive, rankPeople, sectionVisible } from "./ranking";
-import type { ActiveItem, NeedsItem, PersonItem } from "./types";
+import { matchedRoles, rankNeeds, rankActive, rankPeople, sectionVisible, withExampleShipped } from "./ranking";
+import type { ActiveItem, NeedsItem, PersonItem, ShippedItem } from "./types";
 
 describe("matchedRoles with canonical skills", () => {
   test("a free-text role matches the preset it means", () => {
@@ -169,5 +169,33 @@ describe("sectionVisible — shipped gate", () => {
     expect(sectionVisible("shipped", 5)).toBe(true);
     expect(sectionVisible("shipped", 6)).toBe(true);
     expect(sectionVisible("shipped", 40)).toBe(true);
+  });
+});
+
+describe("withExampleShipped", () => {
+  const real = (id: string): ShippedItem => ({ id, title: id, delivered_at: "2026-09-01T00:00:00Z", cover_url: null, faces: [] });
+
+  test("with nothing shipped, five examples fill the rail", () => {
+    const rows = withExampleShipped([]);
+    expect(rows).toHaveLength(5);
+    expect(rows.every((r) => r.is_example)).toBe(true);
+    expect(rows.every((r) => r.title && r.faces.length > 0)).toBe(true);
+  });
+
+  test("real projects come first, topped up to five", () => {
+    const rows = withExampleShipped([real("a"), real("b")]);
+    expect(rows.map((r) => r.id).slice(0, 2)).toEqual(["a", "b"]);
+    expect(rows).toHaveLength(5);
+    expect(rows.filter((r) => r.is_example)).toHaveLength(3);
+  });
+
+  test("five or more real projects need no examples", () => {
+    const rows = withExampleShipped(["a", "b", "c", "d", "e", "f"].map(real));
+    expect(rows.some((r) => r.is_example)).toBe(false);
+    expect(rows).toHaveLength(6);
+  });
+
+  test("the rail is always visible now", () => {
+    expect(sectionVisible("shipped", withExampleShipped([]).length)).toBe(true);
   });
 });

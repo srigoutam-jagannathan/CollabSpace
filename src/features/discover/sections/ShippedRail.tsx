@@ -40,7 +40,7 @@ export function ShippedRail({ items }: { items: ShippedItem[] }) {
         <Btn
           key={item.id}
           onPress={() => router.push("/(app)/archive")}
-          accessibilityLabel={`${item.title}, ${monthLabel(item.delivered_at).toLowerCase()}. Opens the archive.`}
+          accessibilityLabel={`${item.is_example ? "Example project: " : ""}${item.title}, ${monthLabel(item.delivered_at).toLowerCase()}. Opens the archive.`}
           pressScale={0.97}
           style={{
             width: ts(136), height: vs(96), borderRadius: s(13), overflow: "hidden",
@@ -49,6 +49,19 @@ export function ShippedRail({ items }: { items: ShippedItem[] }) {
           }}
         >
           <ProjectBackdrop projectId={item.id} coverUrl={item.cover_url} veil="tile" />
+
+          {item.is_example && (
+            <View style={{
+              position: "absolute", top: s(7), left: s(7),
+              backgroundColor: "rgba(0,0,0,0.35)", borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.25)", borderRadius: s(6),
+              paddingHorizontal: s(5), paddingVertical: vs(2),
+            }}>
+              <Text style={{ color: "#fff", fontFamily: FONT.extraBold, fontSize: fs(8), letterSpacing: 0.4 }}>
+                EXAMPLE
+              </Text>
+            </View>
+          )}
 
           <Text style={{
             color: C.white, fontFamily: FONT.extraBold, fontSize: fs(13), letterSpacing: -0.2,
