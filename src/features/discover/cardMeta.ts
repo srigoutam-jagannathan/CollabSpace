@@ -5,6 +5,7 @@
  * what order; this one decides what a single row says once it is on screen.
  * Both are pure so the card itself stays declarative.
  */
+import { canonicalSkill } from "@/constants/skills";
 import type { NeedsItem } from "./types";
 
 // ─── Role meter ───────────────────────────────────────────────────────────────
@@ -85,8 +86,11 @@ export function projectPills(item: NeedsItem): Pill[] {
     pills.push({ label: `${item.commitment_hours}h/wk`, tone: "plain" });
   }
 
+  // A matched Skills Needed tag can be the open-role pill; don't list it twice.
+  const openKey = openRole ? canonicalSkill(openRole).toLowerCase() : null;
   for (const tag of item.tags) {
     if (pills.length >= MAX_PILLS) break;
+    if (openKey !== null && canonicalSkill(tag).toLowerCase() === openKey) continue;
     pills.push({ label: tag, tone: "plain" });
   }
 

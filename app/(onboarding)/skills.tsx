@@ -86,7 +86,7 @@ export default function SkillsScreen() {
       .then(({ data }) => {
         if (!data?.skills?.length) return;
         const existing: string[] = data.skills;
-        const presetSet = new Set(ALL_SKILLS);
+        const presetSet = new Set<string>(ALL_SKILLS);
         const custom = existing.filter((s) => !presetSet.has(s));
         setSelected(new Set(existing));
         if (custom.length) setCustomSkills(custom);

@@ -14,6 +14,15 @@ describe("matchedRoles with canonical skills", () => {
     expect(matchedRoles(["UX Designer"], ["UI/UX"], ["UI/UX"])).toEqual(["UX Designer"]);
   });
 
+  test("blank needs and skills are ignored", () => {
+    expect(matchedRoles(["  ", "Design"], ["", "Design"], [" "])).toEqual(["Design"]);
+  });
+
+  test("two roles meaning one skill give one entry, the first", () => {
+    expect(matchedRoles(["Frontend Developer", "Backend Developer"], ["Coding and Development"]))
+      .toEqual(["Frontend Developer"]);
+  });
+
   test("custom skills still match exactly", () => {
     expect(matchedRoles(["Beekeeping"], ["beekeeping"])).toEqual(["Beekeeping"]);
   });

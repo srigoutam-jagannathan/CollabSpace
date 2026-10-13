@@ -9,14 +9,15 @@ export const SKILL_CATEGORIES = [
   { title: "SPORTS AND LIFESTYLE", skills: ["Sports and Fitness", "Esports", "Travel and Adventure", "Cooking and Culinary Arts"] },
 ] as const;
 
-export const ALL_SKILLS: string[] = SKILL_CATEGORIES.flatMap((c) => [...c.skills]);
+export type Skill = (typeof SKILL_CATEGORIES)[number]["skills"][number];
+
+export const ALL_SKILLS: readonly Skill[] = SKILL_CATEGORIES.flatMap((c) => [...c.skills]);
 
 /** Common role wording → the preset skill it means. Keys are lower-case. */
-const SYNONYMS: Record<string, string> = {
+export const SYNONYMS: Record<string, Skill> = {
   developer: "Coding and Development",
   "software developer": "Coding and Development",
   "software engineer": "Coding and Development",
-  engineer: "Coding and Development",
   programmer: "Coding and Development",
   "frontend developer": "Coding and Development",
   "front-end developer": "Coding and Development",
@@ -57,13 +58,19 @@ const SYNONYMS: Record<string, string> = {
   "game designer": "Game",
   founder: "Entrepreneurship",
   accountant: "Finance",
-  security: "Cybersecurity",
+  "security engineer": "Cybersecurity",
+  "cybersecurity analyst": "Cybersecurity",
 };
 
-const PRESET_BY_LOWER = new Map(ALL_SKILLS.map((s) => [s.toLowerCase(), s]));
+const PRESET_BY_LOWER = new Map<string, Skill>(ALL_SKILLS.map((s) => [s.toLowerCase(), s]));
+
+/** Case-, edge- and inner-whitespace-insensitive lookup key. */
+function skillKey(label: string): string {
+  return label.trim().replace(/\s+/g, " ").toLowerCase();
+}
 
 /** The preset a skill or role means, or the input itself (trimmed) if none. */
 export function canonicalSkill(label: string): string {
-  const key = label.trim().toLowerCase();
+  const key = skillKey(label);
   return SYNONYMS[key] ?? PRESET_BY_LOWER.get(key) ?? label.trim();
 }

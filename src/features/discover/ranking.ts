@@ -25,16 +25,17 @@ const MIN_ITEMS: Record<SectionKey, number> = {
 /**
  * What a project needs that the viewer can fill: its roles first, then its
  * Skills Needed tags, compared by canonical skill (so "Frontend Developer"
- * meets "Coding and Development"). Returned in the project's own wording,
- * one entry per distinct skill.
+ * meets "Coding and Development"). The first argument is what is needed
+ * (project roles, or a viewer's project needs) and the result is drawn from
+ * it, in that wording, one entry per distinct skill. Blank entries are skipped.
  */
 export function matchedRoles(lookingFor: string[], skills: string[], tags: string[] = []): string[] {
-  const owned = new Set(skills.map((s) => canonicalSkill(s).toLowerCase()));
+  const owned = new Set(skills.map((s) => canonicalSkill(s).toLowerCase()).filter(Boolean));
   const seen = new Set<string>();
   const out: string[] = [];
   for (const need of [...lookingFor, ...tags]) {
     const key = canonicalSkill(need).toLowerCase();
-    if (owned.has(key) && !seen.has(key)) {
+    if (key && owned.has(key) && !seen.has(key)) {
       seen.add(key);
       out.push(need);
     }

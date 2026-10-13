@@ -495,7 +495,7 @@ function SkillsSection({
     supabase.from("profiles").select("skills").eq("id", user.id).single().then(({ data }) => {
       if (!data?.skills?.length) return;
       const existing: string[] = data.skills;
-      const presetSet = new Set(ALL_SKILLS);
+      const presetSet = new Set<string>(ALL_SKILLS);
       setCustomSkills(existing.filter(sk => !presetSet.has(sk)));
       setSelected(new Set(existing));
     });

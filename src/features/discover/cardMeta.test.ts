@@ -70,6 +70,13 @@ describe("projectPills", () => {
     expect(labels(null).some(l => l.endsWith("h/wk"))).toBe(false);
   });
 
+  test("a tag-only match shows that skill once, as the open role", () => {
+    const pills = projectPills({ ...base, tags: ["UI/UX"], matched_roles: ["UI/UX"] });
+    expect(pills.filter(p => p.label.toLowerCase().includes("ui/ux"))).toEqual([
+      { label: "UI/UX open", tone: "open" },
+    ]);
+  });
+
   test("fills remaining space with tags and never exceeds the cap", () => {
     const pills = projectPills({
       ...base,
