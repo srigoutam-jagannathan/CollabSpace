@@ -19,6 +19,7 @@ import { describeTimeframe } from "@/utils/projectTimeframe";
 import { FONT } from "@/utils/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { canonicalSkill } from "@/constants/skills";
 
 type JoinProject = {
   id: string;
@@ -29,9 +30,23 @@ type JoinProject = {
   commitment_hours: number | null;
   owner_id: string;
   owner: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  role_requirements: { role: string; description: string }[] | null;
+  /** Legacy projects list roles here instead of role_requirements. */
+  looking_for: string[] | null;
 };
 
-const ROLES = ["Developer", "Designer", "Marketer", "Legal", "Finance", "Other"];
+/**
+ * The roles a joiner may ask for: the project's role_requirements, else its
+ * legacy looking_for, else none. The database refuses any other role name.
+ */
+function projectRoles(project: JoinProject | null): string[] {
+  if (!project) return [];
+  const named = (Array.isArray(project.role_requirements) ? project.role_requirements : [])
+    .map((r) => r?.role)
+    .filter((role): role is string => typeof role === "string" && role.trim() !== "");
+  if (named.length > 0) return [...new Set(named)];
+  return [...new Set((project.looking_for ?? []).filter((role) => role.trim() !== ""))];
+}
 
 export default function JoinProjectScreen() {
   const { tokens: { C } } = useTheme();
@@ -44,7 +59,9 @@ export default function JoinProjectScreen() {
   const [loading, setLoading] = useState(false);
   const [project, setProject] = useState<JoinProject | null>(null);
   const [projectError, setProjectError] = useState(false);
+  const [mySkills, setMySkills] = useState<string[] | null>(null);
   const firstName = project?.owner?.full_name?.trim().split(/\s+/)[0] || "The owner";
+  const roles = projectRoles(project);
 
   useEffect(() => {
     if (!id) return;
@@ -53,7 +70,7 @@ export default function JoinProjectScreen() {
     let alive = true;
     supabase
       .from("projects")
-      .select("id, title, description, start_date, end_date, commitment_hours, owner_id, owner:profiles!owner_id(id, full_name, avatar_url)")
+      .select("id, title, description, start_date, end_date, commitment_hours, owner_id, role_requirements, looking_for, owner:profiles!owner_id(id, full_name, avatar_url)")
       .eq("id", id)
       .single()
       .then(({ data, error }) => {
@@ -63,6 +80,34 @@ export default function JoinProjectScreen() {
       });
     return () => { alive = false; };
   }, [id]);
+
+  // The viewer's skills, read alongside the project, to pre-pick a role.
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    supabase
+      .from("profiles")
+      .select("skills")
+      .eq("id", userId)
+      .single()
+      .then(({ data }) => {
+        if (!alive) return;
+        const skills = (data as { skills?: unknown } | null)?.skills;
+        setMySkills(Array.isArray(skills) ? skills.filter((s): s is string => typeof s === "string") : []);
+      });
+    return () => { alive = false; };
+  }, [userId]);
+
+  // Pre-pick the first role matching one of the viewer's skills, but never
+  // over a role they already tapped.
+  const rolesKey = roles.join("\n");
+  useEffect(() => {
+    if (!mySkills || mySkills.length === 0 || !rolesKey) return;
+    const mine = new Set(mySkills.map((s) => canonicalSkill(s).toLowerCase()));
+    const match = rolesKey.split("\n").find((role) => mine.has(canonicalSkill(role).toLowerCase()));
+    if (match) setSelectedRole((prev) => prev || match);
+  }, [mySkills, rolesKey]);
 
   async function handleSubmit() {
     if (!user || !id) return;
@@ -160,52 +205,58 @@ export default function JoinProjectScreen() {
           ) : null}
         </View>
 
-        {/* Role section */}
-        <Text
-          style={{
-            color: C.white,
-            fontFamily: FONT.semiBold,
-            fontSize: fs(15),
-            marginBottom: vs(10),
-          }}
-        >
-          Role you&apos;d like
-        </Text>
+        {/* Role section: only the roles this project lists, if any */}
+        {roles.length > 0 ? (
+          <View style={{ marginBottom: vs(24) }}>
+            <Text
+              style={{
+                color: C.white,
+                fontFamily: FONT.semiBold,
+                fontSize: fs(15),
+                marginBottom: vs(10),
+              }}
+            >
+              Role you&apos;d like
+            </Text>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: s(8) }}
-        >
-          {ROLES.map((role) => {
-            const isSelected = selectedRole === role;
-            return (
-              <Btn
-                key={role}
-                onPress={() => setSelectedRole(isSelected ? "" : role)}
-                pressScale={0.93}
-                style={{ marginRight: s(8) }}
-              >
-                <View style={{
-                  borderRadius: s(20),
-                  paddingHorizontal: s(16),
-                  paddingVertical: vs(8),
-                  backgroundColor: isSelected ? C.pink : "transparent",
-                  borderWidth: 1.5,
-                  borderColor: isSelected ? C.pink : C.border,
-                }}>
-                  <Text style={{
-                    color: isSelected ? C.white : C.textMuted,
-                    fontFamily: isSelected ? FONT.semiBold : FONT.regular,
-                    fontSize: fs(13),
-                  }}>
-                    {role}
-                  </Text>
-                </View>
-              </Btn>
-            );
-          })}
-        </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: s(8) }}
+            >
+              {roles.map((role) => {
+                const isSelected = selectedRole === role;
+                return (
+                  <Btn
+                    key={role}
+                    onPress={() => setSelectedRole(isSelected ? "" : role)}
+                    pressScale={0.93}
+                    style={{ marginRight: s(8) }}
+                    accessibilityLabel={`Role ${role}`}
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <View style={{
+                      borderRadius: s(20),
+                      paddingHorizontal: s(16),
+                      paddingVertical: vs(8),
+                      backgroundColor: isSelected ? C.pink : "transparent",
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? C.pink : C.border,
+                    }}>
+                      <Text style={{
+                        color: isSelected ? C.white : C.textMuted,
+                        fontFamily: isSelected ? FONT.semiBold : FONT.regular,
+                        fontSize: fs(13),
+                      }}>
+                        {role}
+                      </Text>
+                    </View>
+                  </Btn>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {/* Intro message section */}
         <Text
@@ -213,7 +264,6 @@ export default function JoinProjectScreen() {
             color: C.white,
             fontFamily: FONT.semiBold,
             fontSize: fs(15),
-            marginTop: vs(24),
             marginBottom: vs(10),
           }}
         >

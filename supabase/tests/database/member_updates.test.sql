@@ -15,8 +15,10 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000b2', 'member@qub.ac.uk'),
   ('00000000-0000-0000-0000-0000000000c3', 'pending@ulster.ac.uk'),
   ('00000000-0000-0000-0000-0000000000d4', 'outsider@qub.ac.uk');
-insert into public.projects (id, owner_id, title) values
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project');
+-- Joiners may only ask for a role the project lists (20261013090000).
+insert into public.projects (id, owner_id, title, role_requirements) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 'Fixture project',
+   '[{"role":"Dev","description":""}]');
 
 select plan(17);
 

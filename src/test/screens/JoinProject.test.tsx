@@ -1,5 +1,5 @@
 import { Alert } from "react-native";
-import { fireEvent, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, waitFor } from "@testing-library/react-native";
 
 jest.mock("@/lib/supabaseClient", () => require("@/test/supabaseMock").supabaseModule);
 jest.mock("expo-router", () => require("@/test/routerMock").expoRouterModule);
@@ -8,7 +8,7 @@ jest.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: 
 // Route files live under app/. Tests may not: Expo Router would register them as routes.
 import JoinProjectScreen from "../../../app/(app)/projects/[id]/join";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { db, has } from "@/test/supabaseMock";
+import { db, has, supabase } from "@/test/supabaseMock";
 import { mockRouter, routerState } from "@/test/routerMock";
 
 const PROJECT = {
@@ -27,6 +27,22 @@ function world({ project = PROJECT as typeof PROJECT | null } = {}) {
     if (c.table === "projects") {
       return project ? { data: project } : { data: null, error: { code: "PGRST116", message: "not found" } };
     }
+    return undefined;
+  });
+}
+
+function rolesWorld({ roles, skills, lookingFor }: { roles: string[]; skills: string[]; lookingFor?: string[] }) {
+  db.respond((c) => {
+    if (c.table === "projects") {
+      return {
+        data: {
+          ...PROJECT,
+          role_requirements: roles.map((role) => ({ role, description: "" })),
+          looking_for: lookingFor ?? [],
+        },
+      };
+    }
+    if (c.table === "profiles") return { data: { skills } };
     return undefined;
   });
 }
@@ -90,10 +106,9 @@ test("says what happens next, naming the owner", async () => {
 });
 
 test("the picked role is spelled out and sent", async () => {
-  world();
+  rolesWorld({ roles: ["Designer"], skills: [] });
   const screen = renderWithProviders(<JoinProjectScreen />);
-  await screen.findByText("Aurora");
-  fireEvent.press(screen.getByText("Designer"));
+  fireEvent.press(await screen.findByLabelText("Role Designer"));
   expect(screen.getByText("Applying as Designer")).toBeTruthy();
   fireEvent.press(screen.getByText("Ask to Join"));
   await waitFor(() => expect(db.callsTo("project_members")).toHaveLength(1));
@@ -135,4 +150,84 @@ test("says so when you've already asked", async () => {
   await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
     "Already asked", "You've already asked to join this project.",
   ));
+});
+
+test("offers the project's own roles, with the viewer's match picked", async () => {
+  rolesWorld({ roles: ["Frontend Developer", "Marketer"], skills: ["Coding and Development"] });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await waitFor(() => expect(screen.getByLabelText("Role Frontend Developer")).toBeSelected());
+  expect(screen.getByLabelText("Role Marketer")).not.toBeSelected();
+  expect(screen.queryByLabelText("Role Legal")).toBeNull();
+});
+
+test("a role you tapped before your skills loaded is kept", async () => {
+  // The mock answers synchronously, so hold the profiles read back by hand:
+  // that table gets a chain whose result resolves only when the test says so.
+  rolesWorld({ roles: ["Frontend Developer", "Marketer"], skills: ["Coding and Development"] });
+  let releaseSkills!: () => void;
+  const skillsArrive = new Promise<{ data: { skills: string[] }; error: null }>((resolve) => {
+    releaseSkills = () => resolve({ data: { skills: ["Coding and Development"] }, error: null });
+  });
+  const realFrom = supabase.from.getMockImplementation()!;
+  supabase.from.mockImplementation((table: string) => {
+    if (table !== "profiles") return realFrom(table);
+    const chain = {
+      select: () => chain,
+      eq: () => chain,
+      single: () => chain,
+      then: (ok: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => skillsArrive.then(ok, bad),
+    };
+    return chain as unknown as ReturnType<typeof realFrom>;
+  });
+  try {
+    const screen = renderWithProviders(<JoinProjectScreen />);
+    fireEvent.press(await screen.findByLabelText("Role Marketer"));
+    expect(screen.getByLabelText("Role Marketer")).toBeSelected();
+    await act(async () => { releaseSkills(); await skillsArrive; });
+    expect(screen.getByLabelText("Role Marketer")).toBeSelected();
+    expect(screen.getByLabelText("Role Frontend Developer")).not.toBeSelected();
+  } finally {
+    supabase.from.mockImplementation(realFrom);
+  }
+});
+
+test("sends no role when none is picked", async () => {
+  rolesWorld({ roles: ["Marketer"], skills: [] });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  fireEvent.changeText(await screen.findByPlaceholderText(/Tell them why/), "Keen to help");
+  fireEvent.press(screen.getByText("Ask to Join"));
+  await waitFor(() => expect(db.callsTo("project_members")).toHaveLength(1));
+  expect(db.callsTo("project_members")[0].payload).not.toHaveProperty("role");
+});
+
+test("a project with no roles shows no role picker", async () => {
+  rolesWorld({ roles: [], skills: [] });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  expect(screen.queryByText("Role you'd like")).toBeNull();
+  expect(screen.queryByLabelText(/^Role /)).toBeNull();
+});
+
+test("legacy projects offer their looking_for roles", async () => {
+  rolesWorld({ roles: [], lookingFor: ["Legal"], skills: [] });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  expect(await screen.findByLabelText("Role Legal")).toBeTruthy();
+});
+
+test("asks for the project's roles in the same query as its details", async () => {
+  rolesWorld({ roles: ["Marketer"], skills: [] });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  expect(db.callsTo("projects")).toHaveLength(1);
+  expect(db.callsTo("projects")[0].columns).toContain("role_requirements");
+});
+
+test("reads the viewer's skills from their own profile", async () => {
+  rolesWorld({ roles: ["Marketer"], skills: [] });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  await waitFor(() => expect(db.callsTo("profiles")).toHaveLength(1));
+  const [call] = db.callsTo("profiles");
+  expect(call.columns).toBe("skills");
+  expect(has(call, "eq", "id", "me")).toBe(true);
 });
