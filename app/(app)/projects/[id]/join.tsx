@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  ActivityIndicator,
   ScrollView,
   Alert,
 } from "react-native";
@@ -126,7 +125,7 @@ export default function JoinProjectScreen() {
     if (error) {
       if (error.code === "23505") {
         Alert.alert("Already asked", "You've already asked to join this project.");
-      } else if (error.code === "42501") {
+      } else if (error.code === "42501" && error.message?.includes("role not offered")) {
         // The role check refused it: the owner changed the roles since this loaded.
         Alert.alert("That role isn't open", "The project's roles have changed. Pick another, or ask without a role.");
         setSelectedRole("");
