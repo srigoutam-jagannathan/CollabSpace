@@ -10,7 +10,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Mail, Lock, UserRound, LockKeyhole, Check,
   Palette, Code2, Briefcase, Trophy, Plus,
+  type LucideIcon,
 } from "lucide-react-native";
+import { SKILL_CATEGORIES, ALL_SKILLS } from "@/constants/skills";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Btn } from "@/components/Btn";
@@ -26,12 +28,12 @@ import { haptic } from "@/utils/haptics";
 
 // ─── Skill data ────────────────────────────────────────────────────────────────
 
-const SKILL_CATEGORIES = [
-  { title: "CREATIVE AND ARTS", icon: Palette, skills: ["Design", "Visual Arts", "Film and Media", "Game", "Performing Arts", "Writing and Storytelling", "Music", "Animation"] },
-  { title: "TECH AND DIGITAL", icon: Code2, skills: ["Coding and Development", "UI/UX", "Cybersecurity", "AI", "Data and Robotics", "VR/AR", "Blockchain"] },
-  { title: "BUSINESS AND INNOVATION", icon: Briefcase, skills: ["Entrepreneurship", "Marketing", "Finance", "Social Media", "Content Creation"] },
-  { title: "SPORTS AND LIFESTYLE", icon: Trophy, skills: ["Sports and Fitness", "Esports", "Travel and Adventure", "Cooking and Culinary Arts"] },
-];
+const CATEGORY_ICONS: Record<(typeof SKILL_CATEGORIES)[number]["title"], LucideIcon> = {
+  "CREATIVE AND ARTS": Palette,
+  "TECH AND DIGITAL": Code2,
+  "BUSINESS AND INNOVATION": Briefcase,
+  "SPORTS AND LIFESTYLE": Trophy,
+};
 
 // ─── Password strength ─────────────────────────────────────────────────────────
 
@@ -493,7 +495,7 @@ function SkillsSection({
     supabase.from("profiles").select("skills").eq("id", user.id).single().then(({ data }) => {
       if (!data?.skills?.length) return;
       const existing: string[] = data.skills;
-      const presetSet = new Set(SKILL_CATEGORIES.flatMap(c => c.skills));
+      const presetSet = new Set(ALL_SKILLS);
       setCustomSkills(existing.filter(sk => !presetSet.has(sk)));
       setSelected(new Set(existing));
     });
@@ -571,7 +573,7 @@ function SkillsSection({
         {/* anim[1]: category chip grid */}
         <Animated.View style={anim[1]}>
           {SKILL_CATEGORIES.map(category => {
-            const CatIcon = category.icon;
+            const CatIcon = CATEGORY_ICONS[category.title];
             return (
               <View key={category.title}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), marginTop: vs(24), marginBottom: vs(10) }}>

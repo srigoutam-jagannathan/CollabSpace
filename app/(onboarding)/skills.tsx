@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Palette, Code2, Briefcase, Trophy, Plus, ChevronLeft } from "lucide-react-native";
+import { Palette, Code2, Briefcase, Trophy, Plus, ChevronLeft, type LucideIcon } from "lucide-react-native";
+import { SKILL_CATEGORIES, ALL_SKILLS } from "@/constants/skills";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Btn } from "@/components/Btn";
@@ -24,28 +25,12 @@ import { s, vs, fs } from "@/utils/scale";
 import { useEntrance } from "@/utils/useEntrance";
 import { haptic } from "@/utils/haptics";
 
-const SKILL_CATEGORIES = [
-  {
-    title: "CREATIVE AND ARTS",
-    icon: Palette,
-    skills: ["Design", "Visual Arts", "Film and Media", "Game", "Performing Arts", "Writing and Storytelling", "Music", "Animation"],
-  },
-  {
-    title: "TECH AND DIGITAL",
-    icon: Code2,
-    skills: ["Coding and Development", "UI/UX", "Cybersecurity", "AI", "Data and Robotics", "VR/AR", "Blockchain"],
-  },
-  {
-    title: "BUSINESS AND INNOVATION",
-    icon: Briefcase,
-    skills: ["Entrepreneurship", "Marketing", "Finance", "Social Media", "Content Creation"],
-  },
-  {
-    title: "SPORTS AND LIFESTYLE",
-    icon: Trophy,
-    skills: ["Sports and Fitness", "Esports", "Travel and Adventure", "Cooking and Culinary Arts"],
-  },
-];
+const CATEGORY_ICONS: Record<(typeof SKILL_CATEGORIES)[number]["title"], LucideIcon> = {
+  "CREATIVE AND ARTS": Palette,
+  "TECH AND DIGITAL": Code2,
+  "BUSINESS AND INNOVATION": Briefcase,
+  "SPORTS AND LIFESTYLE": Trophy,
+};
 
 function SkillChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const { tokens: { C } } = useTheme();
@@ -101,7 +86,7 @@ export default function SkillsScreen() {
       .then(({ data }) => {
         if (!data?.skills?.length) return;
         const existing: string[] = data.skills;
-        const presetSet = new Set(SKILL_CATEGORIES.flatMap((c) => c.skills));
+        const presetSet = new Set(ALL_SKILLS);
         const custom = existing.filter((s) => !presetSet.has(s));
         setSelected(new Set(existing));
         if (custom.length) setCustomSkills(custom);
@@ -216,7 +201,7 @@ export default function SkillsScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {SKILL_CATEGORIES.map((category) => {
-              const CategoryIcon = category.icon;
+              const CategoryIcon = CATEGORY_ICONS[category.title];
               return (
                 <View key={category.title}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), marginTop: vs(24), marginBottom: vs(10) }}>
