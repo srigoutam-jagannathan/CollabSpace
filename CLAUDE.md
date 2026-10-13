@@ -79,8 +79,9 @@ The lock is also enforced in the database (`supabase/migrations/20261002150000_s
 
 ### Database schema (key design decisions)
 
-- `profiles.pvs_score` — stored here for fast reads; computed by telemetry Edge Functions in Phase 2, not by the client.
-- `project_members.status` — approval (`pending` / `approved`), set only by `approve_member` or `accept_invitation`. `mou_accepted` means committed: clients may update only `mou_accepted` and `mou_accepted_at` on their own row. Members leave via `leave_project`; owners remove via `remove_member`.
+- `profiles.pvs_score` — stored here for fast reads; computed on the server in the rewards phase (Phase 5), not by the client. Discover doesn't rank by it.
+- `project_members.status` — approval (`pending` / `approved`), set only by `approve_member` or `accept_invitation`. `mou_accepted` means committed: clients may update only `mou_accepted` and `mou_accepted_at` on their own row. Members leave via `leave_project`; owners remove via `remove_member`. A joiner's `role` must be `member` or a role the project lists (`role_requirements[].role` or legacy `looking_for`); `trg_guard_member_role` refuses anything else. The owner's own row and `accept_invitation` are exempt.
+- `projects.duration` — a rough bucket (`under_1_month` / `1_3_months` / `3_6_months` / `flexible`, check constraint, mirrored in `src/constants/projectOptions.ts`); null on projects from before 2026-10-13, which use `start_date`/`end_date`. `describeTimeframe` prefers the bucket. `projects.open_to_learners` defaults to false.
 - `collaboration_events` — **append-only audit log**, written only by triggers, SECURITY DEFINER RPCs and the service role (no client insert, update or delete). `join` (from `on_member_join`) means a pending request. `committed` is recorded once per person per project, ever, the first time a non-owner row is both committed and approved. This table is the raw data source for the PVS engine.
 - `chat_messages` — clients send only `text` and `profile_card`; system types (`member_left`, `member_removed`, `account_deleted`) come from the RPCs and `delete-account`.
 - Realtime is enabled on `chat_messages` and `collaboration_events` tables.
@@ -91,15 +92,17 @@ The lock is also enforced in the database (`supabase/migrations/20261002150000_s
 ```
 src/features/
   auth/          ← AuthContext, useAuth hook, domain constants
-  discover/      ← DiscoverScreen + sections/, ranking, queries, useDiscoverData
-  projects/      ← CreateProject, InviteSheet, ProjectInsights (BYO-AI prompts via analyze-project)
+  discover/      ← DiscoverScreen + sections/ (Projects for you: skill matches only; Shipped from Belfast: topped up
+                   to 5 with labelled examples; Active this week; People to know: by your projects' needs), ranking, queries
+  projects/      ← CreateProject (four steps in create/, draft and insert payload in create/draft.ts), InviteSheet,
+                   ProjectInsights (BYO-AI prompts via analyze-project)
   chat/          ← HandshakeChat (project chat, members, group icon), DirectChat (DMs)
   notifications/ ← pending (badge count), approvals, joinRequests, connectionRequests
   archive/       ← shipped-project archive deck
-  telemetry/pvs/ ← types.ts + usePVS.ts stub (Phase 2)
+  telemetry/pvs/ ← types.ts + usePVS.ts stub (Phase 5)
 ```
 
-Shared code lives in `src/components/` (Btn, sheets, CollabTabBar), `src/lib/` (`supabaseClient`, `uploadImage`, `requestConnection` — connection requests go only through the `request_connection` RPC), `src/utils/` and `src/test/` (Supabase and router mocks, test harness).
+Shared code lives in `src/components/` (Btn, sheets, CollabTabBar), `src/lib/` (`supabaseClient`, `uploadImage`, `requestConnection` — connection requests go only through the `request_connection` RPC), `src/constants/` (`skills.ts`: the one skill vocabulary and `canonicalSkill`; `projectOptions.ts`; `exampleShipped.ts`: in-app example projects, never in the database), `src/utils/` and `src/test/` (Supabase and router mocks, test harness).
 
 Feature code should never import across feature boundaries — route data flows via Expo Router params or Supabase queries.
 
