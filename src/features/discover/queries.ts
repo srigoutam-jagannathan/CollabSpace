@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import { matchedRoles } from "./ranking";
+import { matchedRoles, RAIL_FACES } from "./ranking";
 import type { ActiveItem, NeedsItem, PersonItem, ShippedItem } from "./types";
 
 export interface QueryResult<T> {
@@ -11,7 +11,7 @@ const ACTIVE_WINDOW_DAYS = 7;
 /**
  * Events that count as a team doing something. join is only a pending
  * request, member_quit can be a withdrawal and a removal isn't activity,
- * so those would otherwise inflate "Active right now".
+ * so those would otherwise inflate "Active this week".
  */
 const ACTIVE_EVENT_TYPES = ["committed", "mou_signed"];
 
@@ -32,7 +32,7 @@ export const WINDOW = {
   /** Supporting reads that only ever describe the viewer. */
   viewerMemberships: 200,
   viewerConnections: 500,
-  /** Events counted when ranking Active right now. */
+  /** Events counted when ranking Active this week. */
   activeEvents: 1000,
 } as const;
 
@@ -189,9 +189,6 @@ export async function fetchMemberProjectIds(viewerId: string): Promise<string[]>
     .limit(WINDOW.viewerMemberships);
   return (data ?? []).map((m: any) => m.project_id);
 }
-
-/** Faces shown per tile before the rest are dropped. */
-const RAIL_FACES = 4;
 
 /**
  * Completed projects for the Shipped rail — the doorway into the Archive.

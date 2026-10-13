@@ -2,8 +2,12 @@ import { canonicalSkill } from "@/constants/skills";
 import { EXAMPLE_SHIPPED, SHIPPED_MINIMUM } from "@/constants/exampleShipped";
 import type { ActiveItem, NeedsItem, PersonItem, SectionKey, ShippedItem } from "./types";
 
-/** Faces stacked on a Shipped tile. Matches RAIL_FACES in queries.ts. */
-const RAIL_FACES = 4;
+/**
+ * Faces stacked on a Shipped tile, real or example. Lives here rather than in
+ * queries.ts, which imports from this file: the reverse import would make
+ * ranking load the Supabase client.
+ */
+export const RAIL_FACES = 4;
 
 /** Section limits, from the spec. */
 export const LIMITS: Record<SectionKey, number> = {
@@ -18,6 +22,7 @@ const MIN_ITEMS: Record<SectionKey, number> = {
   needs: 1,
   active: 2,
   people: 1,
+
   // The archive is a credibility surface, and one showing a single item
   // damages the credibility it exists to build. Until five real projects
   // have shipped, withExampleShipped tops the rail up to five with labelled

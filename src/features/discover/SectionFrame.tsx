@@ -35,9 +35,15 @@ export function SectionFrame({
         flexDirection: "row", alignItems: "center", justifyContent: "space-between",
         paddingHorizontal: s(20), marginBottom: vs(8),
       }}>
-        <View style={{ flex: 1 }}>
+        {/* One header stop: a screen reader reads the title and what it
+            holds together, rather than the subtitle as loose text. */}
+        <View
+          accessible
+          accessibilityRole="header"
+          accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+          style={{ flex: 1 }}
+        >
           <Text
-            accessibilityRole="header"
             style={{
               color: C.purpleL, fontFamily: FONT.bold, fontSize: fs(10),
               letterSpacing: 1.1, textTransform: "uppercase",

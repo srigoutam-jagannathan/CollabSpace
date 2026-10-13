@@ -5,7 +5,7 @@ import { fetchActive } from "./queries";
 
 beforeEach(() => db.reset());
 
-test("Active right now counts real team activity, not join requests, withdrawals or removals", async () => {
+test("Active this week counts real team activity, not join requests, withdrawals or removals", async () => {
   db.respond((call) => {
     if (call.table === "collaboration_events") return { data: [{ project_id: "p1" }, { project_id: "p1" }] };
     if (call.table === "projects") {
