@@ -271,3 +271,31 @@ test("reads the viewer's skills from their own profile", async () => {
   expect(call.columns).toBe("skills");
   expect(has(call, "eq", "id", "me")).toBe(true);
 });
+
+test("a project with a duration shows it instead of dates", async () => {
+  world({ project: { ...PROJECT, duration: "3_6_months" } as typeof PROJECT });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  expect(await screen.findByText("3–6 months · 5 hrs a week")).toBeTruthy();
+  expect(screen.queryByText(/Oct 2026/)).toBeNull();
+});
+
+test("asks for the duration and open_to_learners columns", async () => {
+  world();
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  expect(db.callsTo("projects")[0].columns).toContain("duration");
+  expect(db.callsTo("projects")[0].columns).toContain("open_to_learners");
+});
+
+test("tells joiners when a project is open to learners", async () => {
+  world({ project: { ...PROJECT, open_to_learners: true } as typeof PROJECT });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  expect(await screen.findByText("Open to learners")).toBeTruthy();
+});
+
+test("says nothing about learners when the project isn't open to them", async () => {
+  world({ project: { ...PROJECT, open_to_learners: false } as typeof PROJECT });
+  const screen = renderWithProviders(<JoinProjectScreen />);
+  await screen.findByText("Aurora");
+  expect(screen.queryByText("Open to learners")).toBeNull();
+});

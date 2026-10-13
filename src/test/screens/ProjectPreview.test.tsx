@@ -94,3 +94,31 @@ test("a leave the RPC refuses is reported, and nothing else happens", async () =
   expect(supabase.functions.invoke).not.toHaveBeenCalled();
   expect(db.callsTo("chat_messages").filter((c) => c.op === "insert")).toHaveLength(0);
 });
+
+function projectWorld(extra: Record<string, unknown>) {
+  db.respond((c) => {
+    if (c.table === "projects") {
+      return { data: {
+        id: "p1", owner_id: "owner", title: "Aurora", description: "", tags: [], looking_for: [],
+        owner: { full_name: "Olive Owner" }, ...extra,
+      } };
+    }
+    if (c.table === "project_members") return { data: null };
+    return {};
+  });
+}
+
+test("shows the project's rough duration and that learners are welcome", async () => {
+  projectWorld({ duration: "1_3_months", commitment_hours: 5, open_to_learners: true });
+  const screen = renderPreview();
+  expect(await screen.findByText("1–3 months · 5 hrs a week")).toBeTruthy();
+  expect(screen.getByText("Open to learners")).toBeTruthy();
+});
+
+test("a project with no timeframe and not open to learners shows neither line", async () => {
+  projectWorld({ duration: null, start_date: null, end_date: null, commitment_hours: 0, open_to_learners: false });
+  const screen = renderPreview();
+  await screen.findByText("Aurora");
+  expect(screen.queryByText(/a week/)).toBeNull();
+  expect(screen.queryByText("Open to learners")).toBeNull();
+});

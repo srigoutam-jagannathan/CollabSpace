@@ -10,6 +10,7 @@ import { GradientBtn } from "@/components/GradientBtn";
 import { QuitProjectSheet } from "@/components/QuitProjectSheet";
 import { useTheme } from "@/contexts/ThemeContext";
 import { s, vs, fs } from "@/utils/scale";
+import { describeTimeframe } from "@/utils/projectTimeframe";
 import type { Project } from "@/types/database";
 import { ScreenLoader } from "@/components/ScreenLoader";
 import { DangerBtn } from "@/components/DangerBtn";
@@ -65,6 +66,7 @@ export default function ProjectPreviewScreen() {
   }
 
   const isOwner = project.owner_id === user?.id;
+  const timeframe = describeTimeframe(project);
 
   async function handleQuit() {
     if (!user || !project) return;
@@ -115,6 +117,14 @@ export default function ProjectPreviewScreen() {
             <Text style={{ color: C.textMuted, fontSize: fs(14), lineHeight: vs(21) }}>
               {project.description}
             </Text>
+            {timeframe ? (
+              <Text style={{ color: C.purpleL, fontSize: fs(13), marginTop: vs(10) }}>{timeframe}</Text>
+            ) : null}
+            {project.open_to_learners ? (
+              <View style={{ alignSelf: "flex-start", backgroundColor: C.purple, borderRadius: s(10), paddingHorizontal: s(10), paddingVertical: vs(3), marginTop: vs(10) }}>
+                <Text style={{ color: C.white, fontWeight: "600", fontSize: fs(11) }}>Open to learners</Text>
+              </View>
+            ) : null}
           </View>
         </View>
 

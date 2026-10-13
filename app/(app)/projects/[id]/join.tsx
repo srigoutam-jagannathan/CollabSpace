@@ -27,6 +27,8 @@ type JoinProject = {
   start_date: string | null;
   end_date: string | null;
   commitment_hours: number | null;
+  duration: string | null;
+  open_to_learners: boolean | null;
   owner_id: string;
   owner: { id: string; full_name: string | null; avatar_url: string | null } | null;
   role_requirements: { role: string; description: string }[] | null;
@@ -69,7 +71,7 @@ export default function JoinProjectScreen() {
     let alive = true;
     supabase
       .from("projects")
-      .select("id, title, description, start_date, end_date, commitment_hours, owner_id, role_requirements, looking_for, owner:profiles!owner_id(id, full_name, avatar_url)")
+      .select("id, title, description, start_date, end_date, commitment_hours, duration, open_to_learners, owner_id, role_requirements, looking_for, owner:profiles!owner_id(id, full_name, avatar_url)")
       .eq("id", id)
       .single()
       .then(({ data, error }) => {
@@ -191,6 +193,7 @@ export default function JoinProjectScreen() {
         {/* The project being joined; the form never waits for it */}
         <View style={{ marginBottom: vs(24) }}>
           {project ? (
+            <>
             <ProjectSummaryCard
               title={project.title}
               description={project.description}
@@ -201,6 +204,12 @@ export default function JoinProjectScreen() {
                 ? () => router.push({ pathname: "/(app)/users/[id]", params: { id: project.owner_id } })
                 : undefined}
             />
+            {project.open_to_learners ? (
+              <Text style={{ color: C.textMuted, fontFamily: FONT.medium, fontSize: fs(12), marginTop: vs(8) }}>
+                Open to learners
+              </Text>
+            ) : null}
+            </>
           ) : projectError ? (
             <Text style={{ color: C.textMuted, fontFamily: FONT.regular, fontSize: fs(13) }}>
               Couldn&apos;t load this project&apos;s details.
